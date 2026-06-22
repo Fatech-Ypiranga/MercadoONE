@@ -2,7 +2,9 @@ from cli.menus.product_menu import product_menu
 from cli.menus.sale_menu import sale_menu
 from cli.menus.stock_menu import stock_menu
 from cli.menus.report_menu import report_menu
+from database.connection import DatabaseConnection
 
+DatabaseConnection.run_migrations()
 
 def main_menu():
     while True:
@@ -24,7 +26,7 @@ def main_menu():
             stock_menu()
         elif option == "4":
             report_menu()
-        elif option == "0":
+        elif option == "0": 
             print("Encerrando o sistema. Até logo!")
             break
         else:
