@@ -1,12 +1,9 @@
-# Dados mockados — serão substituídos pelas chamadas ao service depois
-MOCK_PRODUCTS = [
-    {"id": 1, "name": "Notebook Gamer", "category": "Eletrônicos", "price": 4500.00, "stock": 10},
-    {"id": 2, "name": "Mouse Sem Fio",  "category": "Periféricos",  "price": 120.00,  "stock": 35},
-    {"id": 3, "name": "Teclado Mecânico","category": "Periféricos", "price": 280.00,  "stock": 20},
-]
+import sqlite3
+from repositories.product_repository import ProductRepository
+from services.product_service import ProductService
+from services.exceptions import BusinessRuleException 
 
-
-def product_menu():
+def product_menu(conn: sqlite3.Connection):
     while True:
         print("\n------ Produtos ------")
         print("1. Listar produtos")
@@ -17,34 +14,53 @@ def product_menu():
         option = input("Escolha uma opção: ").strip()
 
         if option == "1":
-            list_products()
+            list_products(conn)
         elif option == "2":
-            create_product()
+            create_product(conn)
         elif option == "0":
             break
         else:
             print("Opção inválida.")
 
 
-def list_products():
+def list_products(conn: sqlite3.Connection):
     print("\n--- Lista de Produtos ---")
-    if not MOCK_PRODUCTS:
+
+    cursor = conn.cursor()
+    products = ProductRepository.find_all(cursor)
+    
+    if not products:
         print("Nenhum produto cadastrado.")
         return
-
-    for p in MOCK_PRODUCTS:
+# testar pra ver se deu certo, se nao trocar
+    for p in products:
         print(f"[{p['id']}] {p['name']} | {p['category']} | R$ {p['price']:.2f} | Estoque: {p['stock']}")
 
 
-def create_product():
+def create_product(conn: sqlite3.Connection):
     print("\n--- Cadastrar Produto ---")
-    name     = input("Nome: ").strip()
-    category = input("Categoria: ").strip()
-    price    = float(input("Preço: R$ "))
-    stock    = int(input("Estoque inicial: "))
+    
+    name = input("Nome: ").strip()
+    description = input("Descrição (opcional): ").strip()
+    
+    try:
+        price = float(input("Preço: R$ "))
+        category_id = int(input("ID da Categoria existente: "))
+    except ValueError:
+        print("Erro: Preço e ID da Categoria precisam ser valores numéricos válidos.")
+        return
 
-    new_id = max(p["id"] for p in MOCK_PRODUCTS) + 1 if MOCK_PRODUCTS else 1
-    new_product = {"id": new_id, "name": name, "category": category, "price": price, "stock": stock}
-
-    MOCK_PRODUCTS.append(new_product)
-    print(f"\nProduto '{name}' cadastrado com sucesso! (ID: {new_id})")
+    try:
+        
+        new_id = ProductService.create_product(
+            conn=conn, 
+            name=name, 
+            description=description, 
+            price=price, 
+            category_id=category_id
+        )
+        print(f"\nProduto '{name}' cadastrado com sucesso de forma segura! (ID Gerado: {new_id})")
+        
+    except BusinessRuleException as e:
+        # Captura centralizada de qualquer erro lançado pelo service (ex: Categoria inexistente, Preço inválido)
+        print(f"\n❌ Erro de Negócio: {e}")

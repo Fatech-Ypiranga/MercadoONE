@@ -1,14 +1,13 @@
-from cli.menus.product_menu import MOCK_PRODUCTS
+import sqlite3
+from repositories.customer_repository import CustomerRepository
+from repositories.product_repository import ProductRepository
+from repositories.sale_repository import SaleRepository
+from repositories.stock_repository import StockRepository
+from services.sale_service import SaleService
+from services.exceptions import ValidationError, ResourceNotFoundException, InsufficientStockException, BusinessRuleException
 
-MOCK_CUSTOMERS = [
-    {"id": 1, "name": "Ana Silva",   "email": "ana@email.com"},
-    {"id": 2, "name": "Bruno Costa", "email": "bruno@email.com"},
-]
 
-MOCK_SALES = []
-
-
-def sale_menu():
+def sale_menu(conn: sqlite3.Connection):
     while True:
         print("\n------ Vendas ------")
         print("1. Nova venda")
@@ -20,24 +19,31 @@ def sale_menu():
         option = input("Escolha uma opção: ").strip()
 
         if option == "1":
-            create_sale()
+            create_sale(conn)
         elif option == "2":
-            list_sales()
+            list_sales(conn)
         elif option == "3":
-            create_customer()
+            create_customer(conn)
         elif option == "0":
             break
         else:
             print("Opção inválida.")
 
 
-def create_sale():
+def create_sale(conn: sqlite3.Connection):
     print("\n--- Nova Venda ---")
+    cursor = conn.cursor()
 
     # Selecionar cliente
     print("\nClientes disponíveis:")
-    for c in MOCK_CUSTOMERS:
-        print(f"  [{c['id']}] {c['name']}")
+    customers = CustomerRepository.find_all(cursor)
+    
+    if not customers:
+        print("Nenhum cliente disponível. Cadastre um cliente primeiro.")
+        return
+
+    for c in customers:
+        print(f"  [{c[0]}] {c[1]}")
 
     try:
         customer_id = int(input("ID do cliente (0 para venda sem cliente): "))
@@ -45,15 +51,28 @@ def create_sale():
         print("Entrada inválida.")
         return
 
-    customer = next((c for c in MOCK_CUSTOMERS if c["id"] == customer_id), None)
-    customer_name = customer["name"] if customer else "Consumidor Final"
+    # Se escolher 0, usa consumidor final (customer_id = None)
+    if customer_id == 0:
+        customer_id = None
+    else:
+        customer = CustomerRepository.find_by_id(cursor, customer_id)
+        if not customer:
+            print("Cliente não encontrado.")
+            return
 
     # Montar carrinho
     items = []
     while True:
         print("\n--- Produtos disponíveis ---")
-        for p in MOCK_PRODUCTS:
-            print(f"  [{p['id']}] {p['name']:<20} | R$ {p['price']:.2f} | Estoque: {p['stock']}")
+        products = ProductRepository.find_all(cursor)
+        
+        if not products:
+            print("Nenhum produto disponível.")
+            break
+
+        for p in products:
+            stock = StockRepository.get_current_stock(cursor, p[0])
+            print(f"  [{p[0]}] {p[1]:<20} | R$ {p[3]:.2f} | Estoque: {stock}")
 
         product_input = input("\nID do produto (0 para finalizar): ").strip()
         if product_input == "0":
@@ -61,73 +80,105 @@ def create_sale():
 
         try:
             product_id = int(product_input)
-            quantity   = int(input("Quantidade: "))
+            quantity = int(input("Quantidade: "))
         except ValueError:
             print("Entrada inválida.")
             continue
 
-        product = next((p for p in MOCK_PRODUCTS if p["id"] == product_id), None)
+        product = ProductRepository.find_by_id(cursor, product_id)
         if not product:
             print("Produto não encontrado.")
             continue
 
-        if product["stock"] < quantity:
-            print(f"Estoque insuficiente. Disponível: {product['stock']}")
+        stock = StockRepository.get_current_stock(cursor, product_id)
+        if stock < quantity:
+            print(f"Estoque insuficiente. Disponível: {stock}")
             continue
 
-        # Desconta estoque imediatamente (comportamento otimista)
-        product["stock"] -= quantity
-
         items.append({
-            "product_id":   product["id"],
-            "product_name": product["name"],
-            "quantity":     quantity,
-            "unit_price":   product["price"],
-            "subtotal":     product["price"] * quantity,
+            "product_id": product_id,
+            "quantity": quantity,
         })
-        print(f"  ✓ {product['name']} x{quantity} adicionado.")
+        print(f"  ✓ {product[1]} x{quantity} adicionado.")
 
     if not items:
         print("Nenhum item adicionado. Venda cancelada.")
         return
 
-    total = sum(i["subtotal"] for i in items)
-    sale_id = len(MOCK_SALES) + 1
+    # Processar venda através do SaleService
+    try:
+        sale_id = SaleService.process_sale(conn, customer_id, items)
+        
+        # Recuperar dados da venda para exibir recibo
+        cursor = conn.cursor()  # Reconectar após a transação
+        sale = SaleRepository.find_by_id(cursor, sale_id)
+        sale_items = SaleRepository.find_items_by_sale(cursor, sale_id)
+        
+        # Obter nome do cliente
+        if customer_id:
+            customer = CustomerRepository.find_by_id(cursor, customer_id)
+            customer_name = customer[1] if customer else "Desconhecido"
+        else:
+            customer_name = "Consumidor Final"
 
-    sale = {
-        "id":            sale_id,
-        "customer_name": customer_name,
-        "items":         items,
-        "total":         total,
-    }
-    MOCK_SALES.append(sale)
+        # Exibir recibo
+        print(f"\n{'='*35}")
+        print(f"  VENDA #{sale_id} — {customer_name}")
+        print(f"{'='*35}")
+        
+        for item in sale_items:
+            product = ProductRepository.find_by_id(cursor, item[2])
+            subtotal = item[3] * item[4]  # quantity * unit_price
+            print(f"  {product[1]:<20} x{item[3]} = R$ {subtotal:.2f}")
+        
+        print(f"{'='*35}")
+        print(f"  TOTAL: R$ {sale[2]:.2f}")
+        print(f"{'='*35}")
 
-    # Recibo
-    print(f"\n{'='*35}")
-    print(f"  VENDA #{sale_id} — {customer_name}")
-    print(f"{'='*35}")
-    for item in items:
-        print(f"  {item['product_name']:<20} x{item['quantity']} = R$ {item['subtotal']:.2f}")
-    print(f"{'='*35}")
-    print(f"  TOTAL: R$ {total:.2f}")
-    print(f"{'='*35}")
+    except (ValidationError, ResourceNotFoundException, InsufficientStockException, BusinessRuleException) as e:
+        print(f"\n❌ Erro na venda: {e}")
 
 
-def list_sales():
+def list_sales(conn: sqlite3.Connection):
     print("\n--- Vendas Realizadas ---")
-    if not MOCK_SALES:
+    cursor = conn.cursor()
+    
+    sales = SaleRepository.find_all(cursor)
+    
+    if not sales:
         print("Nenhuma venda registrada.")
         return
 
-    for s in MOCK_SALES:
-        print(f"Venda #{s['id']} | {s['customer_name']:<20} | {len(s['items'])} item(s) | Total: R$ {s['total']:.2f}")
+    for sale in sales:
+        sale_id, customer_id, total_price, created_at = sale
+        
+        # Obter nome do cliente
+        if customer_id:
+            customer = CustomerRepository.find_by_id(cursor, customer_id)
+            customer_name = customer[1] if customer else "Desconhecido"
+        else:
+            customer_name = "Consumidor Final"
+        
+        # Contar itens da venda
+        items = SaleRepository.find_items_by_sale(cursor, sale_id)
+        item_count = len(items)
+        
+        print(f"Venda #{sale_id} | {customer_name:<20} | {item_count} item(ns) | Total: R$ {total_price:.2f}")
 
 
-def create_customer():
+
+def create_customer(conn: sqlite3.Connection):
     print("\n--- Cadastrar Cliente ---")
-    name  = input("Nome: ").strip()
+    cursor = conn.cursor()
+    
+    name = input("Nome: ").strip()
     email = input("E-mail: ").strip()
+    phone = input("Telefone (opcional): ").strip()
 
-    new_id = max(c["id"] for c in MOCK_CUSTOMERS) + 1 if MOCK_CUSTOMERS else 1
-    MOCK_CUSTOMERS.append({"id": new_id, "name": name, "email": email})
-    print(f"Cliente '{name}' cadastrado! (ID: {new_id})")
+    try:
+        new_id = CustomerRepository.create(cursor, name, email, phone)
+        conn.commit()
+        print(f"Cliente '{name}' cadastrado! (ID: {new_id})")
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ Erro ao cadastrar cliente: {e}")

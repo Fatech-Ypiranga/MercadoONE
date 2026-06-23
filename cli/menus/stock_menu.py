@@ -1,10 +1,9 @@
-from cli.menus.product_menu import MOCK_PRODUCTS
+import sqlite3
+from repositories.product_repository import ProductRepository
+from repositories.stock_repository import StockRepository
 
-# Histórico de movimentações mockado
-MOCK_MOVEMENTS = []
 
-
-def stock_menu():
+def stock_menu(conn: sqlite3.Connection):
     while True:
         print("\n------ Estoque ------")
         print("1. Ver estoque atual")
@@ -17,68 +16,99 @@ def stock_menu():
         option = input("Escolha uma opção: ").strip()
 
         if option == "1":
-            show_stock()
+            show_stock(conn)
         elif option == "2":
-            register_movement("entrada")
+            register_movement(conn, "IN")
         elif option == "3":
-            register_movement("saida")
+            register_movement(conn, "OUT")
         elif option == "4":
-            show_movements()
+            show_movements(conn)
         elif option == "0":
             break
         else:
             print("Opção inválida.")
 
 
-def show_stock():
+def show_stock(conn: sqlite3.Connection):
     print("\n--- Estoque Atual ---")
-    for p in MOCK_PRODUCTS:
-        status = "⚠ BAIXO" if p["stock"] < 15 else "OK"
-        print(f"[{p['id']}] {p['name']:<20} | Qtd: {p['stock']:>4} | {status}")
+    cursor = conn.cursor()
+    
+    products = ProductRepository.find_all(cursor)
+    
+    if not products:
+        print("Nenhum produto cadastrado.")
+        return
+
+    for p in products:
+        product_id = p[0]
+        product_name = p[1]
+        stock = StockRepository.get_current_stock(cursor, product_id)
+        status = "⚠ BAIXO" if stock < 15 else "OK"
+        print(f"[{product_id}] {product_name:<20} | Qtd: {stock:>4} | {status}")
 
 
-def register_movement(movement_type):
-    show_stock()
+def register_movement(conn: sqlite3.Connection, movement_type: str):
+    cursor = conn.cursor()
+    
+    show_stock(conn)
+    
     try:
         product_id = int(input("\nID do produto: "))
-        quantity   = int(input("Quantidade: "))
-        reason     = input("Motivo (ex: compra, venda, ajuste): ").strip()
+        quantity = int(input("Quantidade: "))
     except ValueError:
         print("Entrada inválida.")
         return
 
-    product = next((p for p in MOCK_PRODUCTS if p["id"] == product_id), None)
+    product = ProductRepository.find_by_id(cursor, product_id)
 
     if not product:
         print("Produto não encontrado.")
         return
 
-    if movement_type == "saida" and product["stock"] < quantity:
-        print(f"Estoque insuficiente. Disponível: {product['stock']}")
-        return
+    # Verificar estoque se for saída
+    if movement_type == "OUT":
+        current_stock = StockRepository.get_current_stock(cursor, product_id)
+        if current_stock < quantity:
+            print(f"Estoque insuficiente. Disponível: {current_stock}")
+            return
 
-    if movement_type == "entrada":
-        product["stock"] += quantity
-    else:
-        product["stock"] -= quantity
-
-    movement = {
-        "product_id":   product_id,
-        "product_name": product["name"],
-        "type":         movement_type,
-        "quantity":     quantity,
-        "reason":       reason,
-    }
-    MOCK_MOVEMENTS.append(movement)
-    print(f"\nMovimentação registrada! Estoque atual de '{product['name']}': {product['stock']}")
+    try:
+        StockRepository.create_movement(cursor, product_id, quantity, movement_type)
+        conn.commit()
+        
+        new_stock = StockRepository.get_current_stock(cursor, product_id)
+        movement_desc = "ENTRADA" if movement_type == "IN" else "SAÍDA"
+        print(f"\n✓ Movimentação ({movement_desc}) registrada! Estoque atual de '{product[1]}': {new_stock}")
+    except Exception as e:
+        conn.rollback()
+        print(f"\n❌ Erro ao registrar movimentação: {e}")
 
 
-def show_movements():
+def show_movements(conn: sqlite3.Connection):
     print("\n--- Histórico de Movimentações ---")
-    if not MOCK_MOVEMENTS:
-        print("Nenhuma movimentação registrada.")
+    cursor = conn.cursor()
+    
+    # Buscar todos os produtos
+    products = ProductRepository.find_all(cursor)
+    
+    if not products:
+        print("Nenhum produto cadastrado.")
         return
-
-    for m in MOCK_MOVEMENTS:
-        arrow = "▲ ENTRADA" if m["type"] == "entrada" else "▼ SAÍDA"
-        print(f"{arrow} | {m['product_name']:<20} | Qtd: {m['quantity']:>4} | Motivo: {m['reason']}")
+    
+    movements_exist = False
+    
+    for p in products:
+        product_id = p[0]
+        product_name = p[1]
+        
+        movements = StockRepository.find_by_product(cursor, product_id)
+        
+        if movements:
+            movements_exist = True
+            print(f"\n📦 {product_name}:")
+            for m in movements:
+                arrow = "▲ ENTRADA" if m[3] == "IN" else "▼ SAÍDA"
+                print(f"  {arrow} | Qtd: {m[2]:>4} | Data: {m[4]}")
+    
+    if not movements_exist:
+        print("Nenhuma movimentação registrada.")
