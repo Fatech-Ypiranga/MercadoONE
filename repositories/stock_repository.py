@@ -3,29 +3,23 @@ import sqlite3
 class StockRepository:
 
     @staticmethod
-    def find_by_product(cursor: sqlite3.Cursor, product_id: int) -> list:
-        query = "SELECT id, product_id, quantity, movement_type, created_at FROM stock_movements WHERE product_id = ?;"
-        cursor.execute(query, (product_id,))
-        return cursor.fetchall()
-
-    @staticmethod
-    def create_movement(cursor: sqlite3.Cursor, product_id: int, quantity: int, movement_type: str) -> int:
-        query = "INSERT INTO stock_movements (product_id, quantity, movement_type) VALUES (?, ?, ?);"
-        cursor.execute(query, (product_id, quantity, movement_type))
-        return cursor.lastrowid
-
-    @staticmethod
     def get_current_stock(cursor: sqlite3.Cursor, product_id: int) -> int:
-        # Soma entradas e subtrai saídas com base no tipo, ou assume soma simples se salvar negativo
-        query = """
-            SELECT COALESCE(SUM(
-                CASE WHEN movement_type = 'IN' THEN quantity 
-                     WHEN movement_type = 'OUT' THEN -quantity 
-                     ELSE 0 END
-            ), 0) AS current_stock
-            FROM stock_movements 
-            WHERE product_id = ?;
-        """
+        """Retorna o estoque atual de um produto"""
+        query = "SELECT estoque_atual FROM produtos WHERE id = ?;"
         cursor.execute(query, (product_id,))
         result = cursor.fetchone()
         return result[0] if result else 0
+
+    @staticmethod
+    def update_stock(cursor: sqlite3.Cursor, product_id: int, quantidade: int) -> bool:
+        """Atualiza o estoque de um produto"""
+        query = "UPDATE produtos SET estoque_atual = estoque_atual + ? WHERE id = ?;"
+        cursor.execute(query, (quantidade, product_id))
+        return cursor.rowcount > 0
+
+    @staticmethod
+    def set_stock(cursor: sqlite3.Cursor, product_id: int, quantidade: int) -> bool:
+        """Define o estoque para um valor específico"""
+        query = "UPDATE produtos SET estoque_atual = ? WHERE id = ?;"
+        cursor.execute(query, (quantidade, product_id))
+        return cursor.rowcount > 0
