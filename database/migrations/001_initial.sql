@@ -21,28 +21,41 @@ CREATE TABLE IF NOT EXISTS clientes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,
     cpf TEXT UNIQUE CHECK(length(cpf) = 11),
+    email TEXT UNIQUE,
     telefone TEXT,
     data_cadastro DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE IF NOT EXISTS categorias (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT UNIQUE NOT NULL,
+    descricao TEXT
 );
 
 CREATE TABLE IF NOT EXISTS produtos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,
+    descricao TEXT,
+    categoria_id INTEGER NOT NULL,
     preco_venda REAL NOT NULL CHECK(preco_venda >=0),
     estoque_atual INTEGER NOT NULL DEFAULT 0 CHECK(estoque_atual >=0),
     fornecedor_id INTEGER,
-    FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL
+    FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
+    FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS vendas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cliente_id INTEGER,
-    usuario_id INTEGER,
-    data_pedido DATETIME DEFAULT CURRENT_TIMESTAMP,
-    status TEXT NOT NULL DEFAULT 'Pendente' CHECK(status IN ('Pendente', 'Pago', 'Cancelado')),
+    cliente_id INTEGER, 
+    usuario_id INTEGER, 
+    data_venda DATETIME DEFAULT CURRENT_TIMESTAMP,
+    valor_total DECIMAL(10,2) DEFAULT 0.00,
+    forma_pagamento TEXT CHECK(forma_pagamento IN ('Dinheiro', 'Debito', 'Credito', 'Pix', 'Alimentacao', 'Outros')),
+    status TEXT NOT NULL DEFAULT 'Em_Andamento' CHECK(status IN ('Em_Andamento', 'Suspensa', 'Concluida', 'Cancelada')),
     FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
 );
+
 
 CREATE TABLE IF NOT EXISTS itens_venda (
     venda_id INTEGER NOT NULL,

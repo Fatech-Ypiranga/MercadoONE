@@ -58,9 +58,11 @@ class TestDatabaseIntegrity(unittest.TestCase):
         with self.assertRaises(sqlite3.IntegrityError) as contexto:
             with DatabaseConnection.get_connection() as conn:
                 cursor = conn.cursor()
+                cursor.execute("INSERT INTO categorias (nome, descricao) VALUES (?, ?);", ("Periféricos", "Categoria teste"))
+                categoria_id = cursor.lastrowid
                 cursor.execute(
-                    "INSERT INTO produtos (nome, preco_venda, estoque_atual, fornecedor_id) VALUES (?, ?, ?, ?);",
-                    ("Mouse Gamer", 150.0, 5, 999)  # Fornecedor 999 não existe
+                    "INSERT INTO produtos (nome, descricao, preco_venda, categoria_id, estoque_atual, fornecedor_id) VALUES (?, ?, ?, ?, ?, ?);",
+                    ("Mouse Gamer", "Mouse sem fio", 150.0, categoria_id, 5, 999)  # Fornecedor 999 não existe
                 )
         self.assertIn("FOREIGN KEY constraint failed", str(contexto.exception))
 
