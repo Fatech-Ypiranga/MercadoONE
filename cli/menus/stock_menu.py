@@ -7,6 +7,8 @@ from cli.ui import console, pause_and_clear
 from repositories.product_repository import ProductRepository
 from repositories.stock_repository import StockRepository
 from services.stock_service import StockService
+from repositories.movement_repository import MovementRepository
+
 
 BG = "app.borda"
 PRIMARY = "app.titulo"
@@ -43,9 +45,9 @@ def stock_menu(conn: sqlite3.Connection):
         if option == "1":
             show_stock(conn)
         elif option == "2":
-            register_movement(conn, "IN")
+            register_movement(conn, "ENTRADA")
         elif option == "3":
-            register_movement(conn, "OUT")
+            register_movement(conn, "SAÍDA")
         elif option == "4":
             show_movements(conn)
         elif option == "0":
@@ -102,7 +104,7 @@ def register_movement(conn: sqlite3.Connection, movement_type: str):
         pause_and_clear()
         return
 
-    if movement_type == "OUT":
+    if movement_type == "SAÍDA":
         current_stock = StockRepository.get_current_stock(cursor, product_id)
         if current_stock < quantity:
             console.print(f"[{ERROR}]Estoque insuficiente. Disponível: {current_stock}[/{ERROR}]")
@@ -112,7 +114,7 @@ def register_movement(conn: sqlite3.Connection, movement_type: str):
     try:
         StockService.register_movement(conn, product_id, quantity, movement_type)
         new_stock = StockRepository.get_current_stock(cursor, product_id)
-        movement_desc = "ENTRADA" if movement_type == "IN" else "SAÍDA"
+        movement_desc = "ENTRADA" if movement_type == "ENTRADA" else "SAÍDA"
         console.print(
             f"[{SUCCESS}]✓ Movimentação ({movement_desc}) registrada! Estoque atual de '{product[1]}': {new_stock}[/{SUCCESS}]"
         )
@@ -125,31 +127,23 @@ def register_movement(conn: sqlite3.Connection, movement_type: str):
 def show_movements(conn: sqlite3.Connection):
     console.print(Panel.fit(Text("Histórico de Movimentações", style=PRIMARY), border_style=BG))
     cursor = conn.cursor()
-    products = ProductRepository.find_all(cursor)
-
-    if not products:
-        console.print(f"[{WARNING}]Nenhum produto cadastrado.[/{WARNING}]")
+    
+    movements = MovementRepository.get_all_movements(cursor)
+    
+    if not movements:
+        console.print(f"[{SECONDARY}]Nenhuma movimentação registrada no histórico.[/]")
         pause_and_clear()
         return
-
-    movements_table = Table(title="Status atual do estoque", border_style=BG)
+        
+    movements_table = Table(title="Histórico de Estoque", border_style=BG)
+    movements_table.add_column("Data", style="cyan")
     movements_table.add_column("Produto", style=SUCCESS)
-    movements_table.add_column("Estoque", justify="right", style=WARNING)
-
-    movements_exist = False
-    for product in products:
-        product_id = product[0]
-        product_name = product[1]
-        stock = StockRepository.get_current_stock(cursor, product_id)
-
-        if stock != 0:
-            movements_exist = True
-            movements_table.add_row(product_name, str(stock))
-
-    if not movements_exist:
-        console.print(f"[{SECONDARY}]Nenhuma movimentação registrada. O schema atual mantém o estoque diretamente na tabela produtos.[/{SECONDARY}]")
-        pause_and_clear()
-        return
-
+    movements_table.add_column("Tipo", style="magenta")
+    movements_table.add_column("Quantidade", justify="right", style=WARNING)
+    
+    for mov in movements:
+        date, prod_name, mov_type, qty = mov
+        movements_table.add_row(str(date), prod_name, mov_type, str(qty))
+        
     console.print(movements_table)
     pause_and_clear()

@@ -66,3 +66,22 @@ CREATE TABLE IF NOT EXISTS itens_venda (
     FOREIGN KEY (venda_id) REFERENCES vendas(id) ON DELETE CASCADE,
     FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE RESTRICT
 );
+
+
+CREATE TABLE IF NOT EXISTS stock_movements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER,
+    quantity INTEGER,
+    movement_type TEXT, -- Ex: 'ENTRADA', 'SAIDA'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES produtos(id)
+);
+
+CREATE TABLE IF NOT EXISTS stock_movements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER,
+    quantity INTEGER,
+    movement_type TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
