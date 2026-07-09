@@ -4,6 +4,8 @@ from repositories.stock_repository import StockRepository
 from repositories.product_repository import ProductRepository
 from repositories.customer_repository import CustomerRepository
 from services.exceptions import ValidationError, ResourceNotFoundException, InsufficientStockException, BusinessRuleException
+from repositories.movement_repository import MovementRepository
+
 
 class SaleService:
 
@@ -67,9 +69,16 @@ class SaleService:
             )
 
             for v_item in validated_items:
-                item_query = "INSERT INTO itens_venda (venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?);"
-                cursor.execute(item_query, (sale_id, v_item['product_id'], v_item['quantity'], v_item['unit_price']))
-                StockRepository.update_stock(cursor, v_item['product_id'], -v_item['quantity'])
+            # Insere o item da venda
+             item_query = "INSERT INTO itens_venda (venda_id, produto_id, quantidade, preco_unitario) VALUES (?, ?, ?, ?);"
+
+            cursor.execute(item_query, (sale_id, v_item['product_id'], v_item['quantity'], v_item['unit_price']))
+            
+            # Atualiza o estoque
+            StockRepository.update_stock(cursor, v_item['product_id'], -v_item['quantity'])
+            
+            # REGISTRA NO HISTÓRICO DE MOVIMENTAÇÃO (SAÍDA)
+            MovementRepository.register_movement(cursor, v_item['product_id'], v_item['quantity'], 'OUT')
 
             conn.commit()
             return sale_id
