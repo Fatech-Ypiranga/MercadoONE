@@ -4,14 +4,15 @@
 *$py.class
 *.so
 .Python
-build/
-dist/
+/build/
+/dist/
 develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Python packaging dirs at repo root ONLY — do not ignore frontend/lib
+/lib/
+/lib64/
 parts/
 sdist/
 var/

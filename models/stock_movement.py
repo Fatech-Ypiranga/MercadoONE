@@ -47,4 +47,4 @@ class StockMovement(StockMovementBase, table=True):
     type: MovementType = Field(sa_column=enum_column(MovementType))
     reason: MovementReason = Field(sa_column=enum_column(MovementReason))
 
-    product: Product = Relationship()
+    product: Optional["Product"] = Relationship()
