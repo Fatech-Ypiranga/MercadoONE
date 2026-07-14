@@ -1,0 +1,183 @@
+import pytest
+from fastapi.testclient import TestClient
+
+from auth.security import DEFAULT_JWT_SECRET, validate_production_config
+from main import create_app, get_cors_origins
+
+
+def test_development_allows_default_jwt_secret(monkeypatch):
+    monkeypatch.setenv("ENV", "development")
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+    validate_production_config()
+
+
+def test_production_rejects_missing_jwt_secret(monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+    monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+
+    with pytest.raises(RuntimeError, match="JWT_SECRET"):
+        validate_production_config()
+
+
+def test_production_rejects_default_jwt_secret(monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", DEFAULT_JWT_SECRET)
+    monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+
+    with pytest.raises(RuntimeError, match="JWT_SECRET"):
+        validate_production_config()
+
+
+def test_production_rejects_weak_admin_password(monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", "unique-production-secret-value")
+    monkeypatch.setenv("ADMIN_PASSWORD", "admin123")
+
+    with pytest.raises(RuntimeError, match="ADMIN_PASSWORD"):
+        validate_production_config()
+
+
+def test_production_rejects_missing_admin_password(monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", "unique-production-secret-value")
+    monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
+
+    with pytest.raises(RuntimeError, match="ADMIN_PASSWORD"):
+        validate_production_config()
+
+
+def test_seed_admin_requires_admin_password(monkeypatch, test_engine):
+    from sqlmodel import Session
+
+    from database.seed import seed_admin_user
+    from tests.conftest import truncate_tables
+
+    monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
+    truncate_tables(test_engine)
+
+    with Session(test_engine) as session:
+        with pytest.raises(RuntimeError, match="ADMIN_PASSWORD"):
+            seed_admin_user(session)
+
+
+def test_production_accepts_secure_config(monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", "unique-production-secret-value")
+    monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+
+    validate_production_config()
+
+
+def test_app_lifespan_fails_in_production_with_default_secret(monkeypatch, test_engine):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", DEFAULT_JWT_SECRET)
+    monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+
+    from sqlmodel import Session
+
+    from database.connection import get_db
+
+    def override_get_db():
+        with Session(test_engine) as session:
+            yield session
+
+    app = create_app(init_database=False, validate_config=True)
+    app.dependency_overrides[get_db] = override_get_db
+
+    with pytest.raises(RuntimeError, match="JWT_SECRET"):
+        with TestClient(app):
+            pass
+
+    app.dependency_overrides.clear()
+
+
+def test_cors_origins_default_includes_localhost_3000(monkeypatch):
+    monkeypatch.delenv("CORS_ORIGINS", raising=False)
+    assert get_cors_origins() == ["http://localhost:3000"]
+
+
+def test_cors_origins_parses_comma_separated_list(monkeypatch):
+    monkeypatch.setenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000, https://app.example.com ",
+    )
+    assert get_cors_origins() == [
+        "http://localhost:3000",
+        "https://app.example.com",
+    ]
+
+
+def test_cors_preflight_allows_localhost_3000(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000")
+    app = create_app(init_database=False, validate_config=False)
+
+    with TestClient(app) as client:
+        response = client.options(
+            "/",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+    assert response.headers.get("access-control-allow-credentials") == "true"
+
+
+def test_cors_rejects_unknown_origin(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000")
+    app = create_app(init_database=False, validate_config=False)
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/",
+            headers={"Origin": "http://evil.example"},
+        )
+
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_security_headers_present(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000")
+    app = create_app(init_database=False, validate_config=False)
+
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert response.headers.get("x-content-type-options") == "nosniff"
+    assert response.headers.get("x-frame-options") == "DENY"
+    assert response.headers.get("referrer-policy") == "strict-origin-when-cross-origin"
+
+
+def test_login_rate_limit_returns_429(monkeypatch, test_engine):
+    from sqlmodel import Session
+
+    from database.connection import get_db
+
+    monkeypatch.setenv("LOGIN_RATE_LIMIT", "3")
+    monkeypatch.setenv("LOGIN_RATE_WINDOW_SECONDS", "60")
+
+    app = create_app(init_database=False, validate_config=False)
+
+    def override_get_db():
+        with Session(test_engine) as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        with TestClient(app) as client:
+            for _ in range(3):
+                client.post(
+                    "/auth/login",
+                    json={"login": "nobody", "password": "wrong"},
+                )
+            blocked = client.post(
+                "/auth/login",
+                json={"login": "nobody", "password": "wrong"},
+            )
+            assert blocked.status_code == 429
+            assert "tentativas" in blocked.json()["detail"].lower()
+    finally:
+        app.dependency_overrides.clear()

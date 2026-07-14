@@ -1,25 +1,24 @@
-import sqlite3
+from decimal import Decimal
+
+from sqlmodel import Session, func, select
+
+from models.stock_movement import MovementType, StockMovement
+
 
 class StockRepository:
-
     @staticmethod
-    def get_current_stock(cursor: sqlite3.Cursor, product_id: int) -> int:
-        """Retorna o estoque atual de um produto"""
-        query = "SELECT estoque_atual FROM produtos WHERE id = ?;"
-        cursor.execute(query, (product_id,))
-        result = cursor.fetchone()
-        return result[0] if result else 0
+    def get_current_stock(db: Session, product_id: int, store_id: int) -> Decimal:
+        entries_stmt = select(func.coalesce(func.sum(StockMovement.quantity), 0)).where(
+            StockMovement.product_id == product_id,
+            StockMovement.store_id == store_id,
+            StockMovement.type == MovementType.ENTRADA,
+        )
+        exits_stmt = select(func.coalesce(func.sum(StockMovement.quantity), 0)).where(
+            StockMovement.product_id == product_id,
+            StockMovement.store_id == store_id,
+            StockMovement.type == MovementType.SAIDA,
+        )
 
-    @staticmethod
-    def update_stock(cursor: sqlite3.Cursor, product_id: int, quantidade: int) -> bool:
-        """Atualiza o estoque de um produto"""
-        query = "UPDATE produtos SET estoque_atual = estoque_atual + ? WHERE id = ?;"
-        cursor.execute(query, (quantidade, product_id))
-        return cursor.rowcount > 0
-
-    @staticmethod
-    def set_stock(cursor: sqlite3.Cursor, product_id: int, quantidade: int) -> bool:
-        """Define o estoque para um valor específico"""
-        query = "UPDATE produtos SET estoque_atual = ? WHERE id = ?;"
-        cursor.execute(query, (quantidade, product_id))
-        return cursor.rowcount > 0
+        entries = db.exec(entries_stmt).one()
+        exits = db.exec(exits_stmt).one()
+        return Decimal(entries or 0) - Decimal(exits or 0)

@@ -1,37 +1,85 @@
-import sqlite3
+from decimal import Decimal
+
+from sqlalchemy import case
+from sqlmodel import Session, func, select
+
+from models.product import Product
+from models.sale import Sale, SaleItem
+from models.stock_movement import MovementType, StockMovement
+
 
 class ReportService:
+    @staticmethod
+    def get_top_selling_products(
+        db: Session, company_id: int, *, limit: int = 5, store_id: int | None = None
+    ) -> list[dict]:
+        stmt = (
+            select(
+                Product.id,
+                Product.name,
+                func.coalesce(func.sum(SaleItem.quantity), 0).label("total_sold"),
+            )
+            .join(SaleItem, SaleItem.product_id == Product.id)
+            .join(Sale, Sale.id == SaleItem.sale_id)
+            .where(Product.company_id == company_id, Sale.company_id == company_id)
+            .group_by(Product.id, Product.name)
+            .order_by(func.sum(SaleItem.quantity).desc())
+            .limit(limit)
+        )
+        if store_id is not None:
+            stmt = stmt.where(Sale.store_id == store_id)
+
+        rows = db.exec(stmt).all()
+        return [dict(row._mapping) for row in rows]
 
     @staticmethod
-    def get_top_selling_products(cursor: sqlite3.Cursor, limit: int = 5) -> list:
-        """Retorna os produtos mais vendidos por quantidade acumulada."""
-        query = """
-            SELECT p.id, p.nome, SUM(iv.quantidade) as total_sold
-            FROM itens_venda iv
-            JOIN produtos p ON iv.produto_id = p.id
-            GROUP BY p.id
-            ORDER BY total_sold DESC
-            LIMIT ?;
-        """
-        cursor.execute(query, (limit,))
-        return cursor.fetchall()
+    def get_average_ticket(db: Session, company_id: int, *, store_id: int | None = None) -> Decimal:
+        stmt = select(func.coalesce(func.avg(Sale.total_amount), 0)).where(
+            Sale.company_id == company_id
+        )
+        if store_id is not None:
+            stmt = stmt.where(Sale.store_id == store_id)
+        result = db.exec(stmt).one()
+        return Decimal(result or 0)
 
     @staticmethod
-    def get_average_ticket(cursor: sqlite3.Cursor) -> float:
-        """Calcula o valor médio gasto por venda."""
-        query = "SELECT COALESCE(AVG(valor_total), 0.0) FROM vendas;"
-        cursor.execute(query)
-        result = cursor.fetchone()
-        return result[0]
+    def get_critical_stock_products(
+        db: Session,
+        company_id: int,
+        *,
+        min_threshold: int = 5,
+        store_id: int | None = None,
+    ) -> list[dict]:
+        stmt = select(Product.id, Product.name).where(Product.company_id == company_id)
+        products = db.exec(stmt).all()
 
-    @staticmethod
-    def get_critical_stock_products(cursor: sqlite3.Cursor, min_threshold: int = 5) -> list:
-        """Identifica produtos cujo saldo atual em estoque está abaixo do limite de segurança."""
-        query = """
-            SELECT p.id, p.nome, p.estoque_atual AS current_stock
-            FROM produtos p
-            WHERE p.estoque_atual < ?
-            ORDER BY p.estoque_atual ASC;
-        """
-        cursor.execute(query, (min_threshold,))
-        return cursor.fetchall()
+        critical_products = []
+        for product_id, product_name in products:
+            balance_stmt = select(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (StockMovement.type == MovementType.ENTRADA, StockMovement.quantity),
+                            else_=-StockMovement.quantity,
+                        )
+                    ),
+                    0,
+                )
+            ).where(
+                StockMovement.product_id == product_id,
+                StockMovement.company_id == company_id,
+            )
+            if store_id is not None:
+                balance_stmt = balance_stmt.where(StockMovement.store_id == store_id)
+
+            current_stock = db.exec(balance_stmt).one()
+            if current_stock < min_threshold:
+                critical_products.append(
+                    {
+                        "id": product_id,
+                        "name": product_name,
+                        "current_stock": current_stock,
+                    }
+                )
+
+        return critical_products
