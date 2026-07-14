@@ -1,6 +1,120 @@
+# --- Python ---
 **/__pycache__/
-**/*.pyc
+**/*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Ambientes virtuais ---
 .venv/
-**/venv/
+venv/
+env/
+ENV/
+
+# --- Testes e qualidade ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# --- Variáveis de ambiente e secrets (nunca commitar) ---
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+credentials.json
+secrets.json
+**/service-account*.json
+
+# --- Banco, dumps e logs locais ---
 **/*.db
-**/*.log
+**/*.sqlite
+**/*.sqlite3
+*.dump
+*.sql.gz
+*.backup
+backups/
+**/postgres_data/
+**/pgdata/
+**/mysql_data/
+docker-data/
+*.log
+debug-*.log
+
+# --- IDEs e editores ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# --- Agentes e tooling local ---
+.cursor/
+.claude/
+.codex/
+.agents/
+.cursor/debug*.log
+
+# --- Sistema operacional ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# --- Deploy / build local ---
+*.manifest
+*.spec
+
+# --- Git worktrees ---
+.worktrees/
+worktrees/
+
+# --- Frontend ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/coverage/
+frontend/.vercel/
+frontend/.turbo/
+frontend/*.tsbuildinfo
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+!frontend/.env.*.example
+!frontend/.env.local.example

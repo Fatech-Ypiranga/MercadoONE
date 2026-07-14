@@ -1,21 +1,25 @@
-import sqlite3
+from sqlmodel import Session, select
+
+from models.stock_movement import StockMovement
+
 
 class MovementRepository:
     @staticmethod
-    def get_all_movements(cursor: sqlite3.Cursor):
-        query = """
-            SELECT m.created_at, p.nome, m.movement_type, m.quantity
-            FROM stock_movements m
-            JOIN produtos p ON m.product_id = p.id
-            ORDER BY m.created_at DESC
-        """
-        cursor.execute(query)
-        return cursor.fetchall()
-    
+    def get_all_movements(
+        db: Session, company_id: int, *, store_id: int | None = None
+    ) -> list[StockMovement]:
+        stmt = (
+            select(StockMovement)
+            .where(StockMovement.company_id == company_id)
+            .order_by(StockMovement.created_at.desc())
+        )
+        if store_id is not None:
+            stmt = stmt.where(StockMovement.store_id == store_id)
+        return list(db.exec(stmt).all())
+
     @staticmethod
-    def register_movement(cursor: sqlite3.Cursor, product_id: int, quantity: int, movement_type: str):
-        query = """
-            INSERT INTO stock_movements (product_id, quantity, movement_type)
-            VALUES (?, ?, ?)
-        """
-        cursor.execute(query, (product_id, quantity, movement_type))
+    def register_movement(db: Session, movement: StockMovement) -> StockMovement:
+        """Caller must set company_id and store_id on the movement before calling."""
+        db.add(movement)
+        db.flush()
+        return movement

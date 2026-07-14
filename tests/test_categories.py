@@ -1,0 +1,66 @@
+from fastapi.testclient import TestClient
+
+
+def test_create_category(client: TestClient):
+    response = client.post(
+        "/categories/",
+        json={"name": "Bebidas", "slug": "bebidas", "is_active": True},
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "Bebidas"
+    assert data["slug"] == "bebidas"
+
+
+def test_get_category_detail(client: TestClient, category: dict):
+    response = client.get(f"/categories/{category['id']}")
+    assert response.status_code == 200
+    assert response.json()["id"] == category["id"]
+    assert "products" in response.json()
+
+
+def test_update_category(client: TestClient, category: dict):
+    response = client.put(
+        f"/categories/{category['id']}",
+        json={"name": "Eletrônicos Premium"},
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "Eletrônicos Premium"
+
+
+def test_delete_empty_category(client: TestClient):
+    created = client.post(
+        "/categories/",
+        json={"name": "Vazia", "slug": "vazia", "is_active": True},
+    ).json()
+    response = client.delete(f"/categories/{created['id']}")
+    assert response.status_code == 204
+
+
+def test_delete_category_with_products_returns_409(
+    client: TestClient, category: dict, product: dict
+):
+    response = client.delete(f"/categories/{category['id']}")
+    assert response.status_code == 409
+    assert "produtos vinculados" in response.json()["detail"]
+
+
+def test_get_nonexistent_category_returns_404(client: TestClient):
+    response = client.get("/categories/99999")
+    assert response.status_code == 404
+
+
+def test_colaborador_cannot_create_category(colaborador_client: TestClient):
+    response = colaborador_client.post(
+        "/categories/",
+        json={"name": "Bloqueada", "slug": "bloqueada", "is_active": True},
+    )
+    assert response.status_code == 403
+
+
+def test_gerente_can_create_category(gerente_client: TestClient):
+    response = gerente_client.post(
+        "/categories/",
+        json={"name": "Gerente Cat", "slug": "gerente-cat", "is_active": True},
+    )
+    assert response.status_code == 201
