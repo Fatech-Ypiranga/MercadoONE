@@ -99,6 +99,9 @@ Thumbs.db
 desktop.ini
 
 # --- Deploy / build local ---
+.railway/
+.railway-login*
+railway-edit-out.txt
 *.manifest
 *.spec
 

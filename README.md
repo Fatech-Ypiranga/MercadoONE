@@ -178,6 +178,7 @@ O pipeline GitHub Actions (`.github/workflows/ci.yml`) roda em cada push/PR para
 | [docs/INTEGRACOES.md](docs/INTEGRACOES.md) | Contrato Data Sim / PDV (auth, store_id, endpoints) |
 | [docs/openapi.json](docs/openapi.json) | Snapshot OpenAPI para apps externos |
 | [docs/INTERNO.md](docs/INTERNO.md) | Arquitetura, convenções, fluxos |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Railway + Vercel (Dev/Prod), envs e CI deploy |
 | [docs/QA-BACKLOG-SQUAD.md](docs/QA-BACKLOG-SQUAD.md) | Backlog de melhorias |
 | [docs/QA-POST-AUDIT.md](docs/QA-POST-AUDIT.md) | Relatório histórico de QA (jul/2026) |
 

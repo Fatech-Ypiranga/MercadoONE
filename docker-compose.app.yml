@@ -1,0 +1,56 @@
+version: "3.8"
+
+# Paridade local com Railway: API + Postgres (sem pgAdmin).
+# Uso: docker compose -f docker-compose.app.yml up --build
+
+services:
+  postgres_db:
+    image: postgres:16-alpine
+    container_name: erp_postgres_app
+    environment:
+      POSTGRES_USER: erp_user
+      POSTGRES_PASSWORD: erp_password
+      POSTGRES_DB: erp_vendas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_app_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp_user -d erp_vendas"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - erp_app_network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: erp_api
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      ENV: development
+      DATABASE_URL: postgresql://erp_user:erp_password@postgres_db:5432/erp_vendas
+      JWT_SECRET: local-dev-jwt-secret-change-me
+      ADMIN_EMAIL: admin@pyerp.local
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: CHANGE_ME_STRONG_PASSWORD
+      ADMIN_CPF: "00000000000"
+      ADMIN_FULL_NAME: Administrador
+      CORS_ORIGINS: http://localhost:3000
+      LOGIN_RATE_LIMIT: "10"
+      LOGIN_RATE_WINDOW_SECONDS: "60"
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    networks:
+      - erp_app_network
+
+volumes:
+  postgres_app_data:
+
+networks:
+  erp_app_network:
