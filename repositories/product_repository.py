@@ -97,7 +97,9 @@ class ProductRepository:
         if not product:
             return False
 
-        fiscal = db.exec(select(ProductFiscal).where(ProductFiscal.product_id == product_id)).first()
+        fiscal = db.exec(
+            select(ProductFiscal).where(ProductFiscal.product_id == product_id)
+        ).first()
         if fiscal:
             db.delete(fiscal)
 
