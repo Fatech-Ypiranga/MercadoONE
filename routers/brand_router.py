@@ -14,13 +14,28 @@ router = APIRouter(prefix="/brands", tags=["Marcas"])
 
 @router.get("/", response_model=Page[BrandResponse], summary="Listar marcas")
 def list_brands(
+    q: str | None = Query(default=None, description="Filtrar por nome (case-insensitive)"),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=DEFAULT_PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("brands:read")),
 ):
     company_id = company_id_of(current_user)
-    return paginate(BrandService(db).list_brands(company_id), offset=offset, limit=limit)
+    return paginate(BrandService(db).list_brands(company_id, q=q), offset=offset, limit=limit)
+
+
+@router.get(
+    "/by-name/{name}",
+    response_model=BrandResponse,
+    summary="Buscar marca por nome (case-insensitive)",
+)
+def get_brand_by_name(
+    name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("brands:read")),
+):
+    company_id = company_id_of(current_user)
+    return BrandService(db).get_by_name(name, company_id)
 
 
 @router.get("/{brand_id}", response_model=BrandResponse, summary="Buscar marca por ID")

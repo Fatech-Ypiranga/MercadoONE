@@ -85,7 +85,10 @@ export interface paths {
         /** Atualizar usuário (somente admin) */
         put: operations["update_user_users__user_id__put"];
         post?: never;
-        /** Desativar usuário (somente admin) */
+        /**
+         * Excluir usuário (somente admin)
+         * @description Remove o usuário permanentemente. Retorna 409 se houver compras vinculadas.
+         */
         delete: operations["delete_user_users__user_id__delete"];
         options?: never;
         head?: never;
@@ -224,11 +227,45 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar todos os produtos */
+        /** Listar produtos */
         get: operations["list_products_products__get"];
         put?: never;
         /** Cadastrar um novo produto */
         post: operations["create_product_products__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/products/by-sku/{sku}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Buscar produto por SKU */
+        get: operations["get_product_by_sku_products_by_sku__sku__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/products/by-barcode/{barcode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Buscar produto por código de barras */
+        get: operations["get_product_by_barcode_products_by_barcode__barcode__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -247,7 +284,10 @@ export interface paths {
         /** Atualizar produto */
         put: operations["update_product_products__product_id__put"];
         post?: never;
-        /** Desativar produto (soft delete) */
+        /**
+         * Excluir produto
+         * @description Remove o produto permanentemente. Retorna 409 se houver estoque, vendas ou compras vinculadas.
+         */
         delete: operations["delete_product_products__product_id__delete"];
         options?: never;
         head?: never;
@@ -396,6 +436,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/categories/by-slug/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Buscar categoria por slug */
+        get: operations["get_category_by_slug_categories_by_slug__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/categories/{category_id}": {
         parameters: {
             query?: never;
@@ -487,6 +544,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands/by-name/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Buscar marca por nome (case-insensitive) */
+        get: operations["get_brand_by_name_brands_by_name__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/brands/{brand_id}": {
         parameters: {
             query?: never;
@@ -560,40 +634,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/fixtures/purchases": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Listar fixtures de NF-e de compras simuladas */
-        get: operations["list_purchase_fixtures_fixtures_purchases_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/fixtures/purchases/{relative_path}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Baixar arquivo XML de fixture */
-        get: operations["download_purchase_fixture_fixtures_purchases__relative_path__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/suppliers/": {
         parameters: {
             query?: never;
@@ -612,6 +652,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/suppliers/by-document/{document}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Buscar fornecedor por CNPJ */
+        get: operations["get_supplier_by_document_suppliers_by_document__document__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/suppliers/{supplier_id}": {
         parameters: {
             query?: never;
@@ -624,7 +681,10 @@ export interface paths {
         /** Atualizar fornecedor */
         put: operations["update_supplier_suppliers__supplier_id__put"];
         post?: never;
-        /** Desativar fornecedor (soft delete) */
+        /**
+         * Excluir fornecedor
+         * @description Remove o fornecedor permanentemente. Retorna 409 se houver compras vinculadas.
+         */
         delete: operations["delete_supplier_suppliers__supplier_id__delete"];
         options?: never;
         head?: never;
@@ -851,17 +911,16 @@ export interface components {
         CategoryCreate: {
             /**
              * Name
-             * @description Nome da categoria (Ex: Eletrônicos, Vestuário)
+             * @description Nome da categoria
              */
             name: string;
             /**
              * Slug
-             * @description Identificador amigável para URLs ou buscas (Ex: eletronicos)
+             * @description Slug amigável (ex.: eletronicos)
              */
             slug: string;
             /**
              * Is Active
-             * @description Indica se a categoria está ativa no sistema
              * @default true
              */
             is_active: boolean;
@@ -870,17 +929,16 @@ export interface components {
         CategoryDetailResponse: {
             /**
              * Name
-             * @description Nome da categoria (Ex: Eletrônicos, Vestuário)
+             * @description Nome da categoria
              */
             name: string;
             /**
              * Slug
-             * @description Identificador amigável para URLs ou buscas (Ex: eletronicos)
+             * @description Slug amigável (ex.: eletronicos)
              */
             slug: string;
             /**
              * Is Active
-             * @description Indica se a categoria está ativa no sistema
              * @default true
              */
             is_active: boolean;
@@ -912,17 +970,16 @@ export interface components {
         CategoryResponse: {
             /**
              * Name
-             * @description Nome da categoria (Ex: Eletrônicos, Vestuário)
+             * @description Nome da categoria
              */
             name: string;
             /**
              * Slug
-             * @description Identificador amigável para URLs ou buscas (Ex: eletronicos)
+             * @description Slug amigável (ex.: eletronicos)
              */
             slug: string;
             /**
              * Is Active
-             * @description Indica se a categoria está ativa no sistema
              * @default true
              */
             is_active: boolean;
@@ -1413,6 +1470,127 @@ export interface components {
             invoice: components["schemas"]["NfeInvoicePreview"];
             /** Items */
             items: components["schemas"]["NfeItemPreview"][];
+        };
+        /** Page[AuditLogResponse] */
+        Page_AuditLogResponse_: {
+            /** Items */
+            items: components["schemas"]["AuditLogResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
+        /** Page[BranchResponse] */
+        Page_BranchResponse_: {
+            /** Items */
+            items: components["schemas"]["BranchResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
+        /** Page[BrandResponse] */
+        Page_BrandResponse_: {
+            /** Items */
+            items: components["schemas"]["BrandResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
+        /** Page[CategoryResponse] */
+        Page_CategoryResponse_: {
+            /** Items */
+            items: components["schemas"]["CategoryResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
+        /** Page[CustomerResponse] */
+        Page_CustomerResponse_: {
+            /** Items */
+            items: components["schemas"]["CustomerResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
+        /** Page[ProductResponse] */
+        Page_ProductResponse_: {
+            /** Items */
+            items: components["schemas"]["ProductResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
+        /** Page[PurchaseOrderResponse] */
+        Page_PurchaseOrderResponse_: {
+            /** Items */
+            items: components["schemas"]["PurchaseOrderResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
+        /** Page[SaleDetailResponse] */
+        Page_SaleDetailResponse_: {
+            /** Items */
+            items: components["schemas"]["SaleDetailResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
+        /** Page[StoreResponse] */
+        Page_StoreResponse_: {
+            /** Items */
+            items: components["schemas"]["StoreResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
+        /** Page[SupplierResponse] */
+        Page_SupplierResponse_: {
+            /** Items */
+            items: components["schemas"]["SupplierResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
+        /** Page[UserResponse] */
+        Page_UserResponse_: {
+            /** Items */
+            items: components["schemas"]["UserResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
         };
         /** ProductCreate */
         ProductCreate: {
@@ -1940,18 +2118,18 @@ export interface components {
             product_id: number;
             /** Quantity */
             quantity: number | string;
-            /** @description E para Entrada, S para Saída */
+            /** @description Entrada ou saída */
             type: components["schemas"]["MovementType"];
-            /** @description Motivo detalhado da movimentação */
+            /** @description Motivo da movimentação */
             reason: components["schemas"]["MovementReason"];
             /**
              * Source Sale Id
-             * @description ID da venda que gerou a saída, se houver
+             * @description Venda de origem, se houver
              */
             source_sale_id?: number | null;
             /**
              * Observations
-             * @description Ex: 'Item quebrado no galpão'
+             * @description Observações livres
              */
             observations?: string | null;
             /** Store Id */
@@ -1963,18 +2141,18 @@ export interface components {
             product_id: number;
             /** Quantity */
             quantity: string;
-            /** @description E para Entrada, S para Saída */
+            /** @description Entrada ou saída */
             type: components["schemas"]["MovementType"];
-            /** @description Motivo detalhado da movimentação */
+            /** @description Motivo da movimentação */
             reason: components["schemas"]["MovementReason"];
             /**
              * Source Sale Id
-             * @description ID da venda que gerou a saída, se houver
+             * @description Venda de origem, se houver
              */
             source_sale_id?: number | null;
             /**
              * Observations
-             * @description Ex: 'Item quebrado no galpão'
+             * @description Observações livres
              */
             observations?: string | null;
             /** Id */
@@ -2062,7 +2240,7 @@ export interface components {
             trade_name?: string | null;
             /**
              * Document
-             * @description CNPJ apenas dígitos
+             * @description CNPJ com ou sem pontuação
              */
             document: string;
             /** State Registration */
@@ -2351,7 +2529,10 @@ export interface operations {
     };
     list_users_users__get: {
         parameters: {
-            query?: never;
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2364,7 +2545,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserResponse"][];
+                    "application/json": components["schemas"]["Page_UserResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2480,13 +2670,11 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            200: {
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["UserResponse"];
-                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -2556,7 +2744,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuditLogResponse"][];
+                    "application/json": components["schemas"]["Page_AuditLogResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -2592,7 +2780,10 @@ export interface operations {
     };
     list_branches_branches__get: {
         parameters: {
-            query?: never;
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2605,7 +2796,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BranchResponse"][];
+                    "application/json": components["schemas"]["Page_BranchResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2740,7 +2940,10 @@ export interface operations {
     };
     list_stores_stores__get: {
         parameters: {
-            query?: never;
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2753,7 +2956,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StoreResponse"][];
+                    "application/json": components["schemas"]["Page_StoreResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2888,7 +3100,22 @@ export interface operations {
     };
     list_products_products__get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Busca por nome ou SKU (ilike) */
+                q?: string | null;
+                /** @description Filtro exato por SKU */
+                sku?: string | null;
+                /** @description Filtro exato por código de barras */
+                barcode?: string | null;
+                /** @description Filtro por categoria */
+                category_id?: number | null;
+                /** @description Filtro por marca */
+                brand_id?: number | null;
+                /** @description Filtrar por status ativo */
+                is_active?: boolean | null;
+                offset?: number;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2901,7 +3128,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductResponse"][];
+                    "application/json": components["schemas"]["Page_ProductResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2921,6 +3157,68 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_product_by_sku_products_by_sku__sku__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sku: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_product_by_barcode_products_by_barcode__barcode__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                barcode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3017,13 +3315,11 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            200: {
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ProductResponse"];
-                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -3038,7 +3334,10 @@ export interface operations {
     };
     list_customers_customers__get: {
         parameters: {
-            query?: never;
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3051,7 +3350,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CustomerResponse"][];
+                    "application/json": components["schemas"]["Page_CustomerResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3293,6 +3601,8 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 store_id?: number | null;
+                offset?: number;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -3306,7 +3616,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SaleDetailResponse"][];
+                    "application/json": components["schemas"]["Page_SaleDetailResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -3417,7 +3727,14 @@ export interface operations {
     };
     list_categories_categories__get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Busca por nome ou slug */
+                q?: string | null;
+                /** @description Filtrar por status ativo */
+                is_active?: boolean | null;
+                offset?: number;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3430,7 +3747,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CategoryResponse"][];
+                    "application/json": components["schemas"]["Page_CategoryResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3450,6 +3776,37 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_category_by_slug_categories_by_slug__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3664,7 +4021,12 @@ export interface operations {
     };
     list_brands_brands__get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filtrar por nome (case-insensitive) */
+                q?: string | null;
+                offset?: number;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3677,7 +4039,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BrandResponse"][];
+                    "application/json": components["schemas"]["Page_BrandResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3697,6 +4068,37 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_brand_by_name_brands_by_name__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3905,79 +4307,14 @@ export interface operations {
             };
         };
     };
-    list_purchase_fixtures_fixtures_purchases_get: {
-        parameters: {
-            query?: {
-                /** @description Filter by supplier id (e.g. SUP-001) */
-                supplier_id?: string | null;
-                /** @description Filter by scenario id */
-                scenario?: string | null;
-                /** @description Return only parser-valid XML entries */
-                valid_only?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    download_purchase_fixture_fixtures_purchases__relative_path__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                relative_path: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_suppliers_suppliers__get: {
         parameters: {
             query?: {
                 name?: string | null;
                 document?: string | null;
                 active_only?: boolean;
+                offset?: number;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -3991,7 +4328,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SupplierResponse"][];
+                    "application/json": components["schemas"]["Page_SupplierResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -4020,6 +4357,37 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_supplier_by_document_suppliers_by_document__document__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4116,13 +4484,11 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            200: {
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["SupplierResponse"];
-                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -4209,6 +4575,8 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 store_id?: number | null;
+                offset?: number;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -4222,7 +4590,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PurchaseOrderResponse"][];
+                    "application/json": components["schemas"]["Page_PurchaseOrderResponse_"];
                 };
             };
             /** @description Validation Error */

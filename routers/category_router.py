@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
@@ -14,13 +16,33 @@ router = APIRouter(prefix="/categories", tags=["Categorias"])
 
 @router.get("/", response_model=Page[CategoryResponse], summary="Listar categorias")
 def list_categories(
+    q: Annotated[str | None, Query(description="Busca por nome ou slug")] = None,
+    is_active: Annotated[bool | None, Query(description="Filtrar por status ativo")] = None,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=DEFAULT_PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("categories:read")),
 ):
     company_id = company_id_of(current_user)
-    return paginate(CategoryService(db).list_categories(company_id), offset=offset, limit=limit)
+    return paginate(
+        CategoryService(db).list_categories(company_id, q=q, is_active=is_active),
+        offset=offset,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/by-slug/{slug}",
+    response_model=CategoryResponse,
+    summary="Buscar categoria por slug",
+)
+def get_category_by_slug(
+    slug: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("categories:read")),
+):
+    company_id = company_id_of(current_user)
+    return CategoryService(db).get_by_slug(slug, company_id)
 
 
 @router.get(

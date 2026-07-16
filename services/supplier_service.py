@@ -6,6 +6,7 @@ from models.supplier import Supplier, SupplierCreate, SupplierUpdate
 from repositories.supplier_repository import SupplierRepository
 from services.audit_service import AuditService
 from services.exceptions import ConflictException, ResourceNotFoundException, ValidationError
+from utils.cnpj import is_valid_cnpj, normalize_cnpj
 from utils.enums import AuditAction
 
 
@@ -22,7 +23,7 @@ class SupplierService:
         active_only: bool = False,
     ) -> list[Supplier]:
         if document:
-            document = "".join(ch for ch in document if ch.isdigit())
+            document = normalize_cnpj(document)
         return SupplierRepository.find_all(
             self.db,
             company_id,
@@ -37,12 +38,21 @@ class SupplierService:
             raise ResourceNotFoundException(f"Supplier with ID {supplier_id} was not found.")
         return supplier
 
+    def get_by_document(self, document: str, company_id: int) -> Supplier:
+        normalized = normalize_cnpj(document)
+        supplier = SupplierRepository.find_by_document(self.db, normalized, company_id)
+        if not supplier:
+            raise ResourceNotFoundException(
+                f"Supplier with document {normalized} was not found."
+            )
+        return supplier
+
     def create(
         self, supplier_in: SupplierCreate, *, company_id: int, actor_id: int | None = None
     ) -> Supplier:
         document = self._normalize_document(supplier_in.document)
         if SupplierRepository.find_by_document(self.db, document, company_id):
-            raise ValidationError(f"Supplier with document {document} already exists.")
+            raise ConflictException(f"Supplier with document {document} already exists.")
 
         supplier = Supplier.model_validate(
             {**supplier_in.model_dump(), "document": document, "company_id": company_id}
@@ -81,7 +91,7 @@ class SupplierService:
                 self.db, update_data["document"], company_id
             )
             if existing and existing.id != supplier_id:
-                raise ValidationError(
+                raise ConflictException(
                     f"Supplier with document {update_data['document']} already exists."
                 )
 
@@ -128,7 +138,7 @@ class SupplierService:
 
     @staticmethod
     def _normalize_document(document: str) -> str:
-        normalized = "".join(ch for ch in document if ch.isdigit())
-        if len(normalized) != 14:
-            raise ValidationError("Supplier document must be a 14-digit CNPJ.")
+        normalized = normalize_cnpj(document)
+        if not is_valid_cnpj(normalized):
+            raise ValidationError("Supplier document must be a valid CNPJ.")
         return normalized

@@ -8,7 +8,7 @@
     "/auth/login": {
       "post": {
         "tags": [
-          "Auth"
+          "Autenticação"
         ],
         "summary": "Autenticar e obter token JWT",
         "operationId": "login_auth_login_post",
@@ -49,7 +49,7 @@
     "/auth/me": {
       "get": {
         "tags": [
-          "Auth"
+          "Autenticação"
         ],
         "summary": "Obter usuário autenticado",
         "operationId": "me_auth_me_get",
@@ -75,7 +75,7 @@
     "/auth/change-password": {
       "post": {
         "tags": [
-          "Auth"
+          "Autenticação"
         ],
         "summary": "Alterar própria senha",
         "operationId": "change_password_auth_change_password_post",
@@ -114,47 +114,83 @@
     "/users/": {
       "get": {
         "tags": [
-          "Users"
+          "Usuários"
         ],
         "summary": "Listar usuários (somente admin)",
         "operationId": "list_users_users__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/UserResponse"
-                  },
-                  "type": "array",
-                  "title": "Response List Users Users  Get"
+                  "$ref": "#/components/schemas/Page_UserResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
+        }
+      },
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Cadastrar usuário (somente admin)",
+        "operationId": "create_user_users__post",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Users"
         ],
-        "summary": "Cadastrar usuário (somente admin)",
-        "operationId": "create_user_users__post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UserCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -177,18 +213,13 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/users/{user_id}": {
       "get": {
         "tags": [
-          "Users"
+          "Usuários"
         ],
         "summary": "Buscar usuário por ID (somente admin)",
         "operationId": "get_user_users__user_id__get",
@@ -233,7 +264,7 @@
       },
       "put": {
         "tags": [
-          "Users"
+          "Usuários"
         ],
         "summary": "Atualizar usuário (somente admin)",
         "operationId": "update_user_users__user_id__put",
@@ -288,9 +319,10 @@
       },
       "delete": {
         "tags": [
-          "Users"
+          "Usuários"
         ],
-        "summary": "Desativar usuário (somente admin)",
+        "summary": "Excluir usuário (somente admin)",
+        "description": "Remove o usuário permanentemente. Retorna 409 se houver compras vinculadas.",
         "operationId": "delete_user_users__user_id__delete",
         "security": [
           {
@@ -309,15 +341,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -335,7 +360,7 @@
     "/users/{user_id}/password": {
       "patch": {
         "tags": [
-          "Users"
+          "Usuários"
         ],
         "summary": "Redefinir senha do usuário (somente admin)",
         "operationId": "reset_password_users__user_id__password_patch",
@@ -392,7 +417,7 @@
     "/audit-log/": {
       "get": {
         "tags": [
-          "Audit"
+          "Auditoria"
         ],
         "summary": "Listar entradas de auditoria (somente admin)",
         "operationId": "list_audit_log_audit_log__get",
@@ -498,11 +523,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AuditLogResponse"
-                  },
-                  "title": "Response List Audit Log Audit Log  Get"
+                  "$ref": "#/components/schemas/Page_AuditLogResponse_"
                 }
               }
             }
@@ -523,7 +544,7 @@
     "/companies/me": {
       "get": {
         "tags": [
-          "Companies"
+          "Empresas"
         ],
         "summary": "Obter empresa do usuário autenticado",
         "operationId": "get_my_company_companies_me_get",
@@ -549,47 +570,83 @@
     "/branches/": {
       "get": {
         "tags": [
-          "Branches"
+          "Filiais"
         ],
         "summary": "Listar filiais",
         "operationId": "list_branches_branches__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/BranchResponse"
-                  },
-                  "type": "array",
-                  "title": "Response List Branches Branches  Get"
+                  "$ref": "#/components/schemas/Page_BranchResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
+        }
+      },
+      "post": {
+        "tags": [
+          "Filiais"
+        ],
+        "summary": "Cadastrar filial",
+        "operationId": "create_branch_branches__post",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Branches"
         ],
-        "summary": "Cadastrar filial",
-        "operationId": "create_branch_branches__post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/BranchCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -612,18 +669,13 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/branches/{branch_id}": {
       "get": {
         "tags": [
-          "Branches"
+          "Filiais"
         ],
         "summary": "Buscar filial por ID",
         "operationId": "get_branch_branches__branch_id__get",
@@ -668,7 +720,7 @@
       },
       "put": {
         "tags": [
-          "Branches"
+          "Filiais"
         ],
         "summary": "Atualizar filial",
         "operationId": "update_branch_branches__branch_id__put",
@@ -723,7 +775,7 @@
       },
       "delete": {
         "tags": [
-          "Branches"
+          "Filiais"
         ],
         "summary": "Excluir filial",
         "operationId": "delete_branch_branches__branch_id__delete",
@@ -763,47 +815,83 @@
     "/stores/": {
       "get": {
         "tags": [
-          "Stores"
+          "Lojas"
         ],
         "summary": "Listar lojas",
         "operationId": "list_stores_stores__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/StoreResponse"
-                  },
-                  "type": "array",
-                  "title": "Response List Stores Stores  Get"
+                  "$ref": "#/components/schemas/Page_StoreResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
+        }
+      },
+      "post": {
+        "tags": [
+          "Lojas"
+        ],
+        "summary": "Cadastrar loja",
+        "operationId": "create_store_stores__post",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Stores"
         ],
-        "summary": "Cadastrar loja",
-        "operationId": "create_store_stores__post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/StoreCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -826,18 +914,13 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/stores/{store_id}": {
       "get": {
         "tags": [
-          "Stores"
+          "Lojas"
         ],
         "summary": "Buscar loja por ID",
         "operationId": "get_store_stores__store_id__get",
@@ -882,7 +965,7 @@
       },
       "put": {
         "tags": [
-          "Stores"
+          "Lojas"
         ],
         "summary": "Atualizar loja",
         "operationId": "update_store_stores__store_id__put",
@@ -937,7 +1020,7 @@
       },
       "delete": {
         "tags": [
-          "Stores"
+          "Lojas"
         ],
         "summary": "Excluir loja",
         "operationId": "delete_store_stores__store_id__delete",
@@ -975,49 +1058,26 @@
       }
     },
     "/products/": {
-      "get": {
+      "post": {
         "tags": [
-          "Products"
+          "Produtos"
         ],
-        "summary": "Listar todos os produtos",
-        "operationId": "list_products_products__get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ProductResponse"
-                  },
-                  "type": "array",
-                  "title": "Response List Products Products  Get"
-                }
-              }
-            }
-          }
-        },
+        "summary": "Cadastrar um novo produto",
+        "operationId": "create_product_products__post",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Products"
         ],
-        "summary": "Cadastrar um novo produto",
-        "operationId": "create_product_products__post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ProductCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -1040,18 +1100,274 @@
               }
             }
           }
-        },
+        }
+      },
+      "get": {
+        "tags": [
+          "Produtos"
+        ],
+        "summary": "Listar produtos",
+        "operationId": "list_products_products__get",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Busca por nome ou SKU (ilike)",
+              "title": "Q"
+            },
+            "description": "Busca por nome ou SKU (ilike)"
+          },
+          {
+            "name": "sku",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro exato por SKU",
+              "title": "Sku"
+            },
+            "description": "Filtro exato por SKU"
+          },
+          {
+            "name": "barcode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro exato por código de barras",
+              "title": "Barcode"
+            },
+            "description": "Filtro exato por código de barras"
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por categoria",
+              "title": "Category Id"
+            },
+            "description": "Filtro por categoria"
+          },
+          {
+            "name": "brand_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por marca",
+              "title": "Brand Id"
+            },
+            "description": "Filtro por marca"
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtrar por status ativo",
+              "title": "Is Active"
+            },
+            "description": "Filtrar por status ativo"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ProductResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/by-sku/{sku}": {
+      "get": {
+        "tags": [
+          "Produtos"
+        ],
+        "summary": "Buscar produto por SKU",
+        "operationId": "get_product_by_sku_products_by_sku__sku__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sku",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sku"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/by-barcode/{barcode}": {
+      "get": {
+        "tags": [
+          "Produtos"
+        ],
+        "summary": "Buscar produto por código de barras",
+        "operationId": "get_product_by_barcode_products_by_barcode__barcode__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "barcode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Barcode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/products/{product_id}": {
       "get": {
         "tags": [
-          "Products"
+          "Produtos"
         ],
         "summary": "Buscar produto por ID",
         "operationId": "get_product_by_id_products__product_id__get",
@@ -1096,7 +1412,7 @@
       },
       "put": {
         "tags": [
-          "Products"
+          "Produtos"
         ],
         "summary": "Atualizar produto",
         "operationId": "update_product_products__product_id__put",
@@ -1151,9 +1467,10 @@
       },
       "delete": {
         "tags": [
-          "Products"
+          "Produtos"
         ],
-        "summary": "Desativar produto (soft delete)",
+        "summary": "Excluir produto",
+        "description": "Remove o produto permanentemente. Retorna 409 se houver estoque, vendas ou compras vinculadas.",
         "operationId": "delete_product_products__product_id__delete",
         "security": [
           {
@@ -1172,15 +1489,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProductResponse"
-                }
-              }
-            }
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -1198,47 +1508,83 @@
     "/customers/": {
       "get": {
         "tags": [
-          "Customers"
+          "Clientes"
         ],
         "summary": "Listar clientes",
         "operationId": "list_customers_customers__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/CustomerResponse"
-                  },
-                  "type": "array",
-                  "title": "Response List Customers Customers  Get"
+                  "$ref": "#/components/schemas/Page_CustomerResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
+        }
+      },
+      "post": {
+        "tags": [
+          "Clientes"
+        ],
+        "summary": "Cadastrar cliente",
+        "operationId": "create_customer_customers__post",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Customers"
         ],
-        "summary": "Cadastrar cliente",
-        "operationId": "create_customer_customers__post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CustomerCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -1261,18 +1607,13 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/customers/{customer_id}": {
       "get": {
         "tags": [
-          "Customers"
+          "Clientes"
         ],
         "summary": "Buscar cliente por ID",
         "operationId": "get_customer_customers__customer_id__get",
@@ -1317,7 +1658,7 @@
       },
       "put": {
         "tags": [
-          "Customers"
+          "Clientes"
         ],
         "summary": "Atualizar cliente",
         "operationId": "update_customer_customers__customer_id__put",
@@ -1372,7 +1713,7 @@
       },
       "delete": {
         "tags": [
-          "Customers"
+          "Clientes"
         ],
         "summary": "Excluir cliente",
         "operationId": "delete_customer_customers__customer_id__delete",
@@ -1412,7 +1753,7 @@
     "/customers/{customer_id}/addresses": {
       "post": {
         "tags": [
-          "Customers"
+          "Clientes"
         ],
         "summary": "Adicionar endereço ao cliente",
         "operationId": "create_address_customers__customer_id__addresses_post",
@@ -1469,7 +1810,7 @@
     "/customers/{customer_id}/addresses/{address_id}": {
       "put": {
         "tags": [
-          "Customers"
+          "Clientes"
         ],
         "summary": "Atualizar endereço do cliente",
         "operationId": "update_address_customers__customer_id__addresses__address_id__put",
@@ -1533,7 +1874,7 @@
       },
       "delete": {
         "tags": [
-          "Customers"
+          "Clientes"
         ],
         "summary": "Excluir endereço do cliente",
         "operationId": "delete_address_customers__customer_id__addresses__address_id__delete",
@@ -1582,7 +1923,7 @@
     "/sales/": {
       "get": {
         "tags": [
-          "Sales"
+          "Vendas"
         ],
         "summary": "Listar vendas com filtros opcionais",
         "operationId": "list_sales_sales__get",
@@ -1673,6 +2014,29 @@
               ],
               "title": "Store Id"
             }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
           }
         ],
         "responses": {
@@ -1681,11 +2045,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SaleDetailResponse"
-                  },
-                  "title": "Response List Sales Sales  Get"
+                  "$ref": "#/components/schemas/Page_SaleDetailResponse_"
                 }
               }
             }
@@ -1704,7 +2064,7 @@
       },
       "post": {
         "tags": [
-          "Sales"
+          "Vendas"
         ],
         "summary": "Processar venda",
         "operationId": "process_sale_sales__post",
@@ -1750,7 +2110,7 @@
     "/sales/{sale_id}": {
       "get": {
         "tags": [
-          "Sales"
+          "Vendas"
         ],
         "summary": "Buscar venda por ID",
         "operationId": "get_sale_sales__sale_id__get",
@@ -1797,7 +2157,7 @@
     "/sales/{sale_id}/cancel": {
       "post": {
         "tags": [
-          "Sales"
+          "Vendas"
         ],
         "summary": "Cancelar venda e estornar estoque",
         "operationId": "cancel_sale_sales__sale_id__cancel_post",
@@ -1844,47 +2204,119 @@
     "/categories/": {
       "get": {
         "tags": [
-          "Categories"
+          "Categorias"
         ],
         "summary": "Listar categorias",
         "operationId": "list_categories_categories__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Busca por nome ou slug",
+              "title": "Q"
+            },
+            "description": "Busca por nome ou slug"
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtrar por status ativo",
+              "title": "Is Active"
+            },
+            "description": "Filtrar por status ativo"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/CategoryResponse"
-                  },
-                  "type": "array",
-                  "title": "Response List Categories Categories  Get"
+                  "$ref": "#/components/schemas/Page_CategoryResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
+        }
+      },
+      "post": {
+        "tags": [
+          "Categorias"
+        ],
+        "summary": "Cadastrar categoria",
+        "operationId": "create_category_categories__post",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Categories"
         ],
-        "summary": "Cadastrar categoria",
-        "operationId": "create_category_categories__post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CategoryCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -1907,18 +2339,60 @@
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/categories/by-slug/{slug}": {
+      "get": {
+        "tags": [
+          "Categorias"
+        ],
+        "summary": "Buscar categoria por slug",
+        "operationId": "get_category_by_slug_categories_by_slug__slug__get",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/categories/{category_id}": {
       "get": {
         "tags": [
-          "Categories"
+          "Categorias"
         ],
         "summary": "Buscar categoria por ID",
         "operationId": "get_category_categories__category_id__get",
@@ -1963,7 +2437,7 @@
       },
       "put": {
         "tags": [
-          "Categories"
+          "Categorias"
         ],
         "summary": "Atualizar categoria",
         "operationId": "update_category_categories__category_id__put",
@@ -2018,7 +2492,7 @@
       },
       "delete": {
         "tags": [
-          "Categories"
+          "Categorias"
         ],
         "summary": "Excluir categoria",
         "description": "Remove a categoria quando não há produtos vinculados. Retorna 409 se existirem produtos na categoria.",
@@ -2059,7 +2533,7 @@
     "/stock/move": {
       "post": {
         "tags": [
-          "Stock Movements"
+          "Estoque"
         ],
         "summary": "Registrar movimentação de estoque (Entrada/Saída)",
         "operationId": "move_stock_stock_move_post",
@@ -2105,7 +2579,7 @@
     "/stock/product/{product_id}/balance": {
       "get": {
         "tags": [
-          "Stock Movements"
+          "Estoque"
         ],
         "summary": "Obter o saldo atual de um produto",
         "operationId": "get_product_balance_stock_product__product_id__balance_get",
@@ -2166,7 +2640,7 @@
     "/stock/product/{product_id}/extract": {
       "get": {
         "tags": [
-          "Stock Movements"
+          "Estoque"
         ],
         "summary": "Ver o extrato de movimentações de um produto",
         "operationId": "get_product_extract_stock_product__product_id__extract_get",
@@ -2233,47 +2707,101 @@
     "/brands/": {
       "get": {
         "tags": [
-          "Brands"
+          "Marcas"
         ],
         "summary": "Listar marcas",
         "operationId": "list_brands_brands__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtrar por nome (case-insensitive)",
+              "title": "Q"
+            },
+            "description": "Filtrar por nome (case-insensitive)"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/BrandResponse"
-                  },
-                  "type": "array",
-                  "title": "Response List Brands Brands  Get"
+                  "$ref": "#/components/schemas/Page_BrandResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
+        }
+      },
+      "post": {
+        "tags": [
+          "Marcas"
+        ],
+        "summary": "Cadastrar marca",
+        "operationId": "create_brand_brands__post",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Brands"
         ],
-        "summary": "Cadastrar marca",
-        "operationId": "create_brand_brands__post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/BrandCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -2296,18 +2824,60 @@
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/brands/by-name/{name}": {
+      "get": {
+        "tags": [
+          "Marcas"
+        ],
+        "summary": "Buscar marca por nome (case-insensitive)",
+        "operationId": "get_brand_by_name_brands_by_name__name__get",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/brands/{brand_id}": {
       "get": {
         "tags": [
-          "Brands"
+          "Marcas"
         ],
         "summary": "Buscar marca por ID",
         "operationId": "get_brand_brands__brand_id__get",
@@ -2352,7 +2922,7 @@
       },
       "put": {
         "tags": [
-          "Brands"
+          "Marcas"
         ],
         "summary": "Atualizar marca",
         "operationId": "update_brand_brands__brand_id__put",
@@ -2407,7 +2977,7 @@
       },
       "delete": {
         "tags": [
-          "Brands"
+          "Marcas"
         ],
         "summary": "Excluir marca",
         "description": "Remove a marca quando não há produtos vinculados. Retorna 409 se existirem produtos na marca.",
@@ -2448,7 +3018,7 @@
     "/reports/top-products": {
       "get": {
         "tags": [
-          "Reports"
+          "Relatórios"
         ],
         "summary": "Produtos mais vendidos",
         "operationId": "top_products_reports_top_products_get",
@@ -2512,7 +3082,7 @@
     "/reports/average-ticket": {
       "get": {
         "tags": [
-          "Reports"
+          "Relatórios"
         ],
         "summary": "Ticket médio de vendas",
         "operationId": "average_ticket_reports_average_ticket_get",
@@ -2564,7 +3134,7 @@
     "/reports/critical-stock": {
       "get": {
         "tags": [
-          "Reports"
+          "Relatórios"
         ],
         "summary": "Produtos com estoque crítico",
         "operationId": "critical_stock_reports_critical_stock_get",
@@ -2627,7 +3197,7 @@
     "/suppliers/": {
       "get": {
         "tags": [
-          "Suppliers"
+          "Fornecedores"
         ],
         "summary": "Listar fornecedores",
         "operationId": "list_suppliers_suppliers__get",
@@ -2678,6 +3248,29 @@
               "default": false,
               "title": "Active Only"
             }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
           }
         ],
         "responses": {
@@ -2686,11 +3279,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SupplierResponse"
-                  },
-                  "title": "Response List Suppliers Suppliers  Get"
+                  "$ref": "#/components/schemas/Page_SupplierResponse_"
                 }
               }
             }
@@ -2709,7 +3298,7 @@
       },
       "post": {
         "tags": [
-          "Suppliers"
+          "Fornecedores"
         ],
         "summary": "Cadastrar fornecedor",
         "operationId": "create_supplier_suppliers__post",
@@ -2752,10 +3341,57 @@
         }
       }
     },
+    "/suppliers/by-document/{document}": {
+      "get": {
+        "tags": [
+          "Fornecedores"
+        ],
+        "summary": "Buscar fornecedor por CNPJ",
+        "operationId": "get_supplier_by_document_suppliers_by_document__document__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Document"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/suppliers/{supplier_id}": {
       "get": {
         "tags": [
-          "Suppliers"
+          "Fornecedores"
         ],
         "summary": "Buscar fornecedor por ID",
         "operationId": "get_supplier_suppliers__supplier_id__get",
@@ -2800,7 +3436,7 @@
       },
       "put": {
         "tags": [
-          "Suppliers"
+          "Fornecedores"
         ],
         "summary": "Atualizar fornecedor",
         "operationId": "update_supplier_suppliers__supplier_id__put",
@@ -2855,9 +3491,10 @@
       },
       "delete": {
         "tags": [
-          "Suppliers"
+          "Fornecedores"
         ],
-        "summary": "Desativar fornecedor (soft delete)",
+        "summary": "Excluir fornecedor",
+        "description": "Remove o fornecedor permanentemente. Retorna 409 se houver compras vinculadas.",
         "operationId": "delete_supplier_suppliers__supplier_id__delete",
         "security": [
           {
@@ -2876,15 +3513,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SupplierResponse"
-                }
-              }
-            }
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -2902,7 +3532,7 @@
     "/purchases/upload-xml": {
       "post": {
         "tags": [
-          "Purchases"
+          "Compras"
         ],
         "summary": "Enviar XML de NF-e e pré-visualizar importação de compra",
         "operationId": "upload_purchase_xml_purchases_upload_xml_post",
@@ -2948,7 +3578,7 @@
     "/purchases/confirm": {
       "post": {
         "tags": [
-          "Purchases"
+          "Compras"
         ],
         "summary": "Confirmar importação de compra revisada",
         "operationId": "confirm_purchase_purchases_confirm_post",
@@ -2994,7 +3624,7 @@
     "/purchases/": {
       "get": {
         "tags": [
-          "Purchases"
+          "Compras"
         ],
         "summary": "Listar compras",
         "operationId": "list_purchases_purchases__get",
@@ -3085,6 +3715,29 @@
               ],
               "title": "Store Id"
             }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
           }
         ],
         "responses": {
@@ -3093,11 +3746,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PurchaseOrderResponse"
-                  },
-                  "title": "Response List Purchases Purchases  Get"
+                  "$ref": "#/components/schemas/Page_PurchaseOrderResponse_"
                 }
               }
             }
@@ -3118,7 +3767,7 @@
     "/purchases/{purchase_id}": {
       "get": {
         "tags": [
-          "Purchases"
+          "Compras"
         ],
         "summary": "Buscar compra por ID",
         "operationId": "get_purchase_purchases__purchase_id__get",
@@ -3165,7 +3814,7 @@
     "/purchases/{purchase_id}/cancel": {
       "post": {
         "tags": [
-          "Purchases"
+          "Compras"
         ],
         "summary": "Cancelar compra confirmada e estornar estoque",
         "operationId": "cancel_purchase_purchases__purchase_id__cancel_post",
@@ -3508,18 +4157,17 @@
             "type": "string",
             "maxLength": 100,
             "title": "Name",
-            "description": "Nome da categoria (Ex: Eletrônicos, Vestuário)"
+            "description": "Nome da categoria"
           },
           "slug": {
             "type": "string",
             "maxLength": 100,
             "title": "Slug",
-            "description": "Identificador amigável para URLs ou buscas (Ex: eletronicos)"
+            "description": "Slug amigável (ex.: eletronicos)"
           },
           "is_active": {
             "type": "boolean",
             "title": "Is Active",
-            "description": "Indica se a categoria está ativa no sistema",
             "default": true
           }
         },
@@ -3536,18 +4184,17 @@
             "type": "string",
             "maxLength": 100,
             "title": "Name",
-            "description": "Nome da categoria (Ex: Eletrônicos, Vestuário)"
+            "description": "Nome da categoria"
           },
           "slug": {
             "type": "string",
             "maxLength": 100,
             "title": "Slug",
-            "description": "Identificador amigável para URLs ou buscas (Ex: eletronicos)"
+            "description": "Slug amigável (ex.: eletronicos)"
           },
           "is_active": {
             "type": "boolean",
             "title": "Is Active",
-            "description": "Indica se a categoria está ativa no sistema",
             "default": true
           },
           "id": {
@@ -3616,18 +4263,17 @@
             "type": "string",
             "maxLength": 100,
             "title": "Name",
-            "description": "Nome da categoria (Ex: Eletrônicos, Vestuário)"
+            "description": "Nome da categoria"
           },
           "slug": {
             "type": "string",
             "maxLength": 100,
             "title": "Slug",
-            "description": "Identificador amigável para URLs ou buscas (Ex: eletronicos)"
+            "description": "Slug amigável (ex.: eletronicos)"
           },
           "is_active": {
             "type": "boolean",
             "title": "Is Active",
-            "description": "Indica se a categoria está ativa no sistema",
             "default": true
           },
           "id": {
@@ -5070,6 +5716,391 @@
           "items"
         ],
         "title": "NfeUploadPreviewResponse"
+      },
+      "Page_AuditLogResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditLogResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[AuditLogResponse]"
+      },
+      "Page_BranchResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BranchResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[BranchResponse]"
+      },
+      "Page_BrandResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BrandResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[BrandResponse]"
+      },
+      "Page_CategoryResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[CategoryResponse]"
+      },
+      "Page_CustomerResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[CustomerResponse]"
+      },
+      "Page_ProductResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProductResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[ProductResponse]"
+      },
+      "Page_PurchaseOrderResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PurchaseOrderResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[PurchaseOrderResponse]"
+      },
+      "Page_SaleDetailResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SaleDetailResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[SaleDetailResponse]"
+      },
+      "Page_StoreResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StoreResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[StoreResponse]"
+      },
+      "Page_SupplierResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SupplierResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[SupplierResponse]"
+      },
+      "Page_UserResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UserResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[UserResponse]"
       },
       "ProductCreate": {
         "properties": {
@@ -6701,11 +7732,11 @@
           },
           "type": {
             "$ref": "#/components/schemas/MovementType",
-            "description": "E para Entrada, S para Saída"
+            "description": "Entrada ou saída"
           },
           "reason": {
             "$ref": "#/components/schemas/MovementReason",
-            "description": "Motivo detalhado da movimentação"
+            "description": "Motivo da movimentação"
           },
           "source_sale_id": {
             "anyOf": [
@@ -6717,7 +7748,7 @@
               }
             ],
             "title": "Source Sale Id",
-            "description": "ID da venda que gerou a saída, se houver"
+            "description": "Venda de origem, se houver"
           },
           "observations": {
             "anyOf": [
@@ -6729,7 +7760,7 @@
               }
             ],
             "title": "Observations",
-            "description": "Ex: 'Item quebrado no galpão'"
+            "description": "Observações livres"
           },
           "store_id": {
             "anyOf": [
@@ -6765,11 +7796,11 @@
           },
           "type": {
             "$ref": "#/components/schemas/MovementType",
-            "description": "E para Entrada, S para Saída"
+            "description": "Entrada ou saída"
           },
           "reason": {
             "$ref": "#/components/schemas/MovementReason",
-            "description": "Motivo detalhado da movimentação"
+            "description": "Motivo da movimentação"
           },
           "source_sale_id": {
             "anyOf": [
@@ -6781,7 +7812,7 @@
               }
             ],
             "title": "Source Sale Id",
-            "description": "ID da venda que gerou a saída, se houver"
+            "description": "Venda de origem, se houver"
           },
           "observations": {
             "anyOf": [
@@ -6793,7 +7824,7 @@
               }
             ],
             "title": "Observations",
-            "description": "Ex: 'Item quebrado no galpão'"
+            "description": "Observações livres"
           },
           "id": {
             "type": "integer",
@@ -6983,9 +8014,9 @@
           },
           "document": {
             "type": "string",
-            "maxLength": 14,
+            "maxLength": 18,
             "title": "Document",
-            "description": "CNPJ apenas dígitos"
+            "description": "CNPJ com ou sem pontuação"
           },
           "state_registration": {
             "anyOf": [
@@ -7183,7 +8214,8 @@
           "document": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 18
               },
               {
                 "type": "null"

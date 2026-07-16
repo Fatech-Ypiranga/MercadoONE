@@ -5,9 +5,23 @@ export type CategoryResponse = components["schemas"]["CategoryResponse"];
 export type CategoryCreate = components["schemas"]["CategoryCreate"];
 export type CategoryUpdate = components["schemas"]["CategoryUpdate"];
 
-export async function listCategories(): Promise<CategoryResponse[]> {
+export type ListCategoriesQuery = {
+  q?: string;
+  is_active?: boolean;
+  offset?: number;
+  limit?: number;
+};
+
+export function listCategories(): Promise<CategoryResponse[]>;
+export function listCategories(query: ListCategoriesQuery): Promise<CategoryResponse[]>;
+export async function listCategories(
+  query?: ListCategoriesQuery,
+): Promise<CategoryResponse[]> {
   return unwrapPageItems<CategoryResponse>(
-    apiFetch("/categories/", { method: "get", query: { limit: 200 } }),
+    apiFetch("/categories/", {
+      method: "get",
+      query: { ...query, limit: query?.limit ?? 200 },
+    }),
   );
 }
 

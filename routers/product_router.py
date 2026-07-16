@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
@@ -34,13 +36,56 @@ def create_product(
     summary="Listar produtos",
 )
 def list_products(
+    q: Annotated[str | None, Query(description="Busca por nome ou SKU (ilike)")] = None,
+    sku: Annotated[str | None, Query(description="Filtro exato por SKU")] = None,
+    barcode: Annotated[str | None, Query(description="Filtro exato por código de barras")] = None,
+    category_id: Annotated[int | None, Query(description="Filtro por categoria")] = None,
+    brand_id: Annotated[int | None, Query(description="Filtro por marca")] = None,
+    is_active: Annotated[bool | None, Query(description="Filtrar por status ativo")] = None,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=DEFAULT_PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("products:read")),
 ):
     company_id = company_id_of(current_user)
-    return paginate(ProductService(db).get_all(company_id), offset=offset, limit=limit)
+    products = ProductService(db).list_products(
+        company_id,
+        q=q,
+        sku=sku,
+        barcode=barcode,
+        category_id=category_id,
+        brand_id=brand_id,
+        is_active=is_active,
+    )
+    return paginate(products, offset=offset, limit=limit)
+
+
+@router.get(
+    "/by-sku/{sku}",
+    response_model=ProductDetailResponse,
+    summary="Buscar produto por SKU",
+)
+def get_product_by_sku(
+    sku: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("products:read")),
+):
+    company_id = company_id_of(current_user)
+    return ProductService(db).get_by_sku(sku, company_id)
+
+
+@router.get(
+    "/by-barcode/{barcode}",
+    response_model=ProductDetailResponse,
+    summary="Buscar produto por código de barras",
+)
+def get_product_by_barcode(
+    barcode: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("products:read")),
+):
+    company_id = company_id_of(current_user)
+    return ProductService(db).get_by_barcode(barcode, company_id)
 
 
 @router.get(

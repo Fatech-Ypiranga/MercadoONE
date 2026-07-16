@@ -3,7 +3,8 @@ from decimal import Decimal
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import UniqueConstraint
+import sqlalchemy as sa
+from sqlalchemy import Index, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -35,6 +36,9 @@ class BrandResponse(BrandBase):
 
 class Brand(BrandBase, table=True):
     __tablename__ = "brands"
+    __table_args__ = (
+        Index("uq_brands_company_lower_name", "company_id", sa.func.lower("name"), unique=True),
+    )
     id: Optional[int] = Field(default=None, primary_key=True)
     company_id: int = Field(foreign_key="companies.id", index=True)
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")

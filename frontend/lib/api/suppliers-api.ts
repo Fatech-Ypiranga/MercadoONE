@@ -5,13 +5,19 @@ export type SupplierResponse = components["schemas"]["SupplierResponse"];
 export type SupplierCreate = components["schemas"]["SupplierCreate"];
 export type SupplierUpdate = components["schemas"]["SupplierUpdate"];
 
-export async function listSuppliers(query?: {
+export type ListSuppliersQuery = {
   name?: string;
   document?: string;
   active_only?: boolean;
   limit?: number;
   offset?: number;
-}): Promise<SupplierResponse[]> {
+};
+
+export function listSuppliers(): Promise<SupplierResponse[]>;
+export function listSuppliers(query: ListSuppliersQuery): Promise<SupplierResponse[]>;
+export async function listSuppliers(
+  query?: ListSuppliersQuery,
+): Promise<SupplierResponse[]> {
   return unwrapPageItems<SupplierResponse>(
     apiFetch("/suppliers/", {
       method: "get",

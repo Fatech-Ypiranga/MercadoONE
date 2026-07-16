@@ -5,9 +5,20 @@ export type BrandResponse = components["schemas"]["BrandResponse"];
 export type BrandCreate = components["schemas"]["BrandCreate"];
 export type BrandUpdate = components["schemas"]["BrandUpdate"];
 
-export async function listBrands(): Promise<BrandResponse[]> {
+export type ListBrandsQuery = {
+  q?: string;
+  offset?: number;
+  limit?: number;
+};
+
+export function listBrands(): Promise<BrandResponse[]>;
+export function listBrands(query: ListBrandsQuery): Promise<BrandResponse[]>;
+export async function listBrands(query?: ListBrandsQuery): Promise<BrandResponse[]> {
   return unwrapPageItems<BrandResponse>(
-    apiFetch("/brands/", { method: "get", query: { limit: 200 } }),
+    apiFetch("/brands/", {
+      method: "get",
+      query: { ...query, limit: query?.limit ?? 200 },
+    }),
   );
 }
 

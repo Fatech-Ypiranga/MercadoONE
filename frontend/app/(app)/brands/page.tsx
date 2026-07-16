@@ -41,8 +41,12 @@ export default function BrandsPage() {
   const [editing, setEditing] = useState<BrandResponse | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
-  const list = useQuery({ queryKey: ["brands"], queryFn: listBrands });
+  const list = useQuery({
+    queryKey: ["brands", search],
+    queryFn: () => listBrands({ q: search.trim() || undefined }),
+  });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -85,6 +89,15 @@ export default function BrandsPage() {
             : undefined
         }
       />
+
+      <div className="mb-4">
+        <Input
+          placeholder="Buscar por nome…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-md"
+        />
+      </div>
 
       <ErrorAlert message={error || (list.error ? errorMessage(list.error) : null)} />
 

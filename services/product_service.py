@@ -1,9 +1,10 @@
+import re
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from models.product import Product, ProductCreate, ProductFiscal, ProductUpdate
+from models.product import Product, ProductCreate, ProductFiscal, ProductFiscalCreate, ProductUpdate
 from repositories.brand_repository import BrandRepository
 from repositories.category_repository import CategoryRepository
 from repositories.product_repository import ProductRepository
@@ -28,6 +29,21 @@ class ProductService:
         self._ensure_category_exists(product_in.category_id, company_id)
         if product_in.brand_id:
             self._ensure_brand_exists(product_in.brand_id, company_id)
+
+        if ProductRepository.find_by_sku(self.db, product_in.sku, company_id, active_only=False):
+            raise ConflictException(
+                f"Já existe um produto com o SKU '{product_in.sku}' nesta empresa."
+            )
+        if product_in.barcode:
+            if ProductRepository.find_by_barcode(
+                self.db, product_in.barcode, company_id, active_only=False
+            ):
+                raise ConflictException(
+                    f"Já existe um produto com o barcode '{product_in.barcode}' nesta empresa."
+                )
+
+        if product_in.fiscal:
+            self._validate_fiscal(product_in.fiscal)
 
         try:
             product_data = self._normalize_product_data(product_in.model_dump(exclude={"fiscal"}))
@@ -55,15 +71,54 @@ class ProductService:
 
             self.db.commit()
             return self.get_by_id(db_product.id, company_id)
-        except (ResourceNotFoundException, ValidationError):
+        except (ResourceNotFoundException, ValidationError, ConflictException):
             self.db.rollback()
             raise
         except Exception as e:
             self.db.rollback()
             raise BusinessRuleException(f"Error saving product: {e}")
 
-    def get_all(self, company_id: int) -> list[Product]:
-        return ProductRepository.find_all(self.db, company_id)
+    def list_products(
+        self,
+        company_id: int,
+        *,
+        q: str | None = None,
+        sku: str | None = None,
+        barcode: str | None = None,
+        category_id: int | None = None,
+        brand_id: int | None = None,
+        is_active: bool | None = None,
+    ) -> list[Product]:
+        return ProductRepository.find_all(
+            self.db,
+            company_id,
+            q=q,
+            sku=sku,
+            barcode=barcode,
+            category_id=category_id,
+            brand_id=brand_id,
+            is_active=is_active,
+        )
+
+    def get_by_sku(self, sku: str, company_id: int) -> Product:
+        product = ProductRepository.find_by_sku(self.db, sku, company_id, active_only=False)
+        if not product:
+            raise ResourceNotFoundException(f"Produto com SKU '{sku}' não encontrado.")
+        result = self.get_by_id(product.id, company_id)
+        if not result:
+            raise ResourceNotFoundException(f"Produto com SKU '{sku}' não encontrado.")
+        return result
+
+    def get_by_barcode(self, barcode: str, company_id: int) -> Product:
+        if not barcode or not barcode.strip():
+            raise ResourceNotFoundException("Barcode inválido ou vazio.")
+        product = ProductRepository.find_by_barcode(self.db, barcode, company_id, active_only=False)
+        if not product:
+            raise ResourceNotFoundException(f"Produto com barcode '{barcode}' não encontrado.")
+        result = self.get_by_id(product.id, company_id)
+        if not result:
+            raise ResourceNotFoundException(f"Produto com barcode '{barcode}' não encontrado.")
+        return result
 
     def get_by_id(self, product_id: int, company_id: int) -> Product | None:
         stmt = (
@@ -101,6 +156,27 @@ class ProductService:
         if "brand_id" in update_data and update_data["brand_id"]:
             self._ensure_brand_exists(update_data["brand_id"], company_id)
 
+        new_sku = update_data.get("sku")
+        if new_sku and new_sku != product.sku:
+            existing = ProductRepository.find_by_sku(self.db, new_sku, company_id, active_only=False)
+            if existing and existing.id != product_id:
+                raise ConflictException(
+                    f"Já existe um produto com o SKU '{new_sku}' nesta empresa."
+                )
+
+        new_barcode = update_data.get("barcode")
+        if new_barcode and new_barcode != product.barcode:
+            existing = ProductRepository.find_by_barcode(
+                self.db, new_barcode, company_id, active_only=False
+            )
+            if existing and existing.id != product_id:
+                raise ConflictException(
+                    f"Já existe um produto com o barcode '{new_barcode}' nesta empresa."
+                )
+
+        if product_in.fiscal:
+            self._validate_fiscal(product_in.fiscal)
+
         try:
             update_data = self._normalize_product_data(update_data)
             for field_name, field_value in update_data.items():
@@ -135,7 +211,7 @@ class ProductService:
 
             self.db.commit()
             return self.get_by_id(product_id, company_id)
-        except (ResourceNotFoundException, ValidationError):
+        except (ResourceNotFoundException, ValidationError, ConflictException):
             self.db.rollback()
             raise
         except Exception as e:
@@ -182,6 +258,16 @@ class ProductService:
     def _ensure_brand_exists(self, brand_id: int, company_id: int) -> None:
         if not BrandRepository.find_by_id(self.db, brand_id, company_id):
             raise ResourceNotFoundException(f"Brand with ID {brand_id} was not found.")
+
+    def _validate_fiscal(self, fiscal: ProductFiscalCreate) -> None:
+        if not re.fullmatch(r"\d{8}", fiscal.ncm):
+            raise ValidationError("NCM deve ter exatamente 8 dígitos numéricos.")
+        if not re.fullmatch(r"\d{4}", fiscal.cfop_default):
+            raise ValidationError("CFOP padrão deve ter exatamente 4 dígitos numéricos.")
+        if fiscal.cest is not None and not re.fullmatch(r"\d{7}", fiscal.cest):
+            raise ValidationError("CEST deve ter exatamente 7 dígitos numéricos.")
+        if not (0 <= fiscal.origem_produto <= 8):
+            raise ValidationError("Origem do produto deve ser um valor entre 0 e 8.")
 
     def _normalize_product_data(self, data: dict) -> dict:
         # Treat zero as an empty optional brand reference.

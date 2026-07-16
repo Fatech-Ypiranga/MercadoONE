@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { PageHeader } from "@/components/page-header";
 import { RequirePermission } from "@/components/require-permission";
@@ -39,6 +39,7 @@ type FormState = {
   name: string;
   trade_name: string;
   document: string;
+  state_registration: string;
   email: string;
   phone: string;
   is_active: boolean;
@@ -48,6 +49,7 @@ const emptyForm: FormState = {
   name: "",
   trade_name: "",
   document: "",
+  state_registration: "",
   email: "",
   phone: "",
   is_active: true,
@@ -61,22 +63,20 @@ export default function SuppliersPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const trimmedSearch = search.trim();
+  const searchDigits = trimmedSearch.replace(/\D/g, "");
+  const searchableCharacters = trimmedSearch.replace(/\s/g, "").length;
+  const searchByDocument =
+    searchDigits.length > 0 && searchDigits.length >= searchableCharacters / 2;
 
   const list = useQuery({
-    queryKey: ["suppliers"],
-    queryFn: () => listSuppliers(),
+    queryKey: ["suppliers", search],
+    queryFn: () =>
+      listSuppliers({
+        name: trimmedSearch && !searchByDocument ? trimmedSearch : undefined,
+        document: trimmedSearch && searchByDocument ? searchDigits : undefined,
+      }),
   });
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return list.data ?? [];
-    return (list.data ?? []).filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.document.includes(q) ||
-        (s.trade_name ?? "").toLowerCase().includes(q),
-    );
-  }, [list.data, search]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -84,6 +84,7 @@ export default function SuppliersPage() {
         name: form.name.trim(),
         trade_name: form.trade_name.trim() || null,
         document: form.document.replace(/\D/g, ""),
+        state_registration: form.state_registration.trim() || null,
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
         is_active: form.is_active,
@@ -140,7 +141,7 @@ export default function SuppliersPage() {
 
       {list.isLoading ? (
         <LoadingState />
-      ) : !filtered.length ? (
+      ) : !list.data?.length ? (
         <EmptyState message="Nenhum fornecedor encontrado." />
       ) : (
         <div className="rounded-xl border border-border">
@@ -149,13 +150,14 @@ export default function SuppliersPage() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>CNPJ</TableHead>
+                <TableHead>IE</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Status</TableHead>
                 {canWrite ? <TableHead className="text-right">Ações</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((item) => (
+              {list.data.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     <div className="font-medium">{item.name}</div>
@@ -166,6 +168,9 @@ export default function SuppliersPage() {
                     ) : null}
                   </TableCell>
                   <TableCell className="font-mono text-xs">{item.document}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {item.state_registration || "—"}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {item.email || item.phone || "—"}
                   </TableCell>
@@ -186,6 +191,7 @@ export default function SuppliersPage() {
                             name: item.name,
                             trade_name: item.trade_name ?? "",
                             document: item.document,
+                            state_registration: item.state_registration ?? "",
                             email: item.email ?? "",
                             phone: item.phone ?? "",
                             is_active: item.is_active,
@@ -247,6 +253,15 @@ export default function SuppliersPage() {
                 value={form.document}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, document: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Inscrição estadual</Label>
+              <Input
+                value={form.state_registration}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, state_registration: e.target.value }))
                 }
               />
             </div>

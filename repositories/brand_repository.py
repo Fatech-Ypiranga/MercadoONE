@@ -6,13 +6,35 @@ from models.product import Brand, Product
 
 class BrandRepository:
     @staticmethod
-    def find_all(db: Session, company_id: int) -> list[Brand]:
-        stmt = select(Brand).where(Brand.company_id == company_id).order_by(Brand.name)
+    def find_all(db: Session, company_id: int, *, q: str | None = None) -> list[Brand]:
+        stmt = select(Brand).where(Brand.company_id == company_id)
+        if q:
+            stmt = stmt.where(Brand.name.ilike(f"%{q}%"))
+        stmt = stmt.order_by(Brand.name)
         return list(db.exec(stmt).all())
 
     @staticmethod
     def find_by_id(db: Session, brand_id: int, company_id: int) -> Brand | None:
         stmt = select(Brand).where(Brand.id == brand_id, Brand.company_id == company_id)
+        return db.exec(stmt).first()
+
+    @staticmethod
+    def find_by_name(db: Session, name: str, company_id: int) -> Brand | None:
+        stmt = select(Brand).where(
+            func.lower(Brand.name) == name.strip().lower(),
+            Brand.company_id == company_id,
+        )
+        return db.exec(stmt).first()
+
+    @staticmethod
+    def find_by_name_excluding(
+        db: Session, name: str, company_id: int, exclude_id: int
+    ) -> Brand | None:
+        stmt = select(Brand).where(
+            func.lower(Brand.name) == name.strip().lower(),
+            Brand.company_id == company_id,
+            Brand.id != exclude_id,
+        )
         return db.exec(stmt).first()
 
     @staticmethod

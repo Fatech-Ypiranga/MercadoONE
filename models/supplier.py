@@ -16,13 +16,13 @@ class SupplierBase(SQLModel):
 
 
 class SupplierCreate(SupplierBase):
-    pass
+    document: str = Field(max_length=18, description="CNPJ com ou sem pontuação")
 
 
 class SupplierUpdate(SQLModel):
     name: Optional[str] = None
     trade_name: Optional[str] = None
-    document: Optional[str] = None
+    document: Optional[str] = Field(default=None, max_length=18)
     state_registration: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None

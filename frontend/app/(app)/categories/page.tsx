@@ -47,10 +47,17 @@ export default function CategoriesPage() {
   const [editing, setEditing] = useState<CategoryResponse | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"all" | "active" | "inactive">("all");
 
   const list = useQuery({
-    queryKey: ["categories"],
-    queryFn: listCategories,
+    queryKey: ["categories", search, activeFilter],
+    queryFn: () =>
+      listCategories({
+        q: search.trim() || undefined,
+        is_active:
+          activeFilter === "all" ? undefined : activeFilter === "active",
+      }),
   });
 
   const save = useMutation({
@@ -109,6 +116,26 @@ export default function CategoriesPage() {
         actionLabel={canWrite ? "Nova categoria" : undefined}
         onAction={canWrite ? openCreate : undefined}
       />
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Input
+          placeholder="Buscar por nome ou slug…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-md"
+        />
+        <select
+          className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
+          value={activeFilter}
+          onChange={(e) =>
+            setActiveFilter(e.target.value as typeof activeFilter)
+          }
+        >
+          <option value="all">Todas</option>
+          <option value="active">Ativas</option>
+          <option value="inactive">Inativas</option>
+        </select>
+      </div>
 
       <ErrorAlert message={error || (list.error ? errorMessage(list.error) : null)} />
 

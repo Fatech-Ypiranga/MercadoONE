@@ -34,6 +34,20 @@ def list_suppliers(
     )
 
 
+@router.get(
+    "/by-document/{document:path}",
+    response_model=SupplierResponse,
+    summary="Buscar fornecedor por CNPJ",
+)
+def get_supplier_by_document(
+    document: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("suppliers:read")),
+):
+    company_id = company_id_of(current_user)
+    return SupplierService(db).get_by_document(document, company_id)
+
+
 @router.get("/{supplier_id}", response_model=SupplierResponse, summary="Buscar fornecedor por ID")
 def get_supplier(
     supplier_id: int,
