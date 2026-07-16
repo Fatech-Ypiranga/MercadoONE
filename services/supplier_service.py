@@ -42,9 +42,7 @@ class SupplierService:
         normalized = normalize_cnpj(document)
         supplier = SupplierRepository.find_by_document(self.db, normalized, company_id)
         if not supplier:
-            raise ResourceNotFoundException(
-                f"Supplier with document {normalized} was not found."
-            )
+            raise ResourceNotFoundException(f"Supplier with document {normalized} was not found.")
         return supplier
 
     def create(

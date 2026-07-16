@@ -158,7 +158,9 @@ class ProductService:
 
         new_sku = update_data.get("sku")
         if new_sku and new_sku != product.sku:
-            existing = ProductRepository.find_by_sku(self.db, new_sku, company_id, active_only=False)
+            existing = ProductRepository.find_by_sku(
+                self.db, new_sku, company_id, active_only=False
+            )
             if existing and existing.id != product_id:
                 raise ConflictException(
                     f"Já existe um produto com o SKU '{new_sku}' nesta empresa."

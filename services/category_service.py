@@ -71,9 +71,7 @@ class CategoryService:
         update_data = category_in.model_dump(exclude_unset=True)
 
         if "slug" in update_data and update_data["slug"] is not None:
-            existing = CategoryRepository.find_by_slug(
-                self.db, update_data["slug"], company_id
-            )
+            existing = CategoryRepository.find_by_slug(self.db, update_data["slug"], company_id)
             if existing and existing.id != category_id:
                 raise ConflictException(
                     f"Já existe uma categoria com o slug '{update_data['slug']}' nesta empresa."

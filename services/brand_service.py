@@ -30,9 +30,7 @@ class BrandService:
         self, name: str, company_id: int, exclude_id: int | None = None
     ) -> None:
         if exclude_id is not None:
-            existing = BrandRepository.find_by_name_excluding(
-                self.db, name, company_id, exclude_id
-            )
+            existing = BrandRepository.find_by_name_excluding(self.db, name, company_id, exclude_id)
         else:
             existing = BrandRepository.find_by_name(self.db, name, company_id)
         if existing:

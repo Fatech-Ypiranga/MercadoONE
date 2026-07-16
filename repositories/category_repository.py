@@ -34,9 +34,7 @@ class CategoryRepository:
 
     @staticmethod
     def find_by_slug(db: Session, slug: str, company_id: int) -> Category | None:
-        stmt = select(Category).where(
-            Category.slug == slug, Category.company_id == company_id
-        )
+        stmt = select(Category).where(Category.slug == slug, Category.company_id == company_id)
         return db.exec(stmt).first()
 
     @staticmethod

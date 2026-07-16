@@ -76,9 +76,10 @@ def test_duplicate_supplier_document_returns_409(client: TestClient):
     )
 
     assert response.status_code == 409
-    assert "document" in response.json()["detail"].lower() or "cnpj" in response.json()[
-        "detail"
-    ].lower()
+    assert (
+        "document" in response.json()["detail"].lower()
+        or "cnpj" in response.json()["detail"].lower()
+    )
 
 
 def test_update_supplier_to_duplicate_document_returns_409(client: TestClient):
@@ -104,20 +105,17 @@ def test_update_supplier_to_duplicate_document_returns_409(client: TestClient):
     )
 
     assert response.status_code == 409
-    assert "document" in response.json()["detail"].lower() or "cnpj" in response.json()[
-        "detail"
-    ].lower()
+    assert (
+        "document" in response.json()["detail"].lower()
+        or "cnpj" in response.json()["detail"].lower()
+    )
 
 
-def test_delete_supplier_with_purchase_returns_409(
-    client: TestClient, db_session: Session
-):
+def test_delete_supplier_with_purchase_returns_409(client: TestClient, db_session: Session):
     create = client.post("/suppliers/", json=supplier_payload())
     assert create.status_code == 201
     created = create.json()
-    supplier = db_session.exec(
-        select(Supplier).where(Supplier.id == created["id"])
-    ).first()
+    supplier = db_session.exec(select(Supplier).where(Supplier.id == created["id"])).first()
     assert supplier is not None
 
     user = db_session.exec(
