@@ -48,29 +48,7 @@ class SupplierService:
     def create(
         self, supplier_in: SupplierCreate, *, company_id: int, actor_id: int | None = None
     ) -> Supplier:
-        # #region agent log
-        import json as _json, time as _time
-        from pathlib import Path as _Path
-        from utils.cnpj import is_valid_cnpj as _is_valid_cnpj, normalize_cnpj as _normalize_cnpj
-        _log_path = _Path(__file__).resolve().parents[1] / "debug-80ed7a.log"
-        _raw = supplier_in.document
-        _norm = _normalize_cnpj(_raw)
-        _valid = _is_valid_cnpj(_raw)
-        with _log_path.open("a", encoding="utf-8") as _f:
-            _f.write(_json.dumps({"sessionId":"80ed7a","runId":"post-fix","hypothesisId":"A","location":"supplier_service.py:create","message":"supplier create entry","data":{"raw_document":_raw,"normalized":_norm,"is_valid_cnpj":_valid,"name":supplier_in.name},"timestamp":int(_time.time()*1000)}) + "\n")
-        # #endregion
-        try:
-            document = self._normalize_document(supplier_in.document)
-        except ValidationError as exc:
-            # #region agent log
-            with _log_path.open("a", encoding="utf-8") as _f:
-                _f.write(_json.dumps({"sessionId":"80ed7a","runId":"post-fix","hypothesisId":"A","location":"supplier_service.py:create","message":"CNPJ validation failed","data":{"error":str(exc),"normalized":_norm},"timestamp":int(_time.time()*1000)}) + "\n")
-            # #endregion
-            raise
-        # #region agent log
-        with _log_path.open("a", encoding="utf-8") as _f:
-            _f.write(_json.dumps({"sessionId":"80ed7a","runId":"post-fix","hypothesisId":"A","location":"supplier_service.py:create","message":"CNPJ validation passed","data":{"normalized":document},"timestamp":int(_time.time()*1000)}) + "\n")
-        # #endregion
+        document = self._normalize_document(supplier_in.document)
         if SupplierRepository.find_by_document(self.db, document, company_id):
             raise ConflictException(f"Supplier with document {document} already exists.")
 
