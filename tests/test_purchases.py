@@ -235,7 +235,7 @@ def test_supplier_crud(client: TestClient):
         json={
             "name": "Fornecedor Teste Ltda",
             "trade_name": "Fornecedor Teste",
-            "document": "11222333000144",
+            "document": "11222333000181",
             "state_registration": "1234567890",
             "email": "teste@fornecedor.fake",
             "phone": "11999990000",
@@ -245,7 +245,7 @@ def test_supplier_crud(client: TestClient):
     assert create.status_code == 201
     supplier_id = create.json()["id"]
 
-    listing = client.get("/suppliers/", params={"document": "11222333000144"})
+    listing = client.get("/suppliers/", params={"document": "11222333000181"})
     assert listing.status_code == 200
     assert len(page_items(listing)) == 1
 
