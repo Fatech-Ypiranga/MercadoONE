@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -24,7 +25,16 @@ class SaleCreateInput(BaseModel):
     customer_id: int | None = None
     payment_method: str | None = None
     store_id: int | None = None
+    discount_amount: Decimal | None = Field(default=None, ge=0)
+    supervisor_authorization: str | None = Field(
+        default=None,
+        description="Token de autorização Supervisor+ (desconto/cancelamento no PDV)",
+    )
     items: list[SaleItemInput]
+
+
+class SaleCancelInput(BaseModel):
+    supervisor_authorization: str | None = None
 
 
 @router.get(
@@ -88,6 +98,8 @@ def process_sale(
         company_id=company_id,
         store_id=store_id,
         payment_method=sale_in.payment_method,
+        discount_amount=sale_in.discount_amount,
+        supervisor_authorization=sale_in.supervisor_authorization,
     )
 
 
@@ -99,7 +111,13 @@ def process_sale(
 def cancel_sale(
     sale_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("sales:cancel")),
+    current_user: User = Depends(require_permission("sales:write")),
+    body: SaleCancelInput = SaleCancelInput(),
 ):
     company_id = company_id_of(current_user)
-    return SaleService(db).cancel_sale(sale_id, company_id=company_id, actor_id=current_user.id)
+    return SaleService(db).cancel_sale(
+        sale_id,
+        company_id=company_id,
+        actor_id=current_user.id,
+        supervisor_authorization=body.supervisor_authorization,
+    )

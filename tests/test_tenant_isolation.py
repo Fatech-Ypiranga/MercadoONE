@@ -9,6 +9,7 @@ from auth.security import hash_password
 from models.category import Category
 from models.company import Branch, Company, Store
 from models.product import Product
+from models.supplier import Supplier
 from models.user import User
 from repositories.company_repository import (
     BranchRepository,
@@ -16,7 +17,10 @@ from repositories.company_repository import (
     StoreRepository,
 )
 from repositories.user_repository import UserRepository
+from services.pdv_credentials import ensure_pdv_id
+from services.product_service import ProductService
 from tests.conftest import make_client, page_items
+from utils.cpf import build_cpf
 from utils.enums import UserProfile
 
 
@@ -57,7 +61,7 @@ def _create_second_org(session: Session) -> tuple[Company, Branch, Store, User]:
     )
     admin_b = User(
         full_name="Admin Empresa B",
-        cpf="99999999999",
+        cpf=build_cpf(999),
         email="adminb@test.local",
         username="adminb",
         password_hash=hash_password("adminb123"),
@@ -70,6 +74,8 @@ def _create_second_org(session: Session) -> tuple[Company, Branch, Store, User]:
         updated_at=datetime.now(timezone.utc),
     )
     UserRepository.create(session, admin_b)
+    ensure_pdv_id(session, admin_b)
+    session.add(admin_b)
     session.commit()
     session.refresh(admin_b)
     return company, branch, store, admin_b
@@ -89,7 +95,12 @@ def test_company_isolation_categories(client: TestClient, test_engine, category:
     with Session(test_engine) as session:
         _company, _branch, _store, _admin = _create_second_org(session)
 
-    client_b = make_client(test_engine, username="adminb", password="adminb123")
+    client_b = make_client(
+        test_engine,
+        username="adminb",
+        password="adminb123",
+        company_document="11222333000181",
+    )
     try:
         list_a = client.get("/categories/")
         assert list_a.status_code == 200
@@ -217,7 +228,17 @@ def test_second_company_can_reuse_sku(
         )
         session.add(cat_b)
         session.flush()
+        supplier_b = Supplier(
+            name="Fornecedor B",
+            document="11222333000181",
+            is_active=True,
+            company_id=company.id,
+        )
+        session.add(supplier_b)
+        session.flush()
         prod_b = Product(
+            material_code=ProductService(session).allocate_material_code(company.id),
+            primary_supplier_id=supplier_b.id,
             name="Mouse B",
             sku=product["sku"],
             sale_price=product["sale_price"],
@@ -231,7 +252,12 @@ def test_second_company_can_reuse_sku(
         session.add(prod_b)
         session.commit()
 
-    client_b = make_client(test_engine, username="adminb", password="adminb123")
+    client_b = make_client(
+        test_engine,
+        username="adminb",
+        password="adminb123",
+        company_document="11222333000181",
+    )
     try:
         products_b = client_b.get("/products/")
         assert products_b.status_code == 200
@@ -260,7 +286,12 @@ def test_company_isolation_customers_and_products_cross_tenant(
     with Session(test_engine) as session:
         _create_second_org(session)
 
-    client_b = make_client(test_engine, username="adminb", password="adminb123")
+    client_b = make_client(
+        test_engine,
+        username="adminb",
+        password="adminb123",
+        company_document="11222333000181",
+    )
     try:
         assert client_b.get(f"/customers/{customer_id}").status_code == 404
         assert client_b.get(f"/products/{product['id']}").status_code == 404
@@ -287,7 +318,8 @@ def test_company_isolation_purchases(client: TestClient, test_engine, seeded_cat
         "issue_date": preview["invoice"]["issue_date"],
         "create_supplier": True,
         "supplier_name": preview["supplier"]["name"],
-        "supplier_document": preview["supplier"]["document"],
+        "supplier_document": "12345678000195",
+        "supplier_address": preview["supplier"]["address"],
         "items": [
             {
                 "supplier_product_code": item["supplier_product_code"],
@@ -302,12 +334,19 @@ def test_company_isolation_purchases(client: TestClient, test_engine, seeded_cat
             for item in preview["items"]
         ],
     }
-    purchase = client.post("/purchases/confirm", json=confirm_payload).json()
+    response = client.post("/purchases/confirm", json=confirm_payload)
+    assert response.status_code == 201
+    purchase = response.json()
 
     with Session(test_engine) as session:
         _create_second_org(session)
 
-    client_b = make_client(test_engine, username="adminb", password="adminb123")
+    client_b = make_client(
+        test_engine,
+        username="adminb",
+        password="adminb123",
+        company_document="11222333000181",
+    )
     try:
         assert client_b.get(f"/purchases/{purchase['id']}").status_code == 404
         assert all(p["id"] != purchase["id"] for p in page_items(client_b.get("/purchases/")))

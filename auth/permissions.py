@@ -12,14 +12,6 @@ MODULE_PERMISSIONS: dict[str, dict[UserProfile, set[str]]] = {
         UserProfile.CONFERENTE: {READ},
         UserProfile.COLABORADOR: {READ},
     },
-    "brands": {
-        UserProfile.ADMIN: {READ, WRITE},
-        UserProfile.GERENTE: {READ, WRITE},
-        UserProfile.SUPERVISOR: {READ},
-        UserProfile.OPERADOR: {READ},
-        UserProfile.CONFERENTE: {READ},
-        UserProfile.COLABORADOR: {READ},
-    },
     "products": {
         UserProfile.ADMIN: {READ, WRITE},
         UserProfile.GERENTE: {READ, WRITE},
@@ -37,9 +29,9 @@ MODULE_PERMISSIONS: dict[str, dict[UserProfile, set[str]]] = {
         UserProfile.COLABORADOR: {READ},
     },
     "sales": {
-        UserProfile.ADMIN: {READ, WRITE, "cancel"},
-        UserProfile.GERENTE: {READ, WRITE, "cancel"},
-        UserProfile.SUPERVISOR: {READ, WRITE, "cancel"},
+        UserProfile.ADMIN: {READ, WRITE, "cancel", "discount"},
+        UserProfile.GERENTE: {READ, WRITE, "cancel", "discount"},
+        UserProfile.SUPERVISOR: {READ, WRITE, "cancel", "discount"},
         UserProfile.OPERADOR: {READ, WRITE},
         UserProfile.CONFERENTE: {READ},
         UserProfile.COLABORADOR: {READ},

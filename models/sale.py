@@ -17,6 +17,7 @@ class SaleBase(SQLModel):
     user_id: Optional[int] = Field(default=None, foreign_key="users.id")
     sale_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     total_amount: Decimal = Field(default=0.0, decimal_places=2, max_digits=12)
+    discount_amount: Decimal = Field(default=Decimal("0.00"), decimal_places=2, max_digits=12)
     payment_method: Optional[str] = Field(default=None, max_length=20)
     status: str = Field(default=SaleStatus.EM_ANDAMENTO, max_length=20, index=True)
 

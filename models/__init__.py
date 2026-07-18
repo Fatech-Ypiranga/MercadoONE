@@ -35,11 +35,6 @@ from .customer import (
     CustomerUpdate,
 )
 from .product import (
-    Brand,
-    BrandBase,
-    BrandCreate,
-    BrandResponse,
-    BrandUpdate,
     Product,
     ProductBase,
     ProductCreate,
@@ -48,6 +43,7 @@ from .product import (
     ProductFiscalBase,
     ProductFiscalCreate,
     ProductFiscalResponse,
+    ProductMaterialSequence,
     ProductResponse,
     ProductUpdate,
     UnitOfMeasure,
@@ -87,7 +83,19 @@ from .stock_movement import (
     StockMovementCreate,
     StockMovementResponse,
 )
-from .supplier import Supplier, SupplierCreate, SupplierResponse, SupplierUpdate
+from .supplier import (
+    Supplier,
+    SupplierAddress,
+    SupplierAddressBase,
+    SupplierAddressCreate,
+    SupplierAddressResponse,
+    SupplierAddressUpdate,
+    SupplierCreate,
+    SupplierMunicipality,
+    SupplierResponse,
+    SupplierSequence,
+    SupplierUpdate,
+)
 from .user import (
     MeBranchInfo,
     MeCompanyInfo,

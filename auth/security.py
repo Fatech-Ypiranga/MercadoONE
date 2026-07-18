@@ -37,6 +37,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
+PDV_AUTHORIZE_EXPIRE_SECONDS = int(os.getenv("PDV_AUTHORIZE_EXPIRE_SECONDS", "120"))
+
+
 def create_access_token(*, user_id: int, profile: str, company_id: int) -> tuple[str, int]:
     expires_in = JWT_EXPIRE_HOURS * 3600
     expire = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
@@ -44,6 +47,27 @@ def create_access_token(*, user_id: int, profile: str, company_id: int) -> tuple
         "sub": str(user_id),
         "profile": profile,
         "company_id": company_id,
+        "exp": expire,
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return token, expires_in
+
+
+def create_pdv_authorization_token(
+    *,
+    supervisor_user_id: int,
+    company_id: int,
+    actions: list[str],
+    operator_user_id: int,
+) -> tuple[str, int]:
+    expires_in = PDV_AUTHORIZE_EXPIRE_SECONDS
+    expire = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    payload = {
+        "typ": "pdv_authorization",
+        "sub": str(supervisor_user_id),
+        "company_id": company_id,
+        "operator_user_id": operator_user_id,
+        "actions": actions,
         "exp": expire,
     }
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)

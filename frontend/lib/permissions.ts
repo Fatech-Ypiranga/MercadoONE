@@ -2,7 +2,7 @@ import type { components } from "@/lib/api/schema";
 
 export type UserProfile = components["schemas"]["UserProfile"];
 
-type Action = "read" | "write" | "cancel";
+type Action = "read" | "write" | "cancel" | "discount";
 
 const ALL_READ: Partial<Record<UserProfile, Set<Action>>> = {
   admin: new Set(["read", "write"]),
@@ -15,7 +15,6 @@ const ALL_READ: Partial<Record<UserProfile, Set<Action>>> = {
 
 const MODULE_PERMISSIONS: Record<string, Partial<Record<UserProfile, Set<Action>>>> = {
   categories: { ...ALL_READ },
-  brands: { ...ALL_READ },
   products: { ...ALL_READ },
   customers: {
     admin: new Set(["read", "write"]),
@@ -26,9 +25,9 @@ const MODULE_PERMISSIONS: Record<string, Partial<Record<UserProfile, Set<Action>
     colaborador: new Set(["read"]),
   },
   sales: {
-    admin: new Set(["read", "write", "cancel"]),
-    gerente: new Set(["read", "write", "cancel"]),
-    supervisor: new Set(["read", "write", "cancel"]),
+    admin: new Set(["read", "write", "cancel", "discount"]),
+    gerente: new Set(["read", "write", "cancel", "discount"]),
+    supervisor: new Set(["read", "write", "cancel", "discount"]),
     operador: new Set(["read", "write"]),
     conferente: new Set(["read"]),
     colaborador: new Set(["read"]),

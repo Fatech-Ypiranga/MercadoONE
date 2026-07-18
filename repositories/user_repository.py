@@ -5,20 +5,42 @@ from models.audit_log import AuditLog
 from models.category import Category
 from models.company import Company
 from models.customer import Customer, CustomerAddress
-from models.product import Brand, Product
+from models.product import Product
 from models.purchase import PurchaseOrder
 from models.sale import Sale
 from models.stock_movement import StockMovement
 from models.supplier import Supplier
 from models.user import User
+from utils.enums import UserProfile
 
 
 class UserRepository:
     @staticmethod
-    def find_all(db: Session, *, company_id: int, include_inactive: bool = False) -> list[User]:
+    def find_all(
+        db: Session,
+        *,
+        company_id: int,
+        include_inactive: bool = False,
+        q: str | None = None,
+        profile: UserProfile | None = None,
+        is_active: bool | None = None,
+    ) -> list[User]:
         stmt = select(User).where(User.company_id == company_id).order_by(User.full_name)
-        if not include_inactive:
+        if is_active is not None:
+            stmt = stmt.where(User.is_active == is_active)
+        elif not include_inactive:
             stmt = stmt.where(User.is_active == True)  # noqa: E712
+        if profile is not None:
+            stmt = stmt.where(User.profile == profile)
+        if q:
+            pattern = f"%{q.strip()}%"
+            stmt = stmt.where(
+                (User.full_name.ilike(pattern))
+                | (User.email.ilike(pattern))
+                | (User.username.ilike(pattern))
+                | (User.cpf.ilike(pattern))
+                | (User.pdv_id.ilike(pattern))
+            )
         return list(db.exec(stmt).all())
 
     @staticmethod
@@ -52,12 +74,16 @@ class UserRepository:
         return db.exec(stmt).first()
 
     @staticmethod
-    def find_by_login(db: Session, login: str) -> User | None:
-        """Login is global by email/username (MVP single-org seed; first match)."""
-        user = UserRepository.find_by_email(db, login)
+    def find_by_pdv_id(db: Session, pdv_id: str, *, company_id: int) -> User | None:
+        stmt = select(User).where(User.company_id == company_id, User.pdv_id == pdv_id)
+        return db.exec(stmt).first()
+
+    @staticmethod
+    def find_by_login(db: Session, login: str, *, company_id: int | None = None) -> User | None:
+        user = UserRepository.find_by_email(db, login, company_id=company_id)
         if user:
             return user
-        return UserRepository.find_by_username(db, login)
+        return UserRepository.find_by_username(db, login, company_id=company_id)
 
     @staticmethod
     def create(db: Session, user: User) -> User:
@@ -100,8 +126,6 @@ class UserRepository:
             (StockMovement, "updated_by"),
             (Product, "created_by"),
             (Product, "updated_by"),
-            (Brand, "created_by"),
-            (Brand, "updated_by"),
             (Category, "created_by"),
             (Category, "updated_by"),
             (Customer, "created_by"),

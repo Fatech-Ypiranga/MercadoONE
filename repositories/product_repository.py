@@ -1,4 +1,4 @@
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
 from models.product import Product, ProductFiscal
@@ -9,8 +9,41 @@ from models.stock_movement import StockMovement
 
 class ProductRepository:
     @staticmethod
-    def find_all(db: Session, company_id: int) -> list[Product]:
-        stmt = select(Product).where(Product.company_id == company_id).order_by(Product.name)
+    def find_all(
+        db: Session,
+        company_id: int,
+        *,
+        q: str | None = None,
+        sku: str | None = None,
+        barcode: str | None = None,
+        material_code: str | None = None,
+        category_id: int | None = None,
+        primary_supplier_id: int | None = None,
+        is_active: bool | None = None,
+    ) -> list[Product]:
+        stmt = select(Product).where(Product.company_id == company_id)
+        if q:
+            stmt = stmt.where(
+                or_(
+                    Product.name.ilike(f"%{q}%"),
+                    Product.sku.ilike(f"%{q}%"),
+                    Product.barcode.ilike(f"%{q}%"),
+                    Product.material_code.ilike(f"%{q}%"),
+                )
+            )
+        if sku is not None:
+            stmt = stmt.where(Product.sku == sku)
+        if barcode is not None:
+            stmt = stmt.where(Product.barcode == barcode)
+        if material_code is not None:
+            stmt = stmt.where(Product.material_code == material_code)
+        if category_id is not None:
+            stmt = stmt.where(Product.category_id == category_id)
+        if primary_supplier_id is not None:
+            stmt = stmt.where(Product.primary_supplier_id == primary_supplier_id)
+        if is_active is not None:
+            stmt = stmt.where(Product.is_active.is_(is_active))
+        stmt = stmt.order_by(Product.name)
         return list(db.exec(stmt).all())
 
     @staticmethod
@@ -37,21 +70,27 @@ class ProductRepository:
         return list(db.exec(stmt).all())
 
     @staticmethod
-    def find_by_barcode(db: Session, barcode: str, company_id: int) -> Product | None:
+    def find_by_barcode(
+        db: Session, barcode: str, company_id: int, active_only: bool = True
+    ) -> Product | None:
         stmt = select(Product).where(
             Product.barcode == barcode,
             Product.company_id == company_id,
-            Product.is_active.is_(True),
         )
+        if active_only:
+            stmt = stmt.where(Product.is_active.is_(True))
         return db.exec(stmt).first()
 
     @staticmethod
-    def find_by_sku(db: Session, sku: str, company_id: int) -> Product | None:
+    def find_by_sku(
+        db: Session, sku: str, company_id: int, active_only: bool = True
+    ) -> Product | None:
         stmt = select(Product).where(
             Product.sku == sku,
             Product.company_id == company_id,
-            Product.is_active.is_(True),
         )
+        if active_only:
+            stmt = stmt.where(Product.is_active.is_(True))
         return db.exec(stmt).first()
 
     @staticmethod

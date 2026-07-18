@@ -72,6 +72,7 @@ PostgreSQL
 | `BusinessRuleException`      | 400  |
 | `UnauthorizedException`      | 401  |
 | `ForbiddenException`         | 403  |
+| `ExternalServiceException`   | 502 ou 503, conforme indisponibilidade do serviço externo |
 
 ---
 
@@ -97,32 +98,53 @@ Seed: 1 empresa (PyERP Demo Ltda) → 1 filial (Matriz) → 1 loja (Loja Centro)
 
 ### Usuários (`/users`) — somente admin
 
-CRUD. Perfis disponíveis: `admin`, `gerente`, `supervisor`, `operador`, `conferente`, `colaborador`.
+CRUD com filtros (`q`, `profile`, `is_active`). Perfis: `admin`, `gerente`, `supervisor`, `operador`, `conferente`, `colaborador`.
+
+Credenciais de PDV (geradas no ERP, nunca no caixa):
+
+- `pdv_id`: 6 dígitos numéricos, únicos por empresa, distintos de `users.id`. Atribuídos a `operador` e Supervisor+ (`supervisor`/`gerente`/`admin`).
+- PIN PDV: 12 dígitos numéricos, só Supervisor+. Gerado/regenerado por admin via `POST /users/{id}/pdv-pin` (one-shot). Armazenado como hash; uso por digitação ou código de barras.
+- CPF validado com dígitos verificadores.
 
 ### Catálogo
 
 | Módulo      | Prefixo        | Observações                          |
 |-------------|----------------|--------------------------------------|
 | Categorias  | `/categories`  | CRUD, detalhe com produtos           |
-| Marcas      | `/brands`      | CRUD                                 |
-| Produtos    | `/products`    | CRUD + dados fiscais (NCM, CFOP)     |
+| Produtos    | `/products`    | CRUD + material/fornecedor + fiscal  |
 | Clientes    | `/customers`   | CRUD + endereços aninhados           |
-| Fornecedores| `/suppliers`   | CRUD, CNPJ normalizado (14 dígitos)  |
+| Fornecedores| `/suppliers`   | CRUD, CNPJ normalizado, código gerado e endereço principal obrigatório na criação |
+
+Categorias podem formar hierarquia; produtos novos devem usar uma categoria folha.
+Fornecedor novo recebe `code` imutável de 8 dígitos (`UUMMMSSS`) no servidor, a
+partir de UF/município e sequência da empresa. Produto novo recebe `material_code`
+de 7 dígitos no servidor e exige `primary_supplier_id`.
+
+### Consulta de CEP (`/cep`)
+
+- `GET /cep/{cep}` — autenticado; consulta o ViaCEP para auxiliar o preenchimento de endereço
+- CEP inválido ou inexistente usa `ValidationError`/`ResourceNotFoundException`;
+  timeout ou falha do ViaCEP usa `ExternalServiceException` (`503`/`502`)
 
 ### Vendas (`/sales`)
 
 Fluxo em `SaleService.process_sale()`:
 
 1. Valida itens, cliente e estoque
-2. Cria `Sale` + `SaleItem` com status `CONCLUIDA`
+2. Cria `Sale` + `SaleItem` com status `CONCLUIDA` (aceita `discount_amount` opcional)
 3. Registra movimentação `SAIDA` / motivo `VENDA`
 4. Commit atômico
+
+Desconto (`discount_amount` > 0):
+
+- Requer `sales:discount` (Supervisor+) **ou** token de `POST /auth/pdv-authorize` com ação `discount`
 
 Cancelamento (`POST /sales/{id}/cancel`):
 
 - Estorna estoque com `ENTRADA` / motivo `DEVOLUCAO`
 - Muda status para `CANCELADA`
-- Requer permissão `sales:cancel` (admin, gerente, supervisor)
+- Requer `sales:cancel` (Supervisor+) **ou** token de autorização PDV com ação `cancel`
+- Operador autenticado usa `sales:write` + `supervisor_authorization` no body
 
 ### Estoque (`/stock`)
 
@@ -175,10 +197,9 @@ Formato: `modulo:acao` (ex.: `sales:write`, `purchases:read`).
 | Módulo     | admin | gerente | supervisor | operador | conferente | colaborador |
 |------------|-------|---------|------------|----------|------------|-------------|
 | categories | R/W   | R/W     | R          | R        | R          | R           |
-| brands     | R/W   | R/W     | R          | R        | R          | R           |
 | products   | R/W   | R/W     | R          | R        | R          | R           |
 | customers  | R/W   | R/W     | R          | R/W      | R          | R           |
-| sales      | R/W/C | R/W/C   | R/W/C      | R/W      | R          | R           |
+| sales      | R/W/C/D | R/W/C/D | R/W/C/D  | R/W      | R          | R           |
 | stock      | R/W   | R/W     | R/W        | R        | R/W        | R           |
 | reports    | R     | R       | R          | R        | R          | R           |
 | users      | R/W   | —       | —          | —        | —          | —           |
@@ -189,7 +210,7 @@ Formato: `modulo:acao` (ex.: `sales:write`, `purchases:read`).
 | branches   | R/W   | R/W     | R          | R        | R          | R           |
 | stores     | R/W   | R/W     | R          | R        | R          | R           |
 
-R = read, W = write, C = cancel (vendas).
+R = read, W = write, C = cancel (vendas), D = discount (vendas; só Supervisor+).
 
 Definição completa em `auth/permissions.py`.
 
@@ -197,30 +218,38 @@ Definição completa em `auth/permissions.py`.
 
 ## Banco de dados
 
-### Entidades (18 tabelas de negócio + `alembic_version`)
+### Entidades de negócio
 
 | Tabela                      | Papel                                    |
 |-----------------------------|------------------------------------------|
 | `companies`, `branches`, `stores` | Tenant: empresa → filial → loja   |
 | `users`                     | Autenticação e perfis (`company_id`)     |
 | `audit_log`                 | Trilha de auditoria                      |
-| `categories`, `brands`      | Segmentação do catálogo                  |
-| `products`, `product_fiscals` | SKU, preços, dados fiscais             |
+| `categories`                | Segmentação do catálogo                  |
+| `products`, `product_fiscals` | Produto com `material_code`, SKU, `primary_supplier_id`, preços e fiscal |
+| `product_material_sequences` | Sequência por empresa para gerar material de 7 dígitos |
 | `customers`, `customer_addresses` | Clientes PF/PJ + endereços         |
 | `sales`, `sale_items`       | Vendas                                   |
 | `stock_movements`           | Ledger de estoque                        |
-| `suppliers`                 | Fornecedores                             |
+| `suppliers`                 | Fornecedor com CNPJ e `code` gerado (`UUMMMSSS`) |
+| `supplier_addresses`        | Endereço principal 1:1 do fornecedor, com CEP/UF/IBGE |
+| `supplier_municipalities`   | Sequência municipal por UF/IBGE usada em `MMM` |
+| `supplier_sequences`        | Sequência `SSS` por empresa e município |
 | `purchase_orders`, `purchase_items` | Compras via NF-e                 |
 | `supplier_product_mappings` | De-para código fornecedor → produto      |
 
 ### Migrações
 
-Alembic é a fonte de verdade. Quatro revisões:
+Alembic é a fonte de verdade. A cadeia atual tem oito revisões:
 
 1. `e9a45e47d010` — schema inicial
 2. `a1b2c3d4e5f6` — users, audit, colunas created_by/updated_by
 3. `b2c3d4e5f6a7` — suppliers, purchases, mappings
 4. `c3d4e5f6a7b8` — companies, branches, stores (tenant)
+5. `d4e5f6a7b8c9` — índice do domínio histórico de marcas, removido posteriormente
+6. `e5f6a7b8c9d0` — hierarquia de categorias (`parent_id`)
+7. `f6a7b8c9d0e1` — códigos e endereços principais de fornecedores
+8. `g7b8c9d0e1f2` — material/fornecedor principal de produtos e remoção definitiva do domínio histórico de marcas (**head atual**)
 
 Na subida (`init_db()`): `alembic upgrade head` + seed do admin/org demo.
 
@@ -267,8 +296,8 @@ tests/
 ├── test_permissions.py      # RBAC — todos os 6 perfis
 ├── test_tenant_isolation.py # Isolamento company_id / store_id
 ├── test_categories.py       # CRUD + delete com produtos (409)
-├── test_brands.py           # CRUD + delete com produtos (409)
 ├── test_products.py         # CRUD, fiscal, hard delete, Decimal
+├── test_epic4_products.py   # Material e fornecedor principal
 ├── test_customers.py        # CRUD + endereços
 ├── test_audit.py            # Listagem, filtros (incl. date), paginação
 ├── test_sales.py            # Venda, cancelamento, concorrência
@@ -297,7 +326,7 @@ CI: `.github/workflows/ci.yml` — pytest + ruff (backend) e `npm run lint` + `n
 Seguimos estas regras (após limpeza de rastros de IA):
 
 - **Não comentar o óbvio** — se o código já diz o que faz, o comentário é ruído
-- **Comentar regras de negócio não triviais** — ex.: `brand_id == 0` tratado como `None` em `ProductService`
+- **Comentar regras de negócio não triviais** — ex.: alocação transacional de códigos internos
 - **Docstrings de módulo** apenas quando o contexto não é claro — ex.: `nfe_parser.py` (layout 4.00)
 - **Schemas de API** documentados via `Field(description=...)` em português, não via docstrings em classes DTO
 - **Sem docstrings boilerplate** em services e repositories — o nome da classe já comunica
@@ -313,7 +342,7 @@ Seguimos estas regras (após limpeza de rastros de IA):
 - Hard delete nos cadastros (`DELETE` remove o registro; 409 se houver vínculos)
 - Campo `is_active` pode ser usado em updates para desativar sem excluir
 - `created_by` / `updated_by` em entidades de cadastro
-- Auditoria via `AuditService.log()` nos **services** (category, brand, customer, product, sale, purchase, etc.)
+- Auditoria via `AuditService.log()` nos **services** (category, customer, product, sale, purchase, supplier, etc.)
 - Transações com `commit`/`rollback` explícitos nos services
 
 ---
@@ -364,13 +393,13 @@ Total: **64** endpoints de negócio + health + OpenAPI.
 | `/audit-log`   | listagem com filtros                                      |
 | `/products`    | CRUD                                                      |
 | `/categories`  | CRUD + detalhe com produtos                               |
-| `/brands`      | CRUD                                                      |
 | `/customers`   | CRUD + endereços                                          |
 | `/sales`       | listar, criar, cancelar                                   |
 | `/stock`       | movimentar, saldo, extrato                                |
 | `/reports`     | top produtos, ticket médio, estoque crítico               |
 | `/suppliers`   | CRUD                                                      |
 | `/purchases`   | upload-xml, confirm, listar, detalhe, cancelar            |
+| `/cep`         | `GET /cep/{cep}` para preenchimento assistido de endereço |
 
 Documentação interativa: `/docs` (Swagger) e `/redoc`.  
 Contrato de integração (Data Sim / PDV): [`INTEGRACOES.md`](INTEGRACOES.md). Snapshot: [`openapi.json`](openapi.json).

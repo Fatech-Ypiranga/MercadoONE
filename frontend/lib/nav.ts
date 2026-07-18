@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes,
   ClipboardList,
   FileBarChart,
   LayoutDashboard,
@@ -47,7 +46,6 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/products", label: "Produtos", icon: Package, module: "products" },
       { href: "/categories", label: "Categorias", icon: Tags, module: "categories" },
-      { href: "/brands", label: "Marcas", icon: Boxes, module: "brands" },
       { href: "/customers", label: "Clientes", icon: Users, module: "customers" },
       { href: "/suppliers", label: "Fornecedores", icon: Truck, module: "suppliers" },
     ],

@@ -8,11 +8,15 @@ Uso (na raiz do monorepo):
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
-from main import create_app
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from main import create_app  # noqa: E402
+
 TARGETS = (
     ROOT / "docs" / "openapi.json",
     ROOT / "frontend" / "openapi.json",

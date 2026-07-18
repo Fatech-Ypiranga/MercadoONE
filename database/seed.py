@@ -12,11 +12,12 @@ from repositories.company_repository import (
     StoreRepository,
 )
 from repositories.user_repository import UserRepository
+from services.pdv_credentials import ensure_pdv_id
 from utils.enums import UserProfile
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@pyerp.local")
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_CPF = os.getenv("ADMIN_CPF", "00000000000")
+ADMIN_CPF = os.getenv("ADMIN_CPF", "39053344705")
 ADMIN_FULL_NAME = os.getenv("ADMIN_FULL_NAME", "Administrador")
 
 
@@ -101,8 +102,9 @@ def seed_admin_user(db: Session) -> None:
             if not verify_password(admin_password, existing.password_hash):
                 existing.password_hash = hash_password(admin_password)
                 existing.updated_at = datetime.now(timezone.utc)
-                db.add(existing)
-                db.commit()
+            ensure_pdv_id(db, existing)
+            db.add(existing)
+            db.commit()
         return
 
     admin = User(
@@ -120,4 +122,6 @@ def seed_admin_user(db: Session) -> None:
         updated_at=datetime.now(timezone.utc),
     )
     UserRepository.create(db, admin)
+    ensure_pdv_id(db, admin)
+    db.add(admin)
     db.commit()

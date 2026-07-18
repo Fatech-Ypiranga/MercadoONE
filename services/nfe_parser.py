@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from xml.etree import ElementTree as ET
 
 from services.exceptions import ValidationError
@@ -14,11 +14,24 @@ NS = {"nfe": NFE_NS}
 
 
 @dataclass
+class ParsedNfeSupplierAddress:
+    zip_code: str | None = None
+    street: str | None = None
+    number: str | None = None
+    complement: str | None = None
+    neighborhood: str | None = None
+    city: str | None = None
+    state: str | None = None
+    ibge_code: str | None = None
+
+
+@dataclass
 class ParsedNfeSupplier:
     document: str
     name: str
     trade_name: str | None
     state_registration: str | None
+    address: ParsedNfeSupplierAddress
 
 
 @dataclass
@@ -62,7 +75,14 @@ def _text(element: ET.Element | None, tag: str, default: str = "") -> str:
 
 def _decimal(value: str, default: str = "0") -> Decimal:
     raw = (value or default).replace(",", ".")
-    return Decimal(raw)
+    try:
+        return Decimal(raw)
+    except InvalidOperation as exc:
+        raise ValidationError(f"Invalid decimal value in XML: {value!r}") from exc
+
+
+def _optional_text(element: ET.Element | None, tag: str) -> str | None:
+    return _text(element, tag) or None
 
 
 def _parse_datetime(value: str) -> datetime:
@@ -124,11 +144,22 @@ def parse_nfe_xml(xml_content: str | bytes) -> ParsedNfe:
     if not document:
         raise ValidationError("Supplier document (CNPJ) not found in XML.")
 
+    address_node = emit.find("nfe:enderEmit", NS)
     supplier = ParsedNfeSupplier(
         document=document,
         name=_text(emit, "xNome"),
-        trade_name=_text(emit, "xFant") or None,
-        state_registration=_text(emit, "IE") or None,
+        trade_name=_optional_text(emit, "xFant"),
+        state_registration=_optional_text(emit, "IE"),
+        address=ParsedNfeSupplierAddress(
+            zip_code=_optional_text(address_node, "CEP"),
+            street=_optional_text(address_node, "xLgr"),
+            number=_optional_text(address_node, "nro"),
+            complement=_optional_text(address_node, "xCpl"),
+            neighborhood=_optional_text(address_node, "xBairro"),
+            city=_optional_text(address_node, "xMun"),
+            state=_optional_text(address_node, "UF"),
+            ibge_code=_optional_text(address_node, "cMun"),
+        ),
     )
 
     access_key = _extract_access_key(inf_nfe, root)
@@ -138,7 +169,11 @@ def parse_nfe_xml(xml_content: str | bytes) -> ParsedNfe:
 
     items: list[ParsedNfeItem] = []
     for det in inf_nfe.findall("nfe:det", NS):
-        line_number = int(det.attrib.get("nItem", len(items) + 1))
+        raw_line_number = det.attrib.get("nItem", str(len(items) + 1))
+        try:
+            line_number = int(raw_line_number)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError(f"Invalid NF-e item number: {raw_line_number!r}") from exc
         prod = det.find("nfe:prod", NS)
         if prod is None:
             continue

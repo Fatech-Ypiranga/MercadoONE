@@ -14,11 +14,15 @@ from sqlmodel import Session, create_engine
 from auth.security import hash_password
 from database.connection import get_db
 from database.migrate import upgrade_head
-from database.seed import ensure_demo_organization, seed_admin_user
+from database.seed import SEED_COMPANY_DOCUMENT, ensure_demo_organization, seed_admin_user
 from main import create_app
+from models.company import Branch, Company, Store
 from models.user import User
+from repositories.company_repository import BranchRepository, CompanyRepository, StoreRepository
 from repositories.user_repository import UserRepository
+from services.pdv_credentials import ensure_pdv_id
 from tests.catalog_seed import seed_purchase_test_catalog
+from utils.cpf import build_cpf
 from utils.enums import UserProfile
 
 TEST_DATABASE_URL = os.getenv(
@@ -35,6 +39,10 @@ TABLES = (
     "purchase_items",
     "purchase_orders",
     "supplier_product_mappings",
+    "supplier_addresses",
+    "supplier_sequences",
+    "supplier_municipalities",
+    "product_material_sequences",
     "suppliers",
     "stock_movements",
     "sale_items",
@@ -43,7 +51,6 @@ TABLES = (
     "products",
     "customer_addresses",
     "customers",
-    "brands",
     "categories",
     "users",
     "stores",
@@ -98,6 +105,8 @@ def create_test_user(
         default_store_id=default_store_id,
     )
     UserRepository.create(session, user)
+    ensure_pdv_id(session, user)
+    session.add(user)
     session.commit()
     session.refresh(user)
     return user
@@ -111,13 +120,32 @@ def page_items(response) -> list:
     return body
 
 
-def login(client: TestClient, login_value: str, password: str) -> str:
-    response = client.post("/auth/login", json={"login": login_value, "password": password})
+def login(
+    client: TestClient,
+    login_value: str,
+    password: str,
+    *,
+    company_document: str = SEED_COMPANY_DOCUMENT,
+) -> str:
+    response = client.post(
+        "/auth/login",
+        json={
+            "login": login_value,
+            "password": password,
+            "company_document": company_document,
+        },
+    )
     assert response.status_code == 200
     return response.json()["access_token"]
 
 
-def make_client(test_engine, *, username: str, password: str) -> TestClient:
+def make_client(
+    test_engine,
+    *,
+    username: str,
+    password: str,
+    company_document: str = SEED_COMPANY_DOCUMENT,
+) -> TestClient:
     def override_get_db():
         with Session(test_engine) as session:
             yield session
@@ -125,7 +153,7 @@ def make_client(test_engine, *, username: str, password: str) -> TestClient:
     app = create_app(init_database=False)
     app.dependency_overrides[get_db] = override_get_db
     test_client = TestClient(app)
-    token = login(test_client, username, password)
+    token = login(test_client, username, password, company_document=company_document)
     test_client.headers["Authorization"] = f"Bearer {token}"
     return test_client
 
@@ -182,7 +210,7 @@ def operador_client(test_engine, client):
         create_test_user(
             session,
             full_name="Operador Teste",
-            cpf="11111111111",
+            cpf=build_cpf(101),
             email="operador@test.local",
             username="operador",
             password="oper1234",
@@ -200,7 +228,7 @@ def conferente_client(test_engine, client):
         create_test_user(
             session,
             full_name="Conferente Teste",
-            cpf="22222222222",
+            cpf=build_cpf(102),
             email="conferente@test.local",
             username="conferente",
             password="conf1234",
@@ -218,7 +246,7 @@ def colaborador_client(test_engine, client):
         create_test_user(
             session,
             full_name="Colaborador Teste",
-            cpf="33333333333",
+            cpf=build_cpf(103),
             email="colaborador@test.local",
             username="colaborador",
             password="colab1234",
@@ -236,7 +264,7 @@ def gerente_client(test_engine, client):
         create_test_user(
             session,
             full_name="Gerente Teste",
-            cpf="44444444444",
+            cpf=build_cpf(104),
             email="gerente@test.local",
             username="gerente",
             password="ger1234",
@@ -254,7 +282,7 @@ def supervisor_client(test_engine, client):
         create_test_user(
             session,
             full_name="Supervisor Teste",
-            cpf="55555555555",
+            cpf=build_cpf(105),
             email="supervisor@test.local",
             username="supervisor",
             password="sup1234",
@@ -277,7 +305,31 @@ def category(client: TestClient) -> dict:
 
 
 @pytest.fixture
-def product(client: TestClient, category: dict) -> dict:
+def supplier(client: TestClient) -> dict:
+    response = client.post(
+        "/suppliers/",
+        json={
+            "name": "Fornecedor padrão",
+            "document": "11.222.333/0001-81",
+            "is_active": True,
+            "address": {
+                "description": "Principal",
+                "zip_code": "01310100",
+                "street": "Avenida Paulista",
+                "number": "1000",
+                "neighborhood": "Bela Vista",
+                "city": "São Paulo",
+                "state": "SP",
+                "ibge_code": "3550308",
+            },
+        },
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+@pytest.fixture
+def product(client: TestClient, category: dict, supplier: dict) -> dict:
     response = client.post(
         "/products/",
         json={
@@ -286,10 +338,79 @@ def product(client: TestClient, category: dict) -> dict:
             "sale_price": "50.00",
             "cost_price": "30.00",
             "category_id": category["id"],
+            "primary_supplier_id": supplier["id"],
         },
     )
     assert response.status_code == 201
     return response.json()
+
+
+@pytest.fixture
+def second_company_client(test_engine, client):
+    from datetime import datetime, timezone
+
+    with Session(test_engine) as session:
+        company = CompanyRepository.create(
+            session,
+            Company(
+                legal_name="Segunda Empresa Ltda",
+                trade_name="Empresa 2",
+                document="22333444000155",
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            ),
+        )
+        branch = BranchRepository.create(
+            session,
+            Branch(
+                company_id=company.id,
+                name="Filial 2",
+                code="FILIAL-2-CAT",
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            ),
+        )
+        store = StoreRepository.create(
+            session,
+            Store(
+                company_id=company.id,
+                branch_id=branch.id,
+                name="Loja 2",
+                code="LOJA-2-CAT",
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            ),
+        )
+        admin2 = User(
+            full_name="Admin Empresa 2",
+            cpf=build_cpf(888),
+            email="admin2cat@test.local",
+            username="admin2cat",
+            password_hash=hash_password("admin2cat123"),
+            profile=UserProfile.ADMIN,
+            is_active=True,
+            company_id=company.id,
+            default_branch_id=branch.id,
+            default_store_id=store.id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        UserRepository.create(session, admin2)
+        ensure_pdv_id(session, admin2)
+        session.add(admin2)
+        session.commit()
+
+    test_client = make_client(
+        test_engine,
+        username="admin2cat",
+        password="admin2cat123",
+        company_document="22333444000155",
+    )
+    yield test_client
+    test_client.app.dependency_overrides.clear()
 
 
 @pytest.fixture

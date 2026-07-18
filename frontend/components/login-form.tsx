@@ -20,6 +20,7 @@ import { login } from "@/lib/api/auth-api";
 import { ApiError } from "@/lib/api/client";
 
 const loginSchema = z.object({
+  company_document: z.string().min(1, "Informe o CNPJ da empresa"),
   login: z.string().min(1, "Informe e-mail ou usuário"),
   password: z.string().min(1, "Informe a senha"),
 });
@@ -36,13 +37,17 @@ export function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { login: "", password: "" },
+    defaultValues: { company_document: "", login: "", password: "" },
   });
 
   async function onSubmit(values: LoginForm) {
     setServerError(null);
     try {
-      const token = await login(values);
+      const token = await login({
+        company_document: values.company_document.replace(/\D/g, ""),
+        login: values.login,
+        password: values.password,
+      });
       await loginWithToken(token.access_token);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -58,11 +63,25 @@ export function LoginForm() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-semibold tracking-tight">PyERP</CardTitle>
         <CardDescription>
-          Entre com e-mail ou usuário e senha para acessar o painel.
+          Entre com o CNPJ da empresa, e-mail ou usuário e senha.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div className="space-y-2">
+            <Label htmlFor="company_document">CNPJ da empresa</Label>
+            <Input
+              id="company_document"
+              autoComplete="organization"
+              placeholder="00.000.000/0001-91"
+              aria-invalid={Boolean(errors.company_document)}
+              {...register("company_document")}
+            />
+            {errors.company_document ? (
+              <p className="text-sm text-destructive">{errors.company_document.message}</p>
+            ) : null}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="login">E-mail ou usuário</Label>
             <Input

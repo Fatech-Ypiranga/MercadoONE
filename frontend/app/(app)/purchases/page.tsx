@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
+import {
+  AddressFields,
+  addressPayload,
+  addressReady,
+  emptyAddress,
+  type AddressFormState,
+} from "@/components/address-fields";
 import { PageHeader } from "@/components/page-header";
 import { RefreshControls } from "@/components/refresh-controls";
 import { RequirePermission } from "@/components/require-permission";
@@ -33,6 +40,7 @@ import {
 } from "@/lib/api/purchases-api";
 import { errorMessage, formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { liveQueryOptions } from "@/lib/live-query";
+import { buildConfirmItemPayload } from "@/lib/purchase-confirm-item";
 
 type ItemMapping = {
   product_id: string;
@@ -49,6 +57,8 @@ export default function PurchasesPage() {
   const [status, setStatus] = useState("");
   const [preview, setPreview] = useState<NfeUploadPreviewResponse | null>(null);
   const [mappings, setMappings] = useState<Record<number, ItemMapping>>({});
+  const [supplierAddress, setSupplierAddress] =
+    useState<AddressFormState>(emptyAddress);
 
   const list = useQuery({
     queryKey: ["purchases", activeStoreId, status],
@@ -76,6 +86,17 @@ export default function PurchasesPage() {
     onSuccess: (data) => {
       setError(null);
       setPreview(data);
+      setSupplierAddress({
+        description: "Principal",
+        zip_code: data.supplier.address.zip_code ?? "",
+        street: data.supplier.address.street ?? "",
+        number: data.supplier.address.number ?? "",
+        complement: data.supplier.address.complement ?? "",
+        neighborhood: data.supplier.address.neighborhood ?? "",
+        city: data.supplier.address.city ?? "",
+        state: data.supplier.address.state ?? "",
+        ibge_code: data.supplier.address.ibge_code ?? "",
+      });
       const initial: Record<number, ItemMapping> = {};
       data.items.forEach((item) => {
         initial[item.line_number] = {
@@ -110,46 +131,20 @@ export default function PurchasesPage() {
         supplier_trade_name: preview.supplier.trade_name ?? null,
         supplier_document: preview.supplier.document,
         supplier_state_registration: preview.supplier.state_registration ?? null,
+        ...(!preview.supplier.exists_in_database
+          ? { supplier_address: addressPayload(supplierAddress) }
+          : {}),
         store_id: activeStoreId,
-        items: preview.items.map((item) => {
-          const map = mappings[item.line_number];
-          const base = {
-            supplier_product_code: item.supplier_product_code,
-            quantity: item.quantity,
-            unit_cost: item.unit_cost,
-            discount: item.discount,
-            ipi_amount: item.ipi_amount,
-            icms_st_amount: item.icms_st_amount,
-            total_cost: item.total_cost,
-          };
-          if (map?.create_new) {
-            return {
-              ...base,
-              product_id: null,
-              create_product: {
-                name: item.name,
-                sku: map.new_sku || item.supplier_product_code,
-                barcode: item.barcode ?? null,
-                category_id: Number(map.category_id),
-                cost_price: item.entry_unit_cost,
-                sale_price: item.entry_unit_cost,
-                unit_of_measure: item.unit === "KG" ? "KG" : item.unit === "CX" ? "CX" : "UN",
-                ncm: item.ncm || null,
-              },
-            };
-          }
-          return {
-            ...base,
-            product_id: Number(map?.product_id || item.suggested_product_id),
-            create_product: null,
-          };
-        }),
+        items: preview.items.map((item) =>
+          buildConfirmItemPayload(item, mappings[item.line_number]),
+        ),
       };
       return confirmPurchase(body);
     },
     onSuccess: async () => {
       setPreview(null);
       setMappings({});
+      setSupplierAddress(emptyAddress);
       setError(null);
       await qc.invalidateQueries({ queryKey: ["purchases"] });
       await qc.invalidateQueries({ queryKey: ["products"] });
@@ -220,7 +215,12 @@ export default function PurchasesPage() {
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) upload.mutate(file);
+                if (file) {
+                  setPreview(null);
+                  setMappings({});
+                  setSupplierAddress(emptyAddress);
+                  upload.mutate(file);
+                }
                 e.target.value = "";
               }}
             />
@@ -255,13 +255,20 @@ export default function PurchasesPage() {
                 onClick={() => {
                   setPreview(null);
                   setMappings({});
+                  setSupplierAddress(emptyAddress);
                 }}
               >
                 Descartar
               </Button>
               <Button
                 type="button"
-                disabled={!unmappedReady || !activeStoreId || confirmMutation.isPending}
+                disabled={
+                  !unmappedReady ||
+                  !activeStoreId ||
+                  (!preview.supplier.exists_in_database &&
+                    !addressReady(supplierAddress)) ||
+                  confirmMutation.isPending
+                }
                 onClick={() => confirmMutation.mutate()}
               >
                 {confirmMutation.isPending ? "Confirmando…" : "Confirmar entrada"}
@@ -271,6 +278,23 @@ export default function PurchasesPage() {
 
           {!activeStoreId ? (
             <ErrorAlert message="Selecione uma loja no header antes de confirmar." />
+          ) : null}
+
+          {!preview.supplier.exists_in_database ? (
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              <div>
+                <h3 className="text-sm font-medium">Endereço do fornecedor</h3>
+                <p className="text-xs text-muted-foreground">
+                  Confira e complete os dados importados da NF-e antes de confirmar.
+                </p>
+              </div>
+              <AddressFields form={supplierAddress} onChange={setSupplierAddress} />
+              {!addressReady(supplierAddress) ? (
+                <p className="text-xs text-destructive">
+                  Preencha CEP, endereço, cidade, UF e código IBGE válidos.
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
           <Table>

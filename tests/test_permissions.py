@@ -2,13 +2,15 @@ from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
+from utils.cpf import build_cpf
+
 
 def test_operador_cannot_create_user(operador_client: TestClient):
     response = operador_client.post(
         "/users/",
         json={
             "full_name": "Hack",
-            "cpf": "88888888888",
+            "cpf": build_cpf(401),
             "email": "hack@test.local",
             "username": "hacker",
             "password": "hack1234",
@@ -27,7 +29,19 @@ def test_operador_cannot_cancel_sale(operador_client: TestClient, stocked_produc
     ).json()
 
     response = operador_client.post(f"/sales/{sale['id']}/cancel")
-    assert response.status_code == 403
+    assert response.status_code == 401
+
+
+def test_operador_cannot_apply_discount(operador_client: TestClient, stocked_product: dict):
+    product_id = stocked_product["id"]
+    response = operador_client.post(
+        "/sales/",
+        json={
+            "items": [{"product_id": product_id, "quantity": 1}],
+            "discount_amount": "5.00",
+        },
+    )
+    assert response.status_code == 401
 
 
 def test_operador_cannot_move_stock(operador_client: TestClient, product: dict):
@@ -117,12 +131,26 @@ def test_gerente_can_cancel_sale(gerente_client: TestClient, stocked_product: di
     assert response.json()["status"] == "Cancelada"
 
 
+def test_gerente_can_apply_discount(gerente_client: TestClient, stocked_product: dict):
+    product_id = stocked_product["id"]
+    response = gerente_client.post(
+        "/sales/",
+        json={
+            "items": [{"product_id": product_id, "quantity": 1}],
+            "discount_amount": "10.00",
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["discount_amount"] == "10.00"
+    assert response.json()["total_amount"] == "40.00"
+
+
 def test_gerente_cannot_create_user(gerente_client: TestClient):
     response = gerente_client.post(
         "/users/",
         json={
             "full_name": "Hack Gerente",
-            "cpf": "99999999999",
+            "cpf": build_cpf(402),
             "email": "hackger@test.local",
             "username": "hackger",
             "password": "hack1234",

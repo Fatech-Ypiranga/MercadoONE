@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -27,15 +28,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-can";
-import { listBrands } from "@/lib/api/brands-api";
 import { listCategories } from "@/lib/api/categories-api";
 import {
   createProduct,
   deleteProduct,
+  getProduct,
   listProducts,
   updateProduct,
   type ProductResponse,
 } from "@/lib/api/products-api";
+import { listSuppliers } from "@/lib/api/suppliers-api";
 import { errorMessage, formatMoney } from "@/lib/format";
 import { liveQueryOptions } from "@/lib/live-query";
 
@@ -43,25 +45,41 @@ type FormState = {
   name: string;
   sku: string;
   barcode: string;
+  description: string;
   cost_price: string;
   sale_price: string;
+  weight_net: string;
+  weight_gross: string;
   category_id: string;
-  brand_id: string;
+  primary_supplier_id: string;
   unit_of_measure: "UN" | "KG" | "CX";
   is_active: boolean;
+  ncm: string;
+  cest: string;
+  cfop_default: string;
+  origem_produto: string;
 };
 
 const emptyForm: FormState = {
   name: "",
   sku: "",
   barcode: "",
+  description: "",
   cost_price: "0",
   sale_price: "0",
+  weight_net: "",
+  weight_gross: "",
   category_id: "",
-  brand_id: "",
+  primary_supplier_id: "",
   unit_of_measure: "UN",
   is_active: true,
+  ncm: "",
+  cest: "",
+  cfop_default: "",
+  origem_produto: "",
 };
+
+const PAGE_SIZE = 50;
 
 export default function ProductsPage() {
   const canWrite = useCan("products", "write");
@@ -71,14 +89,23 @@ export default function ProductsPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [loadingProductId, setLoadingProductId] = useState<number | null>(null);
 
   const products = useQuery({
-    queryKey: ["products"],
-    queryFn: listProducts,
+    queryKey: ["products", search, supplierFilter, offset, PAGE_SIZE],
+    queryFn: () =>
+      listProducts({
+        q: search.trim() || undefined,
+        primary_supplier_id: supplierFilter ? Number(supplierFilter) : undefined,
+        offset,
+        limit: PAGE_SIZE,
+      }),
     ...liveQueryOptions,
   });
   const categories = useQuery({ queryKey: ["categories"], queryFn: listCategories });
-  const brands = useQuery({ queryKey: ["brands"], queryFn: listBrands });
+  const suppliers = useQuery({ queryKey: ["suppliers"], queryFn: listSuppliers });
 
   const categoryMap = useMemo(() => {
     const map = new Map<number, string>();
@@ -86,31 +113,62 @@ export default function ProductsPage() {
     return map;
   }, [categories.data]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return products.data ?? [];
-    return (products.data ?? []).filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        (p.barcode ?? "").toLowerCase().includes(q),
+  const supplierMap = useMemo(() => {
+    const map = new Map<number, string>();
+    suppliers.data?.forEach((supplier) =>
+      map.set(
+        supplier.id,
+        supplier.code ? `${supplier.code} — ${supplier.name}` : supplier.name,
+      ),
     );
-  }, [products.data, search]);
+    return map;
+  }, [suppliers.data]);
+
+  const leafCategories = useMemo(() => {
+    const all = categories.data ?? [];
+    const childParentIds = new Set(all.filter((c) => c.parent_id != null).map((c) => c.parent_id!));
+    return all.filter(
+      (c) => c.parent_id != null || !childParentIds.has(c.id),
+    );
+  }, [categories.data]);
+
+  const categoryLabel = (c: { id: number; name: string; parent_id?: number | null }) => {
+    if (c.parent_id != null) {
+      const parent = categoryMap.get(c.parent_id);
+      return parent ? `${parent} / ${c.name}` : c.name;
+    }
+    return c.name;
+  };
 
   const save = useMutation({
     mutationFn: async () => {
+      const hasFiscal = Boolean(
+        form.ncm.trim() ||
+          form.cest.trim() ||
+          form.cfop_default.trim() ||
+          form.origem_produto.trim(),
+      );
       const payload = {
         name: form.name.trim(),
         sku: form.sku.trim(),
         barcode: form.barcode.trim() || null,
+        description: form.description.trim() || null,
         cost_price: form.cost_price || "0",
         sale_price: form.sale_price || "0",
-        weight_net: "0",
-        weight_gross: "0",
+        weight_net: form.weight_net || null,
+        weight_gross: form.weight_gross || null,
         category_id: Number(form.category_id),
-        brand_id: form.brand_id ? Number(form.brand_id) : null,
+        primary_supplier_id: Number(form.primary_supplier_id),
         unit_of_measure: form.unit_of_measure,
         is_active: form.is_active,
+        fiscal: hasFiscal
+          ? {
+              ncm: form.ncm.trim(),
+              cest: form.cest.trim() || null,
+              cfop_default: form.cfop_default.trim(),
+              origem_produto: Number(form.origem_produto),
+            }
+          : null,
       };
       if (editing) return updateProduct(editing.id, payload);
       return createProduct(payload);
@@ -137,27 +195,50 @@ export default function ProductsPage() {
     setEditing(null);
     setForm({
       ...emptyForm,
-      category_id: categories.data?.[0] ? String(categories.data[0].id) : "",
+      category_id: leafCategories[0] ? String(leafCategories[0].id) : "",
+      primary_supplier_id: suppliers.data?.[0]
+        ? String(suppliers.data[0].id)
+        : "",
     });
     setError(null);
     setOpen(true);
   }
 
-  function openEdit(item: ProductResponse) {
-    setEditing(item);
-    setForm({
-      name: item.name,
-      sku: item.sku,
-      barcode: item.barcode ?? "",
-      cost_price: String(item.cost_price),
-      sale_price: String(item.sale_price),
-      category_id: String(item.category_id),
-      brand_id: item.brand_id ? String(item.brand_id) : "",
-      unit_of_measure: item.unit_of_measure,
-      is_active: item.is_active,
-    });
+  async function openEdit(item: ProductResponse) {
+    setLoadingProductId(item.id);
     setError(null);
-    setOpen(true);
+    try {
+      const detail = await getProduct(item.id);
+      setEditing(detail);
+      setForm({
+        name: detail.name,
+        sku: detail.sku,
+        barcode: detail.barcode ?? "",
+        description: detail.description ?? "",
+        cost_price: String(detail.cost_price),
+        sale_price: String(detail.sale_price),
+        weight_net: detail.weight_net == null ? "" : String(detail.weight_net),
+        weight_gross: detail.weight_gross == null ? "" : String(detail.weight_gross),
+        category_id: String(detail.category_id),
+        primary_supplier_id: detail.primary_supplier_id
+          ? String(detail.primary_supplier_id)
+          : "",
+        unit_of_measure: detail.unit_of_measure,
+        is_active: detail.is_active,
+        ncm: detail.fiscal?.ncm ?? "",
+        cest: detail.fiscal?.cest ?? "",
+        cfop_default: detail.fiscal?.cfop_default ?? "",
+        origem_produto:
+          detail.fiscal?.origem_produto == null
+            ? ""
+            : String(detail.fiscal.origem_produto),
+      });
+      setOpen(true);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoadingProductId(null);
+    }
   }
 
   return (
@@ -178,13 +259,32 @@ export default function ProductsPage() {
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-3">
         <Input
-          placeholder="Buscar por nome, SKU ou código de barras…"
+          placeholder="Buscar por nome, SKU, código de barras ou material…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setOffset(0);
+          }}
           className="max-w-md"
         />
+        <select
+          className="h-8 min-w-64 rounded-lg border border-input bg-transparent px-2 text-sm"
+          value={supplierFilter}
+          onChange={(event) => {
+            setSupplierFilter(event.target.value);
+            setOffset(0);
+          }}
+        >
+          <option value="">Todos os fornecedores</option>
+          {suppliers.data?.map((supplier) => (
+            <option key={supplier.id} value={supplier.id}>
+              {supplier.code ? `${supplier.code} — ` : ""}
+              {supplier.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <ErrorAlert
@@ -193,16 +293,18 @@ export default function ProductsPage() {
 
       {products.isLoading ? (
         <LoadingState />
-      ) : !filtered.length ? (
+      ) : !products.data?.length ? (
         <EmptyState message="Nenhum produto encontrado." />
       ) : (
         <div className="rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Material</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Categoria</TableHead>
+                <TableHead>Fornecedor principal</TableHead>
                 <TableHead className="text-right">Custo</TableHead>
                 <TableHead className="text-right">Venda</TableHead>
                 <TableHead>Status</TableHead>
@@ -210,12 +312,25 @@ export default function ProductsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((item) => (
+              {products.data.map((item) => (
                 <TableRow key={item.id}>
+                  <TableCell className="font-mono text-xs">
+                    {item.material_code}
+                  </TableCell>
                   <TableCell className="font-mono text-xs">{item.sku}</TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>
                     {categoryMap.get(item.category_id) ?? item.category_id}
+                  </TableCell>
+                  <TableCell>
+                    {item.primary_supplier_id
+                      ? (supplierMap.get(item.primary_supplier_id) ??
+                        item.primary_supplier_id)
+                      : (
+                        <Badge variant="destructive">
+                          Regularização obrigatória
+                        </Badge>
+                      )}
                   </TableCell>
                   <TableCell className="text-right">
                     {formatMoney(item.cost_price)}
@@ -234,9 +349,10 @@ export default function ProductsPage() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => openEdit(item)}
+                        disabled={loadingProductId === item.id}
+                        onClick={() => void openEdit(item)}
                       >
-                        Editar
+                        {loadingProductId === item.id ? "Carregando…" : "Editar"}
                       </Button>
                       <Button
                         type="button"
@@ -259,6 +375,28 @@ export default function ProductsPage() {
         </div>
       )}
 
+      <div className="mt-4 flex items-center justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={offset === 0 || products.isFetching}
+          onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))}
+        >
+          Anterior
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          Página {Math.floor(offset / PAGE_SIZE) + 1}
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={(products.data?.length ?? 0) < PAGE_SIZE || products.isFetching}
+          onClick={() => setOffset((current) => current + PAGE_SIZE)}
+        >
+          Próxima
+        </Button>
+      </div>
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
@@ -267,6 +405,12 @@ export default function ProductsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
+            {editing ? (
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Código interno de material</Label>
+                <Input value={editing.material_code} readOnly disabled />
+              </div>
+            ) : null}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Nome</Label>
               <Input
@@ -288,6 +432,15 @@ export default function ProductsPage() {
                 onChange={(e) => setForm((p) => ({ ...p, barcode: e.target.value }))}
               />
             </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Descrição</Label>
+              <Textarea
+                value={form.description}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, description: e.target.value }))
+                }
+              />
+            </div>
             <div className="space-y-1.5">
               <Label>Preço de custo</Label>
               <Input
@@ -296,6 +449,30 @@ export default function ProductsPage() {
                 value={form.cost_price}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, cost_price: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Peso líquido</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.001"
+                value={form.weight_net}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, weight_net: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Peso bruto</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.001"
+                value={form.weight_gross}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, weight_gross: e.target.value }))
                 }
               />
             </div>
@@ -320,29 +497,35 @@ export default function ProductsPage() {
                 }
               >
                 <option value="">Selecione…</option>
-                {categories.data?.map((c) => (
+                {leafCategories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {categoryLabel(c)}
                   </option>
                 ))}
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label>Marca</Label>
+              <Label>Fornecedor principal</Label>
               <select
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
-                value={form.brand_id}
+                value={form.primary_supplier_id}
                 onChange={(e) =>
-                  setForm((p) => ({ ...p, brand_id: e.target.value }))
+                  setForm((p) => ({ ...p, primary_supplier_id: e.target.value }))
                 }
               >
-                <option value="">—</option>
-                {brands.data?.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
+                <option value="">Selecione…</option>
+                {suppliers.data?.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.code ? `${supplier.code} — ` : ""}
+                    {supplier.name}
                   </option>
                 ))}
               </select>
+              {editing?.primary_supplier_id == null ? (
+                <p className="text-xs text-destructive">
+                  Produto legado: selecione um fornecedor antes de salvar.
+                </p>
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <Label>Unidade</Label>
@@ -371,6 +554,58 @@ export default function ProductsPage() {
               />
               Ativo
             </label>
+            <div className="sm:col-span-2 mt-2 border-t border-border pt-3">
+              <p className="text-sm font-medium">Dados fiscais (opcional)</p>
+              <p className="text-xs text-muted-foreground">
+                Ao preencher, informe NCM, CFOP e origem.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>NCM</Label>
+              <Input
+                inputMode="numeric"
+                maxLength={8}
+                value={form.ncm}
+                onChange={(e) => setForm((p) => ({ ...p, ncm: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CEST</Label>
+              <Input
+                inputMode="numeric"
+                maxLength={7}
+                value={form.cest}
+                onChange={(e) => setForm((p) => ({ ...p, cest: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CFOP padrão</Label>
+              <Input
+                inputMode="numeric"
+                maxLength={4}
+                value={form.cfop_default}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, cfop_default: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Origem do produto</Label>
+              <select
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
+                value={form.origem_produto}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, origem_produto: e.target.value }))
+                }
+              >
+                <option value="">Selecione…</option>
+                {Array.from({ length: 9 }, (_, value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <ErrorAlert message={error} />
           <DialogFooter>
@@ -383,6 +618,16 @@ export default function ProductsPage() {
                 !form.name.trim() ||
                 !form.sku.trim() ||
                 !form.category_id ||
+                !form.primary_supplier_id ||
+                (Boolean(
+                  form.ncm.trim() ||
+                    form.cest.trim() ||
+                    form.cfop_default.trim() ||
+                    form.origem_produto.trim(),
+                ) &&
+                  (!form.ncm.trim() ||
+                    !form.cfop_default.trim() ||
+                    !form.origem_produto.trim())) ||
                 save.isPending
               }
               onClick={() => save.mutate()}

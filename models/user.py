@@ -37,11 +37,20 @@ class UserPasswordReset(SQLModel):
     new_password: str = Field(min_length=6, max_length=128)
 
 
+class UserPdvPinResponse(SQLModel):
+    user_id: int
+    pdv_id: str
+    pdv_pin: str
+    message: str = "PIN gerado. Guarde agora — não será exibido novamente."
+
+
 class UserResponse(UserBase):
     id: int
     company_id: int
     default_branch_id: Optional[int] = None
     default_store_id: Optional[int] = None
+    pdv_id: Optional[str] = None
+    has_pdv_pin: bool = False
     created_at: datetime
     updated_at: datetime
     created_by: Optional[int] = None
@@ -80,10 +89,13 @@ class User(UserBase, table=True):
         UniqueConstraint("company_id", "cpf", name="uq_users_company_cpf"),
         UniqueConstraint("company_id", "email", name="uq_users_company_email"),
         UniqueConstraint("company_id", "username", name="uq_users_company_username"),
+        UniqueConstraint("company_id", "pdv_id", name="uq_users_company_pdv_id"),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     password_hash: str = Field(max_length=255)
+    pdv_id: Optional[str] = Field(default=None, max_length=6, index=True)
+    pdv_pin_hash: Optional[str] = Field(default=None, max_length=255)
     company_id: int = Field(foreign_key="companies.id", index=True)
     default_branch_id: Optional[int] = Field(default=None, foreign_key="branches.id")
     default_store_id: Optional[int] = Field(default=None, foreign_key="stores.id")

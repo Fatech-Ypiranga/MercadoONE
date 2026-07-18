@@ -6,9 +6,24 @@ export type ProductDetailResponse = components["schemas"]["ProductDetailResponse
 export type ProductCreate = components["schemas"]["ProductCreate"];
 export type ProductUpdate = components["schemas"]["ProductUpdate"];
 
-export async function listProducts(): Promise<ProductResponse[]> {
+export type ListProductsQuery = {
+  q?: string;
+  offset?: number;
+  limit?: number;
+  category_id?: number;
+  material_code?: string;
+  primary_supplier_id?: number;
+  is_active?: boolean;
+};
+
+export function listProducts(): Promise<ProductResponse[]>;
+export function listProducts(query: ListProductsQuery): Promise<ProductResponse[]>;
+export async function listProducts(query?: ListProductsQuery): Promise<ProductResponse[]> {
   return unwrapPageItems<ProductResponse>(
-    apiFetch("/products/", { method: "get", query: { limit: 200 } }),
+    apiFetch("/products/", {
+      method: "get",
+      query: { ...query, limit: query?.limit ?? 50 },
+    }),
   );
 }
 

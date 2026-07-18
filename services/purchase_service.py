@@ -1,12 +1,14 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
+from pydantic import ValidationError as PydanticValidationError
 from sqlmodel import Session
 
-from models.product import Product, ProductFiscal, UnitOfMeasure
+from models.product import Product, ProductCreate, ProductFiscalCreate, UnitOfMeasure
 from models.purchase import (
     NfeInvoicePreview,
     NfeItemPreview,
+    NfeSupplierAddressPreview,
     NfeSupplierPreview,
     NfeUploadPreviewResponse,
     PurchaseConfirmItemInput,
@@ -19,8 +21,7 @@ from models.purchase import (
     SupplierProductMapping,
 )
 from models.stock_movement import MovementReason, MovementType, StockMovement
-from models.supplier import Supplier
-from repositories.category_repository import CategoryRepository
+from models.supplier import Supplier, SupplierAddressCreate, SupplierCreate
 from repositories.movement_repository import MovementRepository
 from repositories.product_repository import ProductRepository
 from repositories.purchase_repository import PurchaseRepository, SupplierMappingRepository
@@ -29,11 +30,15 @@ from repositories.supplier_repository import SupplierRepository
 from services.audit_service import AuditService
 from services.exceptions import (
     BusinessRuleException,
+    ConflictException,
     InsufficientStockException,
     ResourceNotFoundException,
     ValidationError,
 )
 from services.nfe_parser import ParsedNfeItem, calculate_entry_unit_cost, parse_nfe_xml
+from services.product_service import ProductService
+from services.supplier_service import SupplierService
+from utils.cnpj import normalize_cnpj
 from utils.enums import AuditAction, PurchaseStatus
 
 
@@ -46,7 +51,7 @@ class PurchaseService:
     ) -> NfeUploadPreviewResponse:
         parsed = parse_nfe_xml(xml_content)
         supplier = SupplierRepository.find_by_document(
-            self.db, parsed.supplier.document, company_id
+            self.db, normalize_cnpj(parsed.supplier.document), company_id
         )
         items = [
             self._build_item_preview(parsed_item, supplier.id if supplier else None, company_id)
@@ -59,6 +64,7 @@ class PurchaseService:
                 name=parsed.supplier.name,
                 trade_name=parsed.supplier.trade_name,
                 state_registration=parsed.supplier.state_registration,
+                address=NfeSupplierAddressPreview(**vars(parsed.supplier.address)),
                 exists_in_database=supplier is not None,
                 supplier_id=supplier.id if supplier else None,
             ),
@@ -80,6 +86,10 @@ class PurchaseService:
         company_id: int,
         store_id: int,
     ) -> PurchaseOrderDetailResponse:
+        if payload.supplier_id is not None and payload.create_supplier:
+            raise ValidationError(
+                "supplier_id and create_supplier=true cannot be provided together."
+            )
         if PurchaseRepository.find_by_invoice_key(self.db, payload.access_key, company_id):
             raise ValidationError(f"Purchase with invoice key {payload.access_key} already exists.")
 
@@ -163,7 +173,12 @@ class PurchaseService:
 
             self.db.commit()
             return self.get_purchase_detail(purchase.id, company_id)
-        except (ValidationError, ResourceNotFoundException, InsufficientStockException):
+        except (
+            ValidationError,
+            ResourceNotFoundException,
+            InsufficientStockException,
+            ConflictException,
+        ):
             self.db.rollback()
             raise
         except Exception as exc:
@@ -209,8 +224,18 @@ class PurchaseService:
             )
 
         supplier = SupplierRepository.find_by_document(
-            self.db, parsed.supplier.document, company_id
+            self.db, normalize_cnpj(parsed.supplier.document), company_id
         )
+        supplier_address = None
+        if supplier is None:
+            try:
+                supplier_address = SupplierAddressCreate.model_validate(
+                    vars(parsed.supplier.address)
+                )
+            except PydanticValidationError as exc:
+                raise ValidationError(
+                    "A complete valid supplier address is required to confirm this NF-e."
+                ) from exc
         payload = PurchaseConfirmRequest(
             access_key=parsed.invoice.access_key,
             invoice_number=parsed.invoice.invoice_number,
@@ -222,6 +247,7 @@ class PurchaseService:
             supplier_trade_name=parsed.supplier.trade_name,
             supplier_document=parsed.supplier.document,
             supplier_state_registration=parsed.supplier.state_registration,
+            supplier_address=supplier_address,
             items=merged_items,
             xml_path=xml_path,
         )
@@ -409,21 +435,31 @@ class PurchaseService:
                 raise ValidationError(
                     "Supplier name and document are required to create a new supplier."
                 )
-            document = "".join(ch for ch in payload.supplier_document if ch.isdigit())
+            document = normalize_cnpj(payload.supplier_document)
             existing = SupplierRepository.find_by_document(self.db, document, company_id)
             if existing:
                 return existing
 
-            supplier = Supplier(
+            if payload.supplier_address is None:
+                raise ValidationError(
+                    "A complete valid supplier address is required to create a supplier."
+                )
+            try:
+                supplier_in = SupplierCreate(
+                    name=payload.supplier_name,
+                    trade_name=payload.supplier_trade_name,
+                    document=payload.supplier_document,
+                    state_registration=payload.supplier_state_registration,
+                    address=payload.supplier_address,
+                )
+            except PydanticValidationError as exc:
+                raise ValidationError(f"Invalid supplier data: {exc}") from exc
+            return SupplierService(self.db).create(
+                supplier_in,
                 company_id=company_id,
-                name=payload.supplier_name,
-                trade_name=payload.supplier_trade_name,
-                document=document,
-                state_registration=payload.supplier_state_registration,
-                created_by=actor_id,
-                updated_by=actor_id,
+                actor_id=actor_id,
+                commit=False,
             )
-            return SupplierRepository.create(self.db, supplier)
 
         raise ValidationError("supplier_id or create_supplier must be provided.")
 
@@ -446,14 +482,10 @@ class PurchaseService:
 
         if confirm_item.create_product is not None:
             create_data = confirm_item.create_product
-            if create_data.sale_price is None:
-                create_data.sale_price = (create_data.cost_price * Decimal("1.35")).quantize(
+            sale_price = create_data.sale_price
+            if sale_price is None:
+                sale_price = (create_data.cost_price * Decimal("1.35")).quantize(
                     Decimal("0.01")
-                )
-
-            if not CategoryRepository.find_by_id(self.db, create_data.category_id, company_id):
-                raise ResourceNotFoundException(
-                    f"Category with ID {create_data.category_id} was not found."
                 )
 
             unit = UnitOfMeasure.UN
@@ -462,30 +494,30 @@ class PurchaseService:
             except ValueError:
                 unit = UnitOfMeasure.UN
 
-            product = Product(
-                company_id=company_id,
-                name=create_data.name,
-                sku=create_data.sku,
-                barcode=create_data.barcode,
-                cost_price=create_data.cost_price,
-                sale_price=create_data.sale_price,
-                unit_of_measure=unit,
-                category_id=create_data.category_id,
-                is_active=True,
-                created_by=actor_id,
-                updated_by=actor_id,
-            )
-            ProductRepository.create(self.db, product)
-
+            fiscal = None
             if create_data.ncm:
-                self.db.add(
-                    ProductFiscal(
-                        product_id=product.id,
-                        ncm=create_data.ncm,
-                        cfop_default="5102",
-                        origem_produto=0,
-                    )
+                fiscal = ProductFiscalCreate(
+                    ncm=create_data.ncm,
+                    cfop_default="5102",
+                    origem_produto=0,
                 )
+
+            product = ProductService(self.db).create(
+                ProductCreate(
+                    name=create_data.name,
+                    sku=create_data.sku,
+                    barcode=create_data.barcode,
+                    cost_price=create_data.cost_price,
+                    sale_price=sale_price,
+                    unit_of_measure=unit,
+                    category_id=create_data.category_id,
+                    primary_supplier_id=supplier.id,
+                    fiscal=fiscal,
+                ),
+                company_id=company_id,
+                actor_id=actor_id,
+                commit=False,
+            )
 
             self._ensure_mapping(supplier.id, confirm_item.supplier_product_code, product.id)
             return product
