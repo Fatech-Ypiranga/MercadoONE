@@ -98,7 +98,13 @@ Seed: 1 empresa (PyERP Demo Ltda) → 1 filial (Matriz) → 1 loja (Loja Centro)
 
 ### Usuários (`/users`) — somente admin
 
-CRUD. Perfis disponíveis: `admin`, `gerente`, `supervisor`, `operador`, `conferente`, `colaborador`.
+CRUD com filtros (`q`, `profile`, `is_active`). Perfis: `admin`, `gerente`, `supervisor`, `operador`, `conferente`, `colaborador`.
+
+Credenciais de PDV (geradas no ERP, nunca no caixa):
+
+- `pdv_id`: 6 dígitos numéricos, únicos por empresa, distintos de `users.id`. Atribuídos a `operador` e Supervisor+ (`supervisor`/`gerente`/`admin`).
+- PIN PDV: 12 dígitos numéricos, só Supervisor+. Gerado/regenerado por admin via `POST /users/{id}/pdv-pin` (one-shot). Armazenado como hash; uso por digitação ou código de barras.
+- CPF validado com dígitos verificadores.
 
 ### Catálogo
 
@@ -125,15 +131,20 @@ de 7 dígitos no servidor e exige `primary_supplier_id`.
 Fluxo em `SaleService.process_sale()`:
 
 1. Valida itens, cliente e estoque
-2. Cria `Sale` + `SaleItem` com status `CONCLUIDA`
+2. Cria `Sale` + `SaleItem` com status `CONCLUIDA` (aceita `discount_amount` opcional)
 3. Registra movimentação `SAIDA` / motivo `VENDA`
 4. Commit atômico
+
+Desconto (`discount_amount` > 0):
+
+- Requer `sales:discount` (Supervisor+) **ou** token de `POST /auth/pdv-authorize` com ação `discount`
 
 Cancelamento (`POST /sales/{id}/cancel`):
 
 - Estorna estoque com `ENTRADA` / motivo `DEVOLUCAO`
 - Muda status para `CANCELADA`
-- Requer permissão `sales:cancel` (admin, gerente, supervisor)
+- Requer `sales:cancel` (Supervisor+) **ou** token de autorização PDV com ação `cancel`
+- Operador autenticado usa `sales:write` + `supervisor_authorization` no body
 
 ### Estoque (`/stock`)
 
@@ -188,7 +199,7 @@ Formato: `modulo:acao` (ex.: `sales:write`, `purchases:read`).
 | categories | R/W   | R/W     | R          | R        | R          | R           |
 | products   | R/W   | R/W     | R          | R        | R          | R           |
 | customers  | R/W   | R/W     | R          | R/W      | R          | R           |
-| sales      | R/W/C | R/W/C   | R/W/C      | R/W      | R          | R           |
+| sales      | R/W/C/D | R/W/C/D | R/W/C/D  | R/W      | R          | R           |
 | stock      | R/W   | R/W     | R/W        | R        | R/W        | R           |
 | reports    | R     | R       | R          | R        | R          | R           |
 | users      | R/W   | —       | —          | —        | —          | —           |
@@ -199,7 +210,7 @@ Formato: `modulo:acao` (ex.: `sales:write`, `purchases:read`).
 | branches   | R/W   | R/W     | R          | R        | R          | R           |
 | stores     | R/W   | R/W     | R          | R        | R          | R           |
 
-R = read, W = write, C = cancel (vendas).
+R = read, W = write, C = cancel (vendas), D = discount (vendas; só Supervisor+).
 
 Definição completa em `auth/permissions.py`.
 

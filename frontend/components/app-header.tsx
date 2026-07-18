@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/components/auth-provider";
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { StoreSelector } from "@/components/store-selector";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,6 +56,7 @@ export function AppHeader() {
 
         <div className="flex items-center gap-2">
           <StoreSelector />
+          <ChangePasswordDialog />
           <Button type="button" variant="outline" size="sm" onClick={logout}>
             Sair
           </Button>

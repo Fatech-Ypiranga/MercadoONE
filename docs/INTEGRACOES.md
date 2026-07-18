@@ -91,8 +91,10 @@ Perfis sugeridos:
 | App | Perfil mínimo | Por quê |
 |-----|---------------|---------|
 | Data Sim (catálogo + compras) | `conferente` ou `gerente` / `admin` | `products:write`, `suppliers:write`, `purchases:write`, `stock:read` |
-| PDV (caixa) | `operador` | `sales:write`, `products:read`, `stock:read` |
-| PDV (cancelar venda) | `supervisor`+ | `sales:cancel` |
+| PDV (caixa) | `operador` | `sales:write`, `products:read`, `stock:read`; autentica com `pdv_id` (6 dígitos) + senha de login |
+| PDV (desconto / cancelar) | `supervisor`+ | `sales:discount` / `sales:cancel`; override via PIN de 12 dígitos gerado no ERP |
+
+Credenciais PDV são geradas **somente no ERP** (admin). O PDV nunca gera PIN. `pdv_id` ≠ `users.id`.
 
 Matriz completa: [`INTERNO.md`](INTERNO.md#matriz-de-permissões).
 
@@ -106,7 +108,7 @@ Config: `PYERP_API_URL` (ex. `http://localhost:8000`).
 
 | Método | Path | Permissão |
 |--------|------|-----------|
-| `POST` | `/auth/login` | público |
+| `POST` | `/auth/login` | público — body: `login`, `password`, `company_document` (CNPJ) |
 | `GET` | `/auth/me` | autenticado |
 
 ### Catálogo (cadastrar **antes** do XML)
@@ -241,8 +243,9 @@ Config: `PYERP_API_URL` + usuário com `default_store_id` ou envio explícito de
 
 | Método | Path | Permissão |
 |--------|------|-----------|
-| `POST` | `/auth/login` | público |
-| `GET` | `/auth/me` | autenticado (obter `default_store`) |
+| `POST` | `/auth/pdv-login` | público — `company_document` + `pdv_id` (6 dígitos) + senha de login |
+| `POST` | `/auth/pdv-authorize` | `sales:write` — Supervisor+ via `pdv_id` + PIN 12 dígitos; ações `discount`/`cancel` |
+| `GET` | `/auth/me` | autenticado (obter `default_store`, `pdv_id`) |
 | `GET` | `/stores/` | listar lojas da empresa (opcional UI) |
 
 ### Produto e estoque
@@ -259,10 +262,10 @@ Config: `PYERP_API_URL` + usuário com `default_store_id` ou envio explícito de
 
 | Método | Path | Permissão | Notas |
 |--------|------|-----------|-------|
-| `POST` | `/sales/` | `sales:write` | Carrinho → venda concluída |
+| `POST` | `/sales/` | `sales:write` | Carrinho → venda; `discount_amount` exige Supervisor+ ou token |
 | `GET` | `/sales/` | `sales:read` | Histórico |
 | `GET` | `/sales/{id}` | `sales:read` | Cupom/detalhe |
-| `POST` | `/sales/{id}/cancel` | `sales:cancel` | Estorno de estoque |
+| `POST` | `/sales/{id}/cancel` | `sales:write` | Estorno; sem `sales:cancel` exige `supervisor_authorization` |
 
 Body de criação:
 
@@ -271,11 +274,15 @@ Body de criação:
   "customer_id": null,
   "payment_method": "dinheiro",
   "store_id": 1,
+  "discount_amount": "0.00",
+  "supervisor_authorization": null,
   "items": [
     { "product_id": 10, "quantity": 2 }
   ]
 }
 ```
+
+Override de Supervisor+ (desconto/cancelamento): o caixa chama `POST /auth/pdv-authorize` com o `pdv_id` e o PIN do supervisor (digitado ou bipado) e envia o `authorization_token` em `supervisor_authorization`. O PIN **não** é gerado no PDV.
 
 Preço vem do cadastro do produto no ERP (não envie preço unitário no MVP).
 

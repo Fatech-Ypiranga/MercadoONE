@@ -46,6 +46,93 @@
         }
       }
     },
+    "/auth/pdv-login": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Autenticar no PDV por ID de PDV + senha de login",
+        "operationId": "pdv_login_auth_pdv_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PdvLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/pdv-authorize": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Autorizar override de Supervisor+ no PDV (desconto/cancelamento)",
+        "operationId": "pdv_authorize_auth_pdv_authorize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PdvAuthorizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdvAuthorizeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/auth/me": {
       "get": {
         "tags": [
@@ -124,6 +211,56 @@
           }
         ],
         "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Busca por nome, login, CPF ou PDV ID",
+              "title": "Q"
+            },
+            "description": "Busca por nome, login, CPF ou PDV ID"
+          },
+          {
+            "name": "profile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/UserProfile"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile"
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Active"
+            }
+          },
           {
             "name": "offset",
             "in": "query",
@@ -390,6 +527,100 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{user_id}/pdv-pin": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Gerar/regenerar PIN PDV do Supervisor+ (somente admin)",
+        "operationId": "generate_pdv_pin_users__user_id__pdv_pin_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPdvPinResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{user_id}/pdv-id/regenerate": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Regenerar ID de PDV (somente admin)",
+        "operationId": "regenerate_pdv_id_users__user_id__pdv_id_regenerate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2195,6 +2426,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaleCancelInput",
+                "default": {}
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -5047,12 +5288,18 @@
           "password": {
             "type": "string",
             "title": "Password"
+          },
+          "company_document": {
+            "type": "string",
+            "title": "Company Document",
+            "description": "CNPJ da empresa (com ou sem pontuação)"
           }
         },
         "type": "object",
         "required": [
           "login",
-          "password"
+          "password",
+          "company_document"
         ],
         "title": "LoginRequest"
       },
@@ -5187,6 +5434,22 @@
               }
             ],
             "title": "Default Store Id"
+          },
+          "pdv_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdv Id"
+          },
+          "has_pdv_pin": {
+            "type": "boolean",
+            "title": "Has Pdv Pin",
+            "default": false
           },
           "created_at": {
             "type": "string",
@@ -5987,6 +6250,107 @@
           "limit"
         ],
         "title": "Page[UserResponse]"
+      },
+      "PdvAuthorizeRequest": {
+        "properties": {
+          "pdv_id": {
+            "type": "string",
+            "title": "Pdv Id",
+            "description": "ID de PDV do Supervisor+"
+          },
+          "pin": {
+            "type": "string",
+            "title": "Pin",
+            "description": "PIN numérico de 12 dígitos"
+          },
+          "actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Actions",
+            "description": "Ações a autorizar: discount, cancel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pdv_id",
+          "pin",
+          "actions"
+        ],
+        "title": "PdvAuthorizeRequest"
+      },
+      "PdvAuthorizeResponse": {
+        "properties": {
+          "authorization_token": {
+            "type": "string",
+            "title": "Authorization Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          },
+          "actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Actions"
+          },
+          "supervisor_user_id": {
+            "type": "integer",
+            "title": "Supervisor User Id"
+          },
+          "supervisor_pdv_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supervisor Pdv Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "authorization_token",
+          "token_type",
+          "expires_in",
+          "actions",
+          "supervisor_user_id"
+        ],
+        "title": "PdvAuthorizeResponse"
+      },
+      "PdvLoginRequest": {
+        "properties": {
+          "company_document": {
+            "type": "string",
+            "title": "Company Document"
+          },
+          "pdv_id": {
+            "type": "string",
+            "title": "Pdv Id",
+            "description": "ID de PDV com 6 dígitos"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password",
+            "description": "Senha de login do usuário"
+          }
+        },
+        "type": "object",
+        "required": [
+          "company_document",
+          "pdv_id",
+          "password"
+        ],
+        "title": "PdvLoginRequest"
       },
       "ProductCreate": {
         "properties": {
@@ -7409,6 +7773,23 @@
         ],
         "title": "PurchaseStatus"
       },
+      "SaleCancelInput": {
+        "properties": {
+          "supervisor_authorization": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supervisor Authorization"
+          }
+        },
+        "type": "object",
+        "title": "SaleCancelInput"
+      },
       "SaleCreateInput": {
         "properties": {
           "customer_id": {
@@ -7443,6 +7824,34 @@
               }
             ],
             "title": "Store Id"
+          },
+          "discount_amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount Amount"
+          },
+          "supervisor_authorization": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supervisor Authorization",
+            "description": "Token de autorização Supervisor+ (desconto/cancelamento no PDV)"
           },
           "items": {
             "items": {
@@ -7492,6 +7901,12 @@
             "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)",
             "title": "Total Amount",
             "default": 0.0
+          },
+          "discount_amount": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)",
+            "title": "Discount Amount",
+            "default": "0.00"
           },
           "payment_method": {
             "anyOf": [
@@ -8573,6 +8988,34 @@
         ],
         "title": "UserPasswordReset"
       },
+      "UserPdvPinResponse": {
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "pdv_id": {
+            "type": "string",
+            "title": "Pdv Id"
+          },
+          "pdv_pin": {
+            "type": "string",
+            "title": "Pdv Pin"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "PIN gerado. Guarde agora — não será exibido novamente."
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "pdv_id",
+          "pdv_pin"
+        ],
+        "title": "UserPdvPinResponse"
+      },
       "UserProfile": {
         "type": "string",
         "enum": [
@@ -8659,6 +9102,22 @@
               }
             ],
             "title": "Default Store Id"
+          },
+          "pdv_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdv Id"
+          },
+          "has_pdv_pin": {
+            "type": "boolean",
+            "title": "Has Pdv Pin",
+            "default": false
           },
           "created_at": {
             "type": "string",

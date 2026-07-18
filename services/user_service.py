@@ -1,25 +1,51 @@
-import re
 from datetime import datetime, timezone
 
 from sqlmodel import Session
 
 from auth.security import hash_password
-from models.user import User, UserCreate, UserUpdate
+from models.user import User, UserCreate, UserPdvPinResponse, UserResponse, UserUpdate
 from repositories.company_repository import BranchRepository, StoreRepository
 from repositories.user_repository import UserRepository
 from services.audit_service import AuditService
 from services.exceptions import ConflictException, ResourceNotFoundException, ValidationError
-from utils.enums import AuditAction
+from services.pdv_credentials import (
+    PDV_PIN_LENGTH,
+    ensure_pdv_id,
+    generate_pdv_id,
+    generate_pdv_pin,
+    is_pdv_eligible,
+    is_supervisor_plus,
+)
+from utils.cpf import is_valid_cpf, normalize_cpf
+from utils.enums import AuditAction, UserProfile
 
-CPF_PATTERN = re.compile(r"^\d{11}$")
+
+def to_user_response(user: User) -> UserResponse:
+    data = UserResponse.model_validate(user)
+    data.has_pdv_pin = bool(user.pdv_pin_hash)
+    return data
 
 
 class UserService:
     def __init__(self, db: Session):
         self.db = db
 
-    def list_users(self, company_id: int) -> list[User]:
-        return UserRepository.find_all(self.db, company_id=company_id, include_inactive=True)
+    def list_users(
+        self,
+        company_id: int,
+        *,
+        q: str | None = None,
+        profile: UserProfile | None = None,
+        is_active: bool | None = None,
+    ) -> list[User]:
+        return UserRepository.find_all(
+            self.db,
+            company_id=company_id,
+            include_inactive=True,
+            q=q,
+            profile=profile,
+            is_active=is_active,
+        )
 
     def get_by_id(self, user_id: int, company_id: int) -> User:
         user = UserRepository.find_by_id(self.db, user_id, company_id=company_id)
@@ -28,7 +54,8 @@ class UserService:
         return user
 
     def create_user(self, user_in: UserCreate, *, company_id: int, actor_id: int) -> User:
-        self._validate_unique_fields(company_id, user_in.cpf, user_in.email, user_in.username)
+        cpf = self._normalize_and_validate_cpf(user_in.cpf)
+        self._validate_unique_fields(company_id, cpf, user_in.email, user_in.username)
         self._validate_login_identifiers(user_in.email, user_in.username)
         self._validate_org_defaults(
             company_id,
@@ -38,7 +65,7 @@ class UserService:
 
         user = User(
             full_name=user_in.full_name,
-            cpf=user_in.cpf,
+            cpf=cpf,
             email=user_in.email,
             username=user_in.username,
             profile=user_in.profile,
@@ -51,6 +78,8 @@ class UserService:
             updated_by=actor_id,
         )
         UserRepository.create(self.db, user)
+        ensure_pdv_id(self.db, user)
+        self.db.add(user)
 
         AuditService(self.db).log(
             user_id=actor_id,
@@ -58,7 +87,7 @@ class UserService:
             action=AuditAction.CREATE,
             entity_type="user",
             entity_id=user.id,
-            details={"profile": user.profile.value},
+            details={"profile": user.profile.value, "pdv_id": user.pdv_id},
         )
         self.db.commit()
         self.db.refresh(user)
@@ -71,6 +100,7 @@ class UserService:
         update_data = user_in.model_dump(exclude_unset=True)
 
         if "cpf" in update_data:
+            update_data["cpf"] = self._normalize_and_validate_cpf(update_data["cpf"])
             existing = UserRepository.find_by_cpf(
                 self.db, update_data["cpf"], company_id=company_id
             )
@@ -108,6 +138,15 @@ class UserService:
         for field_name, field_value in update_data.items():
             setattr(user, field_name, field_value)
 
+        if is_pdv_eligible(user.profile):
+            ensure_pdv_id(self.db, user)
+        else:
+            user.pdv_id = None
+            user.pdv_pin_hash = None
+
+        if not is_supervisor_plus(user.profile):
+            user.pdv_pin_hash = None
+
         user.updated_at = datetime.now(timezone.utc)
         user.updated_by = actor_id
         self.db.add(user)
@@ -119,7 +158,7 @@ class UserService:
             action=action,
             entity_type="user",
             entity_id=user.id,
-            details=update_data,
+            details={k: (v.value if hasattr(v, "value") else v) for k, v in update_data.items()},
         )
         self.db.commit()
         self.db.refresh(user)
@@ -144,6 +183,52 @@ class UserService:
         self.db.commit()
         self.db.refresh(user)
         return user
+
+    def regenerate_pdv_id(self, user_id: int, *, company_id: int, actor_id: int) -> User:
+        user = self.get_by_id(user_id, company_id)
+        if not is_pdv_eligible(user.profile):
+            raise ValidationError("Only PDV-eligible profiles can have a PDV ID.")
+        user.pdv_id = generate_pdv_id(self.db, company_id)
+        user.updated_at = datetime.now(timezone.utc)
+        user.updated_by = actor_id
+        self.db.add(user)
+        AuditService(self.db).log(
+            user_id=actor_id,
+            company_id=company_id,
+            action=AuditAction.UPDATE,
+            entity_type="user",
+            entity_id=user.id,
+            details={"pdv_id": user.pdv_id},
+        )
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+
+    def generate_pdv_pin(self, user_id: int, *, company_id: int, actor_id: int) -> UserPdvPinResponse:
+        user = self.get_by_id(user_id, company_id)
+        if not is_supervisor_plus(user.profile):
+            raise ValidationError("Only Supervisor+ profiles can have a PDV PIN.")
+        ensure_pdv_id(self.db, user)
+        pin = generate_pdv_pin()
+        if len(pin) != PDV_PIN_LENGTH or not pin.isdigit():
+            raise ValidationError("Failed to generate a valid PDV PIN.")
+
+        user.pdv_pin_hash = hash_password(pin)
+        user.updated_at = datetime.now(timezone.utc)
+        user.updated_by = actor_id
+        self.db.add(user)
+
+        AuditService(self.db).log(
+            user_id=actor_id,
+            company_id=company_id,
+            action=AuditAction.PASSWORD_CHANGE,
+            entity_type="user",
+            entity_id=user.id,
+            details={"pdv_pin_regenerated": True},
+        )
+        self.db.commit()
+        self.db.refresh(user)
+        return UserPdvPinResponse(user_id=user.id, pdv_id=user.pdv_id or "", pdv_pin=pin)
 
     def delete(self, user_id: int, *, company_id: int, actor_id: int) -> None:
         if user_id == actor_id:
@@ -171,9 +256,6 @@ class UserService:
     def _validate_unique_fields(
         self, company_id: int, cpf: str, email: str | None, username: str | None
     ) -> None:
-        if not CPF_PATTERN.match(cpf):
-            raise ValidationError("CPF must contain exactly 11 digits.")
-
         if UserRepository.find_by_cpf(self.db, cpf, company_id=company_id):
             raise ValidationError("CPF already registered.")
         if email and UserRepository.find_by_email(self.db, email, company_id=company_id):
@@ -199,6 +281,13 @@ class UserService:
                 raise ValidationError("Invalid default_store_id for this company.")
             if default_branch_id is not None and store.branch_id != default_branch_id:
                 raise ValidationError("default_store_id does not belong to default_branch_id.")
+
+    @staticmethod
+    def _normalize_and_validate_cpf(cpf: str) -> str:
+        normalized = normalize_cpf(cpf)
+        if not is_valid_cpf(normalized):
+            raise ValidationError("CPF must be a valid 11-digit document.")
+        return normalized
 
     @staticmethod
     def _validate_login_identifiers(email: str | None, username: str | None) -> None:

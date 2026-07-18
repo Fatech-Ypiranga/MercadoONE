@@ -21,6 +21,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/pdv-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Autenticar no PDV por ID de PDV + senha de login */
+        post: operations["pdv_login_auth_pdv_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/pdv-authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Autorizar override de Supervisor+ no PDV (desconto/cancelamento) */
+        post: operations["pdv_authorize_auth_pdv_authorize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/me": {
         parameters: {
             query?: never;
@@ -110,6 +144,40 @@ export interface paths {
         head?: never;
         /** Redefinir senha do usuário (somente admin) */
         patch: operations["reset_password_users__user_id__password_patch"];
+        trace?: never;
+    };
+    "/users/{user_id}/pdv-pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gerar/regenerar PIN PDV do Supervisor+ (somente admin) */
+        post: operations["generate_pdv_pin_users__user_id__pdv_pin_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{user_id}/pdv-id/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerar ID de PDV (somente admin) */
+        post: operations["regenerate_pdv_id_users__user_id__pdv_id_regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/audit-log/": {
@@ -1271,6 +1339,11 @@ export interface components {
             login: string;
             /** Password */
             password: string;
+            /**
+             * Company Document
+             * @description CNPJ da empresa (com ou sem pontuação)
+             */
+            company_document: string;
         };
         /** MeBranchInfo */
         MeBranchInfo: {
@@ -1317,6 +1390,13 @@ export interface components {
             default_branch_id?: number | null;
             /** Default Store Id */
             default_store_id?: number | null;
+            /** Pdv Id */
+            pdv_id?: string | null;
+            /**
+             * Has Pdv Pin
+             * @default false
+             */
+            has_pdv_pin: boolean;
             /**
              * Created At
              * Format: date-time
@@ -1564,6 +1644,54 @@ export interface components {
             offset: number;
             /** Limit */
             limit: number;
+        };
+        /** PdvAuthorizeRequest */
+        PdvAuthorizeRequest: {
+            /**
+             * Pdv Id
+             * @description ID de PDV do Supervisor+
+             */
+            pdv_id: string;
+            /**
+             * Pin
+             * @description PIN numérico de 12 dígitos
+             */
+            pin: string;
+            /**
+             * Actions
+             * @description Ações a autorizar: discount, cancel
+             */
+            actions: string[];
+        };
+        /** PdvAuthorizeResponse */
+        PdvAuthorizeResponse: {
+            /** Authorization Token */
+            authorization_token: string;
+            /** Token Type */
+            token_type: string;
+            /** Expires In */
+            expires_in: number;
+            /** Actions */
+            actions: string[];
+            /** Supervisor User Id */
+            supervisor_user_id: number;
+            /** Supervisor Pdv Id */
+            supervisor_pdv_id?: string | null;
+        };
+        /** PdvLoginRequest */
+        PdvLoginRequest: {
+            /** Company Document */
+            company_document: string;
+            /**
+             * Pdv Id
+             * @description ID de PDV com 6 dígitos
+             */
+            pdv_id: string;
+            /**
+             * Password
+             * @description Senha de login do usuário
+             */
+            password: string;
         };
         /** ProductCreate */
         ProductCreate: {
@@ -2018,6 +2146,11 @@ export interface components {
          * @enum {string}
          */
         PurchaseStatus: "Rascunho" | "Confirmado" | "Cancelado";
+        /** SaleCancelInput */
+        SaleCancelInput: {
+            /** Supervisor Authorization */
+            supervisor_authorization?: string | null;
+        };
         /** SaleCreateInput */
         SaleCreateInput: {
             /** Customer Id */
@@ -2026,6 +2159,13 @@ export interface components {
             payment_method?: string | null;
             /** Store Id */
             store_id?: number | null;
+            /** Discount Amount */
+            discount_amount?: number | string | null;
+            /**
+             * Supervisor Authorization
+             * @description Token de autorização Supervisor+ (desconto/cancelamento no PDV)
+             */
+            supervisor_authorization?: string | null;
             /** Items */
             items: components["schemas"]["SaleItemInput"][];
         };
@@ -2045,6 +2185,11 @@ export interface components {
              * @default 0
              */
             total_amount: string;
+            /**
+             * Discount Amount
+             * @default 0.00
+             */
+            discount_amount: string;
             /** Payment Method */
             payment_method?: string | null;
             /**
@@ -2415,6 +2560,20 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** UserPdvPinResponse */
+        UserPdvPinResponse: {
+            /** User Id */
+            user_id: number;
+            /** Pdv Id */
+            pdv_id: string;
+            /** Pdv Pin */
+            pdv_pin: string;
+            /**
+             * Message
+             * @default PIN gerado. Guarde agora — não será exibido novamente.
+             */
+            message: string;
+        };
         /**
          * UserProfile
          * @enum {string}
@@ -2445,6 +2604,13 @@ export interface components {
             default_branch_id?: number | null;
             /** Default Store Id */
             default_store_id?: number | null;
+            /** Pdv Id */
+            pdv_id?: string | null;
+            /**
+             * Has Pdv Pin
+             * @default false
+             */
+            has_pdv_pin: boolean;
             /**
              * Created At
              * Format: date-time
@@ -2529,6 +2695,72 @@ export interface operations {
             };
         };
     };
+    pdv_login_auth_pdv_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PdvLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pdv_authorize_auth_pdv_authorize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PdvAuthorizeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PdvAuthorizeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     me_auth_me_get: {
         parameters: {
             query?: never;
@@ -2583,6 +2815,10 @@ export interface operations {
     list_users_users__get: {
         parameters: {
             query?: {
+                /** @description Busca por nome, login, CPF ou PDV ID */
+                q?: string | null;
+                profile?: components["schemas"]["UserProfile"] | null;
+                is_active?: boolean | null;
                 offset?: number;
                 limit?: number;
             };
@@ -2754,6 +2990,68 @@ export interface operations {
                 "application/json": components["schemas"]["UserPasswordReset"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_pdv_pin_users__user_id__pdv_pin_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPdvPinResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_pdv_id_users__user_id__pdv_id_regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -3758,7 +4056,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaleCancelInput"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
