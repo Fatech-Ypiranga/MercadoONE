@@ -8,6 +8,7 @@ export type SupplierUpdate = components["schemas"]["SupplierUpdate"];
 export type ListSuppliersQuery = {
   name?: string;
   document?: string;
+  code?: string;
   active_only?: boolean;
   limit?: number;
   offset?: number;

@@ -9,6 +9,7 @@ from auth.security import hash_password
 from models.category import Category
 from models.company import Branch, Company, Store
 from models.product import Product
+from models.supplier import Supplier
 from models.user import User
 from repositories.company_repository import (
     BranchRepository,
@@ -16,6 +17,7 @@ from repositories.company_repository import (
     StoreRepository,
 )
 from repositories.user_repository import UserRepository
+from services.product_service import ProductService
 from tests.conftest import make_client, page_items
 from utils.enums import UserProfile
 
@@ -217,7 +219,17 @@ def test_second_company_can_reuse_sku(
         )
         session.add(cat_b)
         session.flush()
+        supplier_b = Supplier(
+            name="Fornecedor B",
+            document="11222333000181",
+            is_active=True,
+            company_id=company.id,
+        )
+        session.add(supplier_b)
+        session.flush()
         prod_b = Product(
+            material_code=ProductService(session).allocate_material_code(company.id),
+            primary_supplier_id=supplier_b.id,
             name="Mouse B",
             sku=product["sku"],
             sale_price=product["sale_price"],
@@ -287,7 +299,8 @@ def test_company_isolation_purchases(client: TestClient, test_engine, seeded_cat
         "issue_date": preview["invoice"]["issue_date"],
         "create_supplier": True,
         "supplier_name": preview["supplier"]["name"],
-        "supplier_document": preview["supplier"]["document"],
+        "supplier_document": "12345678000195",
+        "supplier_address": preview["supplier"]["address"],
         "items": [
             {
                 "supplier_product_code": item["supplier_product_code"],
@@ -302,7 +315,9 @@ def test_company_isolation_purchases(client: TestClient, test_engine, seeded_cat
             for item in preview["items"]
         ],
     }
-    purchase = client.post("/purchases/confirm", json=confirm_payload).json()
+    response = client.post("/purchases/confirm", json=confirm_payload)
+    assert response.status_code == 201
+    purchase = response.json()
 
     with Session(test_engine) as session:
         _create_second_org(session)

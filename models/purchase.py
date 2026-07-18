@@ -4,6 +4,7 @@ from typing import Literal, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
+from models.supplier import SupplierAddressCreate
 from utils.enums import PurchaseStatus, enum_column
 
 
@@ -109,11 +110,23 @@ class NfeItemPreview(SQLModel):
     suggested_product_name: Optional[str] = None
 
 
+class NfeSupplierAddressPreview(SQLModel):
+    zip_code: Optional[str] = None
+    street: Optional[str] = None
+    number: Optional[str] = None
+    complement: Optional[str] = None
+    neighborhood: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    ibge_code: Optional[str] = None
+
+
 class NfeSupplierPreview(SQLModel):
     document: str
     name: str
     trade_name: Optional[str] = None
     state_registration: Optional[str] = None
+    address: NfeSupplierAddressPreview
     exists_in_database: bool = False
     supplier_id: Optional[int] = None
 
@@ -166,6 +179,7 @@ class PurchaseConfirmRequest(SQLModel):
     supplier_trade_name: Optional[str] = None
     supplier_document: Optional[str] = None
     supplier_state_registration: Optional[str] = None
+    supplier_address: SupplierAddressCreate | None = None
     items: list[PurchaseConfirmItemInput]
     xml_path: Optional[str] = None
     store_id: Optional[int] = None

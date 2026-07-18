@@ -1127,10 +1127,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Busca por nome ou SKU (ilike)",
+              "description": "Busca por nome, SKU, barcode ou código de material (ilike)",
               "title": "Q"
             },
-            "description": "Busca por nome ou SKU (ilike)"
+            "description": "Busca por nome, SKU, barcode ou código de material (ilike)"
           },
           {
             "name": "sku",
@@ -1169,6 +1169,24 @@
             "description": "Filtro exato por código de barras"
           },
           {
+            "name": "material_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro exato por código interno de material",
+              "title": "Material Code"
+            },
+            "description": "Filtro exato por código interno de material"
+          },
+          {
             "name": "category_id",
             "in": "query",
             "required": false,
@@ -1187,7 +1205,7 @@
             "description": "Filtro por categoria"
           },
           {
-            "name": "brand_id",
+            "name": "primary_supplier_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -1199,10 +1217,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Filtro por marca",
-              "title": "Brand Id"
+              "description": "Filtro por fornecedor principal",
+              "title": "Primary Supplier Id"
             },
-            "description": "Filtro por marca"
+            "description": "Filtro por fornecedor principal"
           },
           {
             "name": "is_active",
@@ -2251,6 +2269,24 @@
             "description": "Filtrar por status ativo"
           },
           {
+            "name": "parent_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtrar por categoria pai (ID)",
+              "title": "Parent Id"
+            },
+            "description": "Filtrar por categoria pai (ID)"
+          },
+          {
             "name": "offset",
             "in": "query",
             "required": false,
@@ -2704,317 +2740,6 @@
         }
       }
     },
-    "/brands/": {
-      "get": {
-        "tags": [
-          "Marcas"
-        ],
-        "summary": "Listar marcas",
-        "operationId": "list_brands_brands__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "q",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filtrar por nome (case-insensitive)",
-              "title": "Q"
-            },
-            "description": "Filtrar por nome (case-insensitive)"
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "default": 0,
-              "title": "Offset"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 200,
-              "minimum": 1,
-              "default": 50,
-              "title": "Limit"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Page_BrandResponse_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Marcas"
-        ],
-        "summary": "Cadastrar marca",
-        "operationId": "create_brand_brands__post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BrandCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BrandResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/brands/by-name/{name}": {
-      "get": {
-        "tags": [
-          "Marcas"
-        ],
-        "summary": "Buscar marca por nome (case-insensitive)",
-        "operationId": "get_brand_by_name_brands_by_name__name__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Name"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BrandResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/brands/{brand_id}": {
-      "get": {
-        "tags": [
-          "Marcas"
-        ],
-        "summary": "Buscar marca por ID",
-        "operationId": "get_brand_brands__brand_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "brand_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Brand Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BrandResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Marcas"
-        ],
-        "summary": "Atualizar marca",
-        "operationId": "update_brand_brands__brand_id__put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "brand_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Brand Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BrandUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BrandResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Marcas"
-        ],
-        "summary": "Excluir marca",
-        "description": "Remove a marca quando não há produtos vinculados. Retorna 409 se existirem produtos na marca.",
-        "operationId": "delete_brand_brands__brand_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "brand_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Brand Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/reports/top-products": {
       "get": {
         "tags": [
@@ -3237,6 +2962,24 @@
                 }
               ],
               "title": "Document"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 8,
+                  "maxLength": 8
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
             }
           },
           {
@@ -3858,6 +3601,53 @@
         }
       }
     },
+    "/cep/{cep}": {
+      "get": {
+        "tags": [
+          "CEP"
+        ],
+        "summary": "Consultar endereço por CEP",
+        "operationId": "get_cep_cep__cep__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cep",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cep"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CepResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Root",
@@ -4096,61 +3886,6 @@
         "type": "object",
         "title": "BranchUpdate"
       },
-      "BrandCreate": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 100,
-            "title": "Name"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "title": "BrandCreate"
-      },
-      "BrandResponse": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 100,
-            "title": "Name"
-          },
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "company_id": {
-            "type": "integer",
-            "title": "Company Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "id",
-          "company_id"
-        ],
-        "title": "BrandResponse"
-      },
-      "BrandUpdate": {
-        "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          }
-        },
-        "type": "object",
-        "title": "BrandUpdate"
-      },
       "CategoryCreate": {
         "properties": {
           "name": {
@@ -4169,6 +3904,17 @@
             "type": "boolean",
             "title": "Is Active",
             "default": true
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
           }
         },
         "type": "object",
@@ -4204,6 +3950,17 @@
           "company_id": {
             "type": "integer",
             "title": "Company Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
           },
           "created_at": {
             "type": "string",
@@ -4284,6 +4041,17 @@
             "type": "integer",
             "title": "Company Id"
           },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -4362,10 +4130,65 @@
               }
             ],
             "title": "Is Active"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
           }
         },
         "type": "object",
         "title": "CategoryUpdate"
+      },
+      "CepResponse": {
+        "properties": {
+          "zip_code": {
+            "type": "string",
+            "title": "Zip Code"
+          },
+          "street": {
+            "type": "string",
+            "title": "Street"
+          },
+          "neighborhood": {
+            "type": "string",
+            "title": "Neighborhood"
+          },
+          "city": {
+            "type": "string",
+            "title": "City"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "ibge_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ibge Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "zip_code",
+          "street",
+          "neighborhood",
+          "city",
+          "state"
+        ],
+        "title": "CepResponse"
       },
       "ChangePasswordRequest": {
         "properties": {
@@ -5637,6 +5460,100 @@
         ],
         "title": "NfeItemPreview"
       },
+      "NfeSupplierAddressPreview": {
+        "properties": {
+          "zip_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zip Code"
+          },
+          "street": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Street"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "complement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complement"
+          },
+          "neighborhood": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neighborhood"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "ibge_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ibge Code"
+          }
+        },
+        "type": "object",
+        "title": "NfeSupplierAddressPreview"
+      },
       "NfeSupplierPreview": {
         "properties": {
           "document": {
@@ -5669,6 +5586,9 @@
             ],
             "title": "State Registration"
           },
+          "address": {
+            "$ref": "#/components/schemas/NfeSupplierAddressPreview"
+          },
           "exists_in_database": {
             "type": "boolean",
             "title": "Exists In Database",
@@ -5689,7 +5609,8 @@
         "type": "object",
         "required": [
           "document",
-          "name"
+          "name",
+          "address"
         ],
         "title": "NfeSupplierPreview"
       },
@@ -5786,41 +5707,6 @@
           "limit"
         ],
         "title": "Page[BranchResponse]"
-      },
-      "Page_BrandResponse_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/BrandResponse"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "total": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Total"
-          },
-          "offset": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Offset"
-          },
-          "limit": {
-            "type": "integer",
-            "maximum": 200.0,
-            "minimum": 1.0,
-            "title": "Limit"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items",
-          "total",
-          "offset",
-          "limit"
-        ],
-        "title": "Page[BrandResponse]"
       },
       "Page_CategoryResponse_": {
         "properties": {
@@ -6208,16 +6094,9 @@
             "type": "integer",
             "title": "Category Id"
           },
-          "brand_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Brand Id"
+          "primary_supplier_id": {
+            "type": "integer",
+            "title": "Primary Supplier Id"
           },
           "fiscal": {
             "anyOf": [
@@ -6234,7 +6113,8 @@
         "required": [
           "name",
           "sku",
-          "category_id"
+          "category_id",
+          "primary_supplier_id"
         ],
         "title": "ProductCreate"
       },
@@ -6324,7 +6204,20 @@
             "type": "integer",
             "title": "Category Id"
           },
-          "brand_id": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "company_id": {
+            "type": "integer",
+            "title": "Company Id"
+          },
+          "material_code": {
+            "type": "string",
+            "pattern": "^\\d{7}$",
+            "title": "Material Code"
+          },
+          "primary_supplier_id": {
             "anyOf": [
               {
                 "type": "integer"
@@ -6333,15 +6226,7 @@
                 "type": "null"
               }
             ],
-            "title": "Brand Id"
-          },
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "company_id": {
-            "type": "integer",
-            "title": "Company Id"
+            "title": "Primary Supplier Id"
           },
           "created_at": {
             "type": "string",
@@ -6378,16 +6263,6 @@
           "category": {
             "$ref": "#/components/schemas/CategoryResponse"
           },
-          "brand": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BrandResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "fiscal": {
             "anyOf": [
               {
@@ -6406,6 +6281,7 @@
           "category_id",
           "id",
           "company_id",
+          "material_code",
           "created_at",
           "updated_at",
           "category"
@@ -6577,7 +6453,20 @@
             "type": "integer",
             "title": "Category Id"
           },
-          "brand_id": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "company_id": {
+            "type": "integer",
+            "title": "Company Id"
+          },
+          "material_code": {
+            "type": "string",
+            "pattern": "^\\d{7}$",
+            "title": "Material Code"
+          },
+          "primary_supplier_id": {
             "anyOf": [
               {
                 "type": "integer"
@@ -6586,15 +6475,7 @@
                 "type": "null"
               }
             ],
-            "title": "Brand Id"
-          },
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "company_id": {
-            "type": "integer",
-            "title": "Company Id"
+            "title": "Primary Supplier Id"
           },
           "created_at": {
             "type": "string",
@@ -6636,6 +6517,7 @@
           "category_id",
           "id",
           "company_id",
+          "material_code",
           "created_at",
           "updated_at"
         ],
@@ -6779,7 +6661,7 @@
             ],
             "title": "Category Id"
           },
-          "brand_id": {
+          "primary_supplier_id": {
             "anyOf": [
               {
                 "type": "integer"
@@ -6788,7 +6670,7 @@
                 "type": "null"
               }
             ],
-            "title": "Brand Id"
+            "title": "Primary Supplier Id"
           },
           "fiscal": {
             "anyOf": [
@@ -6994,6 +6876,16 @@
               }
             ],
             "title": "Supplier State Registration"
+          },
+          "supplier_address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupplierAddressCreate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "items": {
             "items": {
@@ -7991,6 +7883,252 @@
         "type": "object",
         "title": "StoreUpdate"
       },
+      "SupplierAddressCreate": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 50,
+            "title": "Description",
+            "default": "Principal"
+          },
+          "zip_code": {
+            "type": "string",
+            "maxLength": 8,
+            "title": "Zip Code"
+          },
+          "street": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Street"
+          },
+          "number": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Number"
+          },
+          "complement": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complement"
+          },
+          "neighborhood": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Neighborhood"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "City"
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 2,
+            "title": "State"
+          },
+          "ibge_code": {
+            "type": "string",
+            "maxLength": 7,
+            "title": "Ibge Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "zip_code",
+          "street",
+          "number",
+          "neighborhood",
+          "city",
+          "state",
+          "ibge_code"
+        ],
+        "title": "SupplierAddressCreate"
+      },
+      "SupplierAddressResponse": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 50,
+            "title": "Description",
+            "default": "Principal"
+          },
+          "zip_code": {
+            "type": "string",
+            "maxLength": 8,
+            "title": "Zip Code"
+          },
+          "street": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Street"
+          },
+          "number": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Number"
+          },
+          "complement": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complement"
+          },
+          "neighborhood": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Neighborhood"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "City"
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 2,
+            "title": "State"
+          },
+          "ibge_code": {
+            "type": "string",
+            "maxLength": 7,
+            "title": "Ibge Code"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "zip_code",
+          "street",
+          "number",
+          "neighborhood",
+          "city",
+          "state",
+          "ibge_code",
+          "id"
+        ],
+        "title": "SupplierAddressResponse"
+      },
+      "SupplierAddressUpdate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "zip_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zip Code"
+          },
+          "street": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Street"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "complement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complement"
+          },
+          "neighborhood": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neighborhood"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "ibge_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ibge Code"
+          }
+        },
+        "type": "object",
+        "title": "SupplierAddressUpdate"
+      },
       "SupplierCreate": {
         "properties": {
           "name": {
@@ -8058,12 +8196,16 @@
             "type": "boolean",
             "title": "Is Active",
             "default": true
+          },
+          "address": {
+            "$ref": "#/components/schemas/SupplierAddressCreate"
           }
         },
         "type": "object",
         "required": [
           "name",
-          "document"
+          "document",
+          "address"
         ],
         "title": "SupplierCreate"
       },
@@ -8142,6 +8284,27 @@
           "company_id": {
             "type": "integer",
             "title": "Company Id"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupplierAddressResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "created_at": {
             "type": "string",
@@ -8266,6 +8429,16 @@
               }
             ],
             "title": "Is Active"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupplierAddressUpdate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",

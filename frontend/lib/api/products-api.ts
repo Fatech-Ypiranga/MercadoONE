@@ -11,7 +11,8 @@ export type ListProductsQuery = {
   offset?: number;
   limit?: number;
   category_id?: number;
-  brand_id?: number;
+  material_code?: string;
+  primary_supplier_id?: number;
   is_active?: boolean;
 };
 

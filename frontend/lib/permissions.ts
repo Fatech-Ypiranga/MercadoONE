@@ -15,7 +15,6 @@ const ALL_READ: Partial<Record<UserProfile, Set<Action>>> = {
 
 const MODULE_PERMISSIONS: Record<string, Partial<Record<UserProfile, Set<Action>>>> = {
   categories: { ...ALL_READ },
-  brands: { ...ALL_READ },
   products: { ...ALL_READ },
   customers: {
     admin: new Set(["read", "write"]),

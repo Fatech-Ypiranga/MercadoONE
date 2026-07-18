@@ -16,8 +16,9 @@ class ProductRepository:
         q: str | None = None,
         sku: str | None = None,
         barcode: str | None = None,
+        material_code: str | None = None,
         category_id: int | None = None,
-        brand_id: int | None = None,
+        primary_supplier_id: int | None = None,
         is_active: bool | None = None,
     ) -> list[Product]:
         stmt = select(Product).where(Product.company_id == company_id)
@@ -26,16 +27,20 @@ class ProductRepository:
                 or_(
                     Product.name.ilike(f"%{q}%"),
                     Product.sku.ilike(f"%{q}%"),
+                    Product.barcode.ilike(f"%{q}%"),
+                    Product.material_code.ilike(f"%{q}%"),
                 )
             )
         if sku is not None:
             stmt = stmt.where(Product.sku == sku)
         if barcode is not None:
             stmt = stmt.where(Product.barcode == barcode)
+        if material_code is not None:
+            stmt = stmt.where(Product.material_code == material_code)
         if category_id is not None:
             stmt = stmt.where(Product.category_id == category_id)
-        if brand_id is not None:
-            stmt = stmt.where(Product.brand_id == brand_id)
+        if primary_supplier_id is not None:
+            stmt = stmt.where(Product.primary_supplier_id == primary_supplier_id)
         if is_active is not None:
             stmt = stmt.where(Product.is_active.is_(is_active))
         stmt = stmt.order_by(Product.name)

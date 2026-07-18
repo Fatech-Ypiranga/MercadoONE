@@ -9,7 +9,9 @@ from sqlmodel import Session, select
 
 from database.seed import ensure_demo_organization
 from models.category import Category
-from models.product import Brand, Product, ProductFiscal, UnitOfMeasure
+from models.product import Product, ProductFiscal, UnitOfMeasure
+from models.supplier import Supplier, SupplierAddress
+from services.product_service import ProductService
 
 # Products matching barcodes in tests/fixtures/nfe/ci_sample_01.xml
 _CI_SAMPLE_01_PRODUCTS = (
@@ -23,7 +25,7 @@ _CI_SAMPLE_01_PRODUCTS = (
 
 
 def seed_purchase_test_catalog(db: Session) -> None:
-    """Create category + products needed for ci_sample_01 purchase mapping tests."""
+    """Create category + supplier + products needed for ci_sample_01 purchase mapping tests."""
     company, _, _ = ensure_demo_organization(db)
     company_id = company.id
 
@@ -46,12 +48,35 @@ def seed_purchase_test_catalog(db: Session) -> None:
         db.add(category)
         db.flush()
 
-    brand = db.exec(
-        select(Brand).where(Brand.name == "LimpezaTotal", Brand.company_id == company_id)
+    supplier = db.exec(
+        select(Supplier).where(
+            Supplier.document == "11222333000181",
+            Supplier.company_id == company_id,
+        )
     ).first()
-    if not brand:
-        brand = Brand(name="LimpezaTotal", company_id=company_id)
-        db.add(brand)
+    if not supplier:
+        supplier = Supplier(
+            name="Fornecedor Catálogo Seed",
+            document="11222333000181",
+            is_active=True,
+            company_id=company_id,
+            code="35001999",
+        )
+        db.add(supplier)
+        db.flush()
+        db.add(
+            SupplierAddress(
+                supplier_id=supplier.id,
+                description="Principal",
+                zip_code="01310100",
+                street="Avenida Paulista",
+                number="1000",
+                neighborhood="Bela Vista",
+                city="São Paulo",
+                state="SP",
+                ibge_code="3550308",
+            )
+        )
         db.flush()
 
     now = datetime.now(timezone.utc)
@@ -64,6 +89,8 @@ def seed_purchase_test_catalog(db: Session) -> None:
 
         cost = Decimal("2.50")
         product = Product(
+            material_code=ProductService(db).allocate_material_code(company_id),
+            primary_supplier_id=supplier.id,
             name=name,
             sku=sku,
             barcode=barcode,
@@ -73,7 +100,6 @@ def seed_purchase_test_catalog(db: Session) -> None:
             sale_price=(cost * Decimal("1.35")).quantize(Decimal("0.01")),
             unit_of_measure=UnitOfMeasure.UN,
             category_id=category.id,
-            brand_id=brand.id,
             company_id=company_id,
             created_at=now,
             updated_at=now,

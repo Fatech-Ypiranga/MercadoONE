@@ -4,6 +4,8 @@ from sqlmodel import Session, select
 from models.category import Category
 from models.product import Product
 
+_UNSET = object()
+
 
 class CategoryRepository:
     @staticmethod
@@ -13,6 +15,7 @@ class CategoryRepository:
         *,
         q: str | None = None,
         is_active: bool | None = None,
+        parent_id: int | None | object = _UNSET,
     ) -> list[Category]:
         stmt = select(Category).where(Category.company_id == company_id)
         if q:
@@ -24,6 +27,11 @@ class CategoryRepository:
             )
         if is_active is not None:
             stmt = stmt.where(Category.is_active.is_(is_active))
+        if parent_id is not _UNSET:
+            if parent_id is None:
+                stmt = stmt.where(Category.parent_id.is_(None))
+            else:
+                stmt = stmt.where(Category.parent_id == parent_id)
         stmt = stmt.order_by(Category.name)
         return list(db.exec(stmt).all())
 
@@ -43,6 +51,9 @@ class CategoryRepository:
         db.flush()
         return category
 
+    # Fields that are allowed to be explicitly set to None during update.
+    _NULLABLE_FIELDS = {"parent_id"}
+
     @staticmethod
     def update(db: Session, category_id: int, company_id: int, **fields) -> Category | None:
         category = CategoryRepository.find_by_id(db, category_id, company_id)
@@ -50,7 +61,7 @@ class CategoryRepository:
             return None
 
         for field_name, field_value in fields.items():
-            if field_value is not None:
+            if field_value is not None or field_name in CategoryRepository._NULLABLE_FIELDS:
                 setattr(category, field_name, field_value)
 
         db.add(category)
@@ -63,6 +74,15 @@ class CategoryRepository:
             select(func.count())
             .select_from(Product)
             .where(Product.category_id == category_id, Product.company_id == company_id)
+        )
+        return db.exec(stmt).one()
+
+    @staticmethod
+    def count_children(db: Session, category_id: int, company_id: int) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(Category)
+            .where(Category.parent_id == category_id, Category.company_id == company_id)
         )
         return db.exec(stmt).one()
 

@@ -526,63 +526,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/brands/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Listar marcas */
-        get: operations["list_brands_brands__get"];
-        put?: never;
-        /** Cadastrar marca */
-        post: operations["create_brand_brands__post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/brands/by-name/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Buscar marca por nome (case-insensitive) */
-        get: operations["get_brand_by_name_brands_by_name__name__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/brands/{brand_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Buscar marca por ID */
-        get: operations["get_brand_brands__brand_id__get"];
-        /** Atualizar marca */
-        put: operations["update_brand_brands__brand_id__put"];
-        post?: never;
-        /**
-         * Excluir marca
-         * @description Remove a marca quando não há produtos vinculados. Retorna 409 se existirem produtos na marca.
-         */
-        delete: operations["delete_brand_brands__brand_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/reports/top-products": {
         parameters: {
             query?: never;
@@ -776,6 +719,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cep/{cep}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar endereço por CEP */
+        get: operations["get_cep_cep__cep__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -888,25 +848,6 @@ export interface components {
             /** Is Active */
             is_active?: boolean | null;
         };
-        /** BrandCreate */
-        BrandCreate: {
-            /** Name */
-            name: string;
-        };
-        /** BrandResponse */
-        BrandResponse: {
-            /** Name */
-            name: string;
-            /** Id */
-            id: number;
-            /** Company Id */
-            company_id: number;
-        };
-        /** BrandUpdate */
-        BrandUpdate: {
-            /** Name */
-            name?: string | null;
-        };
         /** CategoryCreate */
         CategoryCreate: {
             /**
@@ -924,6 +865,8 @@ export interface components {
              * @default true
              */
             is_active: boolean;
+            /** Parent Id */
+            parent_id?: number | null;
         };
         /** CategoryDetailResponse */
         CategoryDetailResponse: {
@@ -946,6 +889,8 @@ export interface components {
             id: number;
             /** Company Id */
             company_id: number;
+            /** Parent Id */
+            parent_id?: number | null;
             /**
              * Created At
              * Format: date-time
@@ -987,6 +932,8 @@ export interface components {
             id: number;
             /** Company Id */
             company_id: number;
+            /** Parent Id */
+            parent_id?: number | null;
             /**
              * Created At
              * Format: date-time
@@ -1010,6 +957,23 @@ export interface components {
             slug?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /** Parent Id */
+            parent_id?: number | null;
+        };
+        /** CepResponse */
+        CepResponse: {
+            /** Zip Code */
+            zip_code: string;
+            /** Street */
+            street: string;
+            /** Neighborhood */
+            neighborhood: string;
+            /** City */
+            city: string;
+            /** State */
+            state: string;
+            /** Ibge Code */
+            ibge_code?: string | null;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -1446,6 +1410,25 @@ export interface components {
             /** Suggested Product Name */
             suggested_product_name?: string | null;
         };
+        /** NfeSupplierAddressPreview */
+        NfeSupplierAddressPreview: {
+            /** Zip Code */
+            zip_code?: string | null;
+            /** Street */
+            street?: string | null;
+            /** Number */
+            number?: string | null;
+            /** Complement */
+            complement?: string | null;
+            /** Neighborhood */
+            neighborhood?: string | null;
+            /** City */
+            city?: string | null;
+            /** State */
+            state?: string | null;
+            /** Ibge Code */
+            ibge_code?: string | null;
+        };
         /** NfeSupplierPreview */
         NfeSupplierPreview: {
             /** Document */
@@ -1456,6 +1439,7 @@ export interface components {
             trade_name?: string | null;
             /** State Registration */
             state_registration?: string | null;
+            address: components["schemas"]["NfeSupplierAddressPreview"];
             /**
              * Exists In Database
              * @default false
@@ -1486,17 +1470,6 @@ export interface components {
         Page_BranchResponse_: {
             /** Items */
             items: components["schemas"]["BranchResponse"][];
-            /** Total */
-            total: number;
-            /** Offset */
-            offset: number;
-            /** Limit */
-            limit: number;
-        };
-        /** Page[BrandResponse] */
-        Page_BrandResponse_: {
-            /** Items */
-            items: components["schemas"]["BrandResponse"][];
             /** Total */
             total: number;
             /** Offset */
@@ -1631,8 +1604,8 @@ export interface components {
             unit_of_measure: components["schemas"]["UnitOfMeasure"];
             /** Category Id */
             category_id: number;
-            /** Brand Id */
-            brand_id?: number | null;
+            /** Primary Supplier Id */
+            primary_supplier_id: number;
             fiscal?: components["schemas"]["ProductFiscalCreate"] | null;
         };
         /** ProductDetailResponse */
@@ -1674,12 +1647,14 @@ export interface components {
             unit_of_measure: components["schemas"]["UnitOfMeasure"];
             /** Category Id */
             category_id: number;
-            /** Brand Id */
-            brand_id?: number | null;
             /** Id */
             id: number;
             /** Company Id */
             company_id: number;
+            /** Material Code */
+            material_code: string;
+            /** Primary Supplier Id */
+            primary_supplier_id?: number | null;
             /**
              * Created At
              * Format: date-time
@@ -1695,7 +1670,6 @@ export interface components {
             /** Updated By */
             updated_by?: number | null;
             category: components["schemas"]["CategoryResponse"];
-            brand?: components["schemas"]["BrandResponse"] | null;
             fiscal?: components["schemas"]["ProductFiscalResponse"] | null;
         };
         /** ProductFiscalCreate */
@@ -1767,12 +1741,14 @@ export interface components {
             unit_of_measure: components["schemas"]["UnitOfMeasure"];
             /** Category Id */
             category_id: number;
-            /** Brand Id */
-            brand_id?: number | null;
             /** Id */
             id: number;
             /** Company Id */
             company_id: number;
+            /** Material Code */
+            material_code: string;
+            /** Primary Supplier Id */
+            primary_supplier_id?: number | null;
             /**
              * Created At
              * Format: date-time
@@ -1811,8 +1787,8 @@ export interface components {
             unit_of_measure?: components["schemas"]["UnitOfMeasure"] | null;
             /** Category Id */
             category_id?: number | null;
-            /** Brand Id */
-            brand_id?: number | null;
+            /** Primary Supplier Id */
+            primary_supplier_id?: number | null;
             fiscal?: components["schemas"]["ProductFiscalCreate"] | null;
         };
         /** PurchaseConfirmItemInput */
@@ -1872,6 +1848,7 @@ export interface components {
             supplier_document?: string | null;
             /** Supplier State Registration */
             supplier_state_registration?: string | null;
+            supplier_address?: components["schemas"]["SupplierAddressCreate"] | null;
             /** Items */
             items: components["schemas"]["PurchaseConfirmItemInput"][];
             /** Xml Path */
@@ -2226,6 +2203,77 @@ export interface components {
             /** Is Active */
             is_active?: boolean | null;
         };
+        /** SupplierAddressCreate */
+        SupplierAddressCreate: {
+            /**
+             * Description
+             * @default Principal
+             */
+            description: string;
+            /** Zip Code */
+            zip_code: string;
+            /** Street */
+            street: string;
+            /** Number */
+            number: string;
+            /** Complement */
+            complement?: string | null;
+            /** Neighborhood */
+            neighborhood: string;
+            /** City */
+            city: string;
+            /** State */
+            state: string;
+            /** Ibge Code */
+            ibge_code: string;
+        };
+        /** SupplierAddressResponse */
+        SupplierAddressResponse: {
+            /**
+             * Description
+             * @default Principal
+             */
+            description: string;
+            /** Zip Code */
+            zip_code: string;
+            /** Street */
+            street: string;
+            /** Number */
+            number: string;
+            /** Complement */
+            complement?: string | null;
+            /** Neighborhood */
+            neighborhood: string;
+            /** City */
+            city: string;
+            /** State */
+            state: string;
+            /** Ibge Code */
+            ibge_code: string;
+            /** Id */
+            id: number;
+        };
+        /** SupplierAddressUpdate */
+        SupplierAddressUpdate: {
+            /** Description */
+            description?: string | null;
+            /** Zip Code */
+            zip_code?: string | null;
+            /** Street */
+            street?: string | null;
+            /** Number */
+            number?: string | null;
+            /** Complement */
+            complement?: string | null;
+            /** Neighborhood */
+            neighborhood?: string | null;
+            /** City */
+            city?: string | null;
+            /** State */
+            state?: string | null;
+            /** Ibge Code */
+            ibge_code?: string | null;
+        };
         /** SupplierCreate */
         SupplierCreate: {
             /**
@@ -2254,6 +2302,7 @@ export interface components {
              * @default true
              */
             is_active: boolean;
+            address: components["schemas"]["SupplierAddressCreate"];
         };
         /** SupplierResponse */
         SupplierResponse: {
@@ -2287,6 +2336,9 @@ export interface components {
             id: number;
             /** Company Id */
             company_id: number;
+            /** Code */
+            code?: string | null;
+            address?: components["schemas"]["SupplierAddressResponse"] | null;
             /**
              * Created At
              * Format: date-time
@@ -2318,6 +2370,7 @@ export interface components {
             phone?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            address?: components["schemas"]["SupplierAddressUpdate"] | null;
         };
         /** TokenResponse */
         TokenResponse: {
@@ -3101,16 +3154,18 @@ export interface operations {
     list_products_products__get: {
         parameters: {
             query?: {
-                /** @description Busca por nome ou SKU (ilike) */
+                /** @description Busca por nome, SKU, barcode ou código de material (ilike) */
                 q?: string | null;
                 /** @description Filtro exato por SKU */
                 sku?: string | null;
                 /** @description Filtro exato por código de barras */
                 barcode?: string | null;
+                /** @description Filtro exato por código interno de material */
+                material_code?: string | null;
                 /** @description Filtro por categoria */
                 category_id?: number | null;
-                /** @description Filtro por marca */
-                brand_id?: number | null;
+                /** @description Filtro por fornecedor principal */
+                primary_supplier_id?: number | null;
                 /** @description Filtrar por status ativo */
                 is_active?: boolean | null;
                 offset?: number;
@@ -3732,6 +3787,8 @@ export interface operations {
                 q?: string | null;
                 /** @description Filtrar por status ativo */
                 is_active?: boolean | null;
+                /** @description Filtrar por categoria pai (ID) */
+                parent_id?: number | null;
                 offset?: number;
                 limit?: number;
             };
@@ -4019,199 +4076,6 @@ export interface operations {
             };
         };
     };
-    list_brands_brands__get: {
-        parameters: {
-            query?: {
-                /** @description Filtrar por nome (case-insensitive) */
-                q?: string | null;
-                offset?: number;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_BrandResponse_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_brand_brands__post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BrandCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BrandResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_brand_by_name_brands_by_name__name__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BrandResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_brand_brands__brand_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                brand_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BrandResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_brand_brands__brand_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                brand_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BrandUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BrandResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_brand_brands__brand_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                brand_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     top_products_reports_top_products_get: {
         parameters: {
             query?: {
@@ -4312,6 +4176,7 @@ export interface operations {
             query?: {
                 name?: string | null;
                 document?: string | null;
+                code?: string | null;
                 active_only?: boolean;
                 offset?: number;
                 limit?: number;
@@ -4653,6 +4518,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseOrderDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cep_cep__cep__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cep: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CepResponse"];
                 };
             };
             /** @description Validation Error */

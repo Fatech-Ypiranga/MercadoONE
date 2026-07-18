@@ -18,6 +18,7 @@ router = APIRouter(prefix="/suppliers", tags=["Fornecedores"])
 def list_suppliers(
     name: Annotated[str | None, Query()] = None,
     document: Annotated[str | None, Query()] = None,
+    code: Annotated[str | None, Query(min_length=8, max_length=8)] = None,
     active_only: Annotated[bool, Query()] = False,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=DEFAULT_PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
@@ -27,7 +28,11 @@ def list_suppliers(
     company_id = company_id_of(current_user)
     return paginate(
         SupplierService(db).list_suppliers(
-            company_id, name=name, document=document, active_only=active_only
+            company_id,
+            name=name,
+            document=document,
+            code=code,
+            active_only=active_only,
         ),
         offset=offset,
         limit=limit,

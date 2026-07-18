@@ -32,8 +32,8 @@ from routers import (
     audit_router,
     auth_router,
     branch_router,
-    brand_router,
     category_router,
+    cep_router,
     company_router,
     customer_router,
     product_router,
@@ -86,10 +86,10 @@ def create_app(*, init_database: bool = True, validate_config: bool = True) -> F
     application.include_router(sale_router.router)
     application.include_router(category_router.router)
     application.include_router(stock_movement_router.router)
-    application.include_router(brand_router.router)
     application.include_router(report_router.router)
     application.include_router(supplier_router.router)
     application.include_router(purchase_router.router)
+    application.include_router(cep_router.router)
 
     @application.get("/")
     def root():

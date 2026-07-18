@@ -28,7 +28,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-can";
-import { listBrands } from "@/lib/api/brands-api";
 import { listCategories } from "@/lib/api/categories-api";
 import {
   createProduct,
@@ -38,6 +37,7 @@ import {
   updateProduct,
   type ProductResponse,
 } from "@/lib/api/products-api";
+import { listSuppliers } from "@/lib/api/suppliers-api";
 import { errorMessage, formatMoney } from "@/lib/format";
 import { liveQueryOptions } from "@/lib/live-query";
 
@@ -51,7 +51,7 @@ type FormState = {
   weight_net: string;
   weight_gross: string;
   category_id: string;
-  brand_id: string;
+  primary_supplier_id: string;
   unit_of_measure: "UN" | "KG" | "CX";
   is_active: boolean;
   ncm: string;
@@ -70,7 +70,7 @@ const emptyForm: FormState = {
   weight_net: "",
   weight_gross: "",
   category_id: "",
-  brand_id: "",
+  primary_supplier_id: "",
   unit_of_measure: "UN",
   is_active: true,
   ncm: "",
@@ -89,27 +89,56 @@ export default function ProductsPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState("");
   const [offset, setOffset] = useState(0);
   const [loadingProductId, setLoadingProductId] = useState<number | null>(null);
 
   const products = useQuery({
-    queryKey: ["products", search, offset, PAGE_SIZE],
+    queryKey: ["products", search, supplierFilter, offset, PAGE_SIZE],
     queryFn: () =>
       listProducts({
         q: search.trim() || undefined,
+        primary_supplier_id: supplierFilter ? Number(supplierFilter) : undefined,
         offset,
         limit: PAGE_SIZE,
       }),
     ...liveQueryOptions,
   });
   const categories = useQuery({ queryKey: ["categories"], queryFn: listCategories });
-  const brands = useQuery({ queryKey: ["brands"], queryFn: listBrands });
+  const suppliers = useQuery({ queryKey: ["suppliers"], queryFn: listSuppliers });
 
   const categoryMap = useMemo(() => {
     const map = new Map<number, string>();
     categories.data?.forEach((c) => map.set(c.id, c.name));
     return map;
   }, [categories.data]);
+
+  const supplierMap = useMemo(() => {
+    const map = new Map<number, string>();
+    suppliers.data?.forEach((supplier) =>
+      map.set(
+        supplier.id,
+        supplier.code ? `${supplier.code} — ${supplier.name}` : supplier.name,
+      ),
+    );
+    return map;
+  }, [suppliers.data]);
+
+  const leafCategories = useMemo(() => {
+    const all = categories.data ?? [];
+    const childParentIds = new Set(all.filter((c) => c.parent_id != null).map((c) => c.parent_id!));
+    return all.filter(
+      (c) => c.parent_id != null || !childParentIds.has(c.id),
+    );
+  }, [categories.data]);
+
+  const categoryLabel = (c: { id: number; name: string; parent_id?: number | null }) => {
+    if (c.parent_id != null) {
+      const parent = categoryMap.get(c.parent_id);
+      return parent ? `${parent} / ${c.name}` : c.name;
+    }
+    return c.name;
+  };
 
   const save = useMutation({
     mutationFn: async () => {
@@ -129,7 +158,7 @@ export default function ProductsPage() {
         weight_net: form.weight_net || null,
         weight_gross: form.weight_gross || null,
         category_id: Number(form.category_id),
-        brand_id: form.brand_id ? Number(form.brand_id) : null,
+        primary_supplier_id: Number(form.primary_supplier_id),
         unit_of_measure: form.unit_of_measure,
         is_active: form.is_active,
         fiscal: hasFiscal
@@ -166,7 +195,10 @@ export default function ProductsPage() {
     setEditing(null);
     setForm({
       ...emptyForm,
-      category_id: categories.data?.[0] ? String(categories.data[0].id) : "",
+      category_id: leafCategories[0] ? String(leafCategories[0].id) : "",
+      primary_supplier_id: suppliers.data?.[0]
+        ? String(suppliers.data[0].id)
+        : "",
     });
     setError(null);
     setOpen(true);
@@ -188,7 +220,9 @@ export default function ProductsPage() {
         weight_net: detail.weight_net == null ? "" : String(detail.weight_net),
         weight_gross: detail.weight_gross == null ? "" : String(detail.weight_gross),
         category_id: String(detail.category_id),
-        brand_id: detail.brand_id ? String(detail.brand_id) : "",
+        primary_supplier_id: detail.primary_supplier_id
+          ? String(detail.primary_supplier_id)
+          : "",
         unit_of_measure: detail.unit_of_measure,
         is_active: detail.is_active,
         ncm: detail.fiscal?.ncm ?? "",
@@ -225,9 +259,9 @@ export default function ProductsPage() {
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-3">
         <Input
-          placeholder="Buscar por nome, SKU ou código de barras…"
+          placeholder="Buscar por nome, SKU, código de barras ou material…"
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -235,6 +269,22 @@ export default function ProductsPage() {
           }}
           className="max-w-md"
         />
+        <select
+          className="h-8 min-w-64 rounded-lg border border-input bg-transparent px-2 text-sm"
+          value={supplierFilter}
+          onChange={(event) => {
+            setSupplierFilter(event.target.value);
+            setOffset(0);
+          }}
+        >
+          <option value="">Todos os fornecedores</option>
+          {suppliers.data?.map((supplier) => (
+            <option key={supplier.id} value={supplier.id}>
+              {supplier.code ? `${supplier.code} — ` : ""}
+              {supplier.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <ErrorAlert
@@ -250,9 +300,11 @@ export default function ProductsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Material</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Categoria</TableHead>
+                <TableHead>Fornecedor principal</TableHead>
                 <TableHead className="text-right">Custo</TableHead>
                 <TableHead className="text-right">Venda</TableHead>
                 <TableHead>Status</TableHead>
@@ -262,10 +314,23 @@ export default function ProductsPage() {
             <TableBody>
               {products.data.map((item) => (
                 <TableRow key={item.id}>
+                  <TableCell className="font-mono text-xs">
+                    {item.material_code}
+                  </TableCell>
                   <TableCell className="font-mono text-xs">{item.sku}</TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>
                     {categoryMap.get(item.category_id) ?? item.category_id}
+                  </TableCell>
+                  <TableCell>
+                    {item.primary_supplier_id
+                      ? (supplierMap.get(item.primary_supplier_id) ??
+                        item.primary_supplier_id)
+                      : (
+                        <Badge variant="destructive">
+                          Regularização obrigatória
+                        </Badge>
+                      )}
                   </TableCell>
                   <TableCell className="text-right">
                     {formatMoney(item.cost_price)}
@@ -340,6 +405,12 @@ export default function ProductsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
+            {editing ? (
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Código interno de material</Label>
+                <Input value={editing.material_code} readOnly disabled />
+              </div>
+            ) : null}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Nome</Label>
               <Input
@@ -426,29 +497,35 @@ export default function ProductsPage() {
                 }
               >
                 <option value="">Selecione…</option>
-                {categories.data?.map((c) => (
+                {leafCategories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {categoryLabel(c)}
                   </option>
                 ))}
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label>Marca</Label>
+              <Label>Fornecedor principal</Label>
               <select
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
-                value={form.brand_id}
+                value={form.primary_supplier_id}
                 onChange={(e) =>
-                  setForm((p) => ({ ...p, brand_id: e.target.value }))
+                  setForm((p) => ({ ...p, primary_supplier_id: e.target.value }))
                 }
               >
-                <option value="">—</option>
-                {brands.data?.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
+                <option value="">Selecione…</option>
+                {suppliers.data?.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.code ? `${supplier.code} — ` : ""}
+                    {supplier.name}
                   </option>
                 ))}
               </select>
+              {editing?.primary_supplier_id == null ? (
+                <p className="text-xs text-destructive">
+                  Produto legado: selecione um fornecedor antes de salvar.
+                </p>
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <Label>Unidade</Label>
@@ -541,6 +618,7 @@ export default function ProductsPage() {
                 !form.name.trim() ||
                 !form.sku.trim() ||
                 !form.category_id ||
+                !form.primary_supplier_id ||
                 (Boolean(
                   form.ncm.trim() ||
                     form.cest.trim() ||

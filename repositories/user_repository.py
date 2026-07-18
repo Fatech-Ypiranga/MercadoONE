@@ -5,7 +5,7 @@ from models.audit_log import AuditLog
 from models.category import Category
 from models.company import Company
 from models.customer import Customer, CustomerAddress
-from models.product import Brand, Product
+from models.product import Product
 from models.purchase import PurchaseOrder
 from models.sale import Sale
 from models.stock_movement import StockMovement
@@ -100,8 +100,6 @@ class UserRepository:
             (StockMovement, "updated_by"),
             (Product, "created_by"),
             (Product, "updated_by"),
-            (Brand, "created_by"),
-            (Brand, "updated_by"),
             (Category, "created_by"),
             (Category, "updated_by"),
             (Customer, "created_by"),

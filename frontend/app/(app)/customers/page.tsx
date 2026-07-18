@@ -25,6 +25,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AddressFields,
+  AddressFormState,
+  addressPayload,
+  addressReady,
+  emptyAddress,
+} from "@/components/address-fields";
 import { useCan } from "@/hooks/use-can";
 import {
   createCustomer,
@@ -50,17 +57,6 @@ type FormState = {
   is_active: boolean;
 };
 
-type AddressFormState = {
-  description: string;
-  zip_code: string;
-  street: string;
-  number: string;
-  complement: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-};
-
 const emptyForm: FormState = {
   name: "",
   document: "",
@@ -70,42 +66,6 @@ const emptyForm: FormState = {
   ie_indicator: "9",
   is_active: true,
 };
-
-const emptyAddress: AddressFormState = {
-  description: "Principal",
-  zip_code: "",
-  street: "",
-  number: "",
-  complement: "",
-  neighborhood: "",
-  city: "",
-  state: "",
-};
-
-function addressPayload(form: AddressFormState) {
-  return {
-    description: form.description.trim() || "Principal",
-    zip_code: form.zip_code.replace(/\D/g, ""),
-    street: form.street.trim(),
-    number: form.number.trim(),
-    complement: form.complement.trim() || null,
-    neighborhood: form.neighborhood.trim(),
-    city: form.city.trim(),
-    state: form.state.trim().toUpperCase().slice(0, 2),
-  };
-}
-
-function addressReady(form: AddressFormState) {
-  const payload = addressPayload(form);
-  return Boolean(
-    payload.zip_code &&
-      payload.street &&
-      payload.number &&
-      payload.neighborhood &&
-      payload.city &&
-      payload.state.length === 2,
-  );
-}
 
 export default function CustomersPage() {
   const canWrite = useCan("customers", "write");
@@ -157,6 +117,7 @@ export default function CustomersPage() {
       neighborhood: editingAddress.neighborhood,
       city: editingAddress.city,
       state: editingAddress.state,
+      ibge_code: editingAddress.ibge_code ?? "",
     });
   }, [editingAddress]);
 
@@ -599,76 +560,5 @@ export default function CustomersPage() {
         </DialogContent>
       </Dialog>
     </RequirePermission>
-  );
-}
-
-function AddressFields({
-  form,
-  onChange,
-}: {
-  form: AddressFormState;
-  onChange: (next: AddressFormState) => void;
-}) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <div className="space-y-1.5 sm:col-span-2">
-        <Label>Descrição</Label>
-        <Input
-          value={form.description}
-          onChange={(e) => onChange({ ...form, description: e.target.value })}
-          placeholder="Principal"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label>CEP</Label>
-        <Input
-          value={form.zip_code}
-          onChange={(e) => onChange({ ...form, zip_code: e.target.value })}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label>UF</Label>
-        <Input
-          maxLength={2}
-          value={form.state}
-          onChange={(e) => onChange({ ...form, state: e.target.value })}
-        />
-      </div>
-      <div className="space-y-1.5 sm:col-span-2">
-        <Label>Rua</Label>
-        <Input
-          value={form.street}
-          onChange={(e) => onChange({ ...form, street: e.target.value })}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label>Número</Label>
-        <Input
-          value={form.number}
-          onChange={(e) => onChange({ ...form, number: e.target.value })}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label>Complemento</Label>
-        <Input
-          value={form.complement}
-          onChange={(e) => onChange({ ...form, complement: e.target.value })}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label>Bairro</Label>
-        <Input
-          value={form.neighborhood}
-          onChange={(e) => onChange({ ...form, neighborhood: e.target.value })}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label>Cidade</Label>
-        <Input
-          value={form.city}
-          onChange={(e) => onChange({ ...form, city: e.target.value })}
-        />
-      </div>
-    </div>
   );
 }

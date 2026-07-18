@@ -12,14 +12,6 @@ MODULE_PERMISSIONS: dict[str, dict[UserProfile, set[str]]] = {
         UserProfile.CONFERENTE: {READ},
         UserProfile.COLABORADOR: {READ},
     },
-    "brands": {
-        UserProfile.ADMIN: {READ, WRITE},
-        UserProfile.GERENTE: {READ, WRITE},
-        UserProfile.SUPERVISOR: {READ},
-        UserProfile.OPERADOR: {READ},
-        UserProfile.CONFERENTE: {READ},
-        UserProfile.COLABORADOR: {READ},
-    },
     "products": {
         UserProfile.ADMIN: {READ, WRITE},
         UserProfile.GERENTE: {READ, WRITE},

@@ -3,7 +3,9 @@ from fastapi.testclient import TestClient
 from tests.conftest import page_items
 
 
-def test_admin_sees_audit_log_after_product_create(client: TestClient, category: dict):
+def test_admin_sees_audit_log_after_product_create(
+    client: TestClient, category: dict, supplier: dict
+):
     product = client.post(
         "/products/",
         json={
@@ -12,6 +14,7 @@ def test_admin_sees_audit_log_after_product_create(client: TestClient, category:
             "sale_price": "15.00",
             "cost_price": "8.00",
             "category_id": category["id"],
+            "primary_supplier_id": supplier["id"],
         },
     ).json()
 
@@ -39,7 +42,9 @@ def test_operador_cannot_access_audit_log(operador_client: TestClient):
     assert response.status_code == 403
 
 
-def test_audit_log_filters_by_user_id(client: TestClient, category: dict, admin_token: str):
+def test_audit_log_filters_by_user_id(
+    client: TestClient, category: dict, supplier: dict, admin_token: str
+):
     from jose import jwt
 
     from auth.security import JWT_ALGORITHM, JWT_SECRET
@@ -55,6 +60,7 @@ def test_audit_log_filters_by_user_id(client: TestClient, category: dict, admin_
             "sale_price": "12.00",
             "cost_price": "6.00",
             "category_id": category["id"],
+            "primary_supplier_id": supplier["id"],
         },
     )
 
@@ -65,7 +71,7 @@ def test_audit_log_filters_by_user_id(client: TestClient, category: dict, admin_
     assert all(log["user_id"] == admin_id for log in logs)
 
 
-def test_audit_log_pagination(client: TestClient, category: dict):
+def test_audit_log_pagination(client: TestClient, category: dict, supplier: dict):
     for i in range(3):
         client.post(
             "/products/",
@@ -75,6 +81,7 @@ def test_audit_log_pagination(client: TestClient, category: dict):
                 "sale_price": "10.00",
                 "cost_price": "5.00",
                 "category_id": category["id"],
+                "primary_supplier_id": supplier["id"],
             },
         )
 
@@ -87,7 +94,9 @@ def test_audit_log_pagination(client: TestClient, category: dict):
     assert body["limit"] == 2
 
 
-def test_audit_log_filters_by_date_range(client: TestClient, category: dict):
+def test_audit_log_filters_by_date_range(
+    client: TestClient, category: dict, supplier: dict
+):
     from datetime import datetime, timedelta, timezone
 
     product = client.post(
@@ -98,6 +107,7 @@ def test_audit_log_filters_by_date_range(client: TestClient, category: dict):
             "sale_price": "11.00",
             "cost_price": "5.50",
             "category_id": category["id"],
+            "primary_supplier_id": supplier["id"],
         },
     ).json()
 

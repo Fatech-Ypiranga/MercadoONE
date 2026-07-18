@@ -3,6 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import {
+  AddressFields,
+  addressPayload,
+  addressReady,
+  emptyAddress,
+  type AddressFormState,
+} from "@/components/address-fields";
 import { PageHeader } from "@/components/page-header";
 import { RequirePermission } from "@/components/require-permission";
 import { EmptyState, ErrorAlert, LoadingState } from "@/components/ui-states";
@@ -43,6 +50,7 @@ type FormState = {
   email: string;
   phone: string;
   is_active: boolean;
+  address: AddressFormState;
 };
 
 const emptyForm: FormState = {
@@ -53,6 +61,7 @@ const emptyForm: FormState = {
   email: "",
   phone: "",
   is_active: true,
+  address: emptyAddress,
 };
 
 export default function SuppliersPage() {
@@ -66,15 +75,20 @@ export default function SuppliersPage() {
   const trimmedSearch = search.trim();
   const searchDigits = trimmedSearch.replace(/\D/g, "");
   const searchableCharacters = trimmedSearch.replace(/\s/g, "").length;
+  const searchByCode = searchDigits.length === 8 && searchDigits === trimmedSearch;
   const searchByDocument =
-    searchDigits.length > 0 && searchDigits.length >= searchableCharacters / 2;
+    !searchByCode &&
+    searchDigits.length > 0 &&
+    searchDigits.length >= searchableCharacters / 2;
 
   const list = useQuery({
     queryKey: ["suppliers", search],
     queryFn: () =>
       listSuppliers({
-        name: trimmedSearch && !searchByDocument ? trimmedSearch : undefined,
+        name:
+          trimmedSearch && !searchByDocument && !searchByCode ? trimmedSearch : undefined,
         document: trimmedSearch && searchByDocument ? searchDigits : undefined,
+        code: searchByCode ? searchDigits : undefined,
       }),
   });
 
@@ -88,6 +102,7 @@ export default function SuppliersPage() {
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
         is_active: form.is_active,
+        address: addressPayload(form.address),
       };
       if (editing) return updateSupplier(editing.id, payload);
       return createSupplier(payload);
@@ -130,7 +145,7 @@ export default function SuppliersPage() {
 
       <div className="mb-4">
         <Input
-          placeholder="Buscar por nome ou CNPJ…"
+          placeholder="Buscar por nome, CNPJ ou código…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-md"
@@ -148,6 +163,7 @@ export default function SuppliersPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Código</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>CNPJ</TableHead>
                 <TableHead>IE</TableHead>
@@ -159,6 +175,7 @@ export default function SuppliersPage() {
             <TableBody>
               {list.data.map((item) => (
                 <TableRow key={item.id}>
+                  <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>
                   <TableCell>
                     <div className="font-medium">{item.name}</div>
                     {item.trade_name ? (
@@ -195,6 +212,19 @@ export default function SuppliersPage() {
                             email: item.email ?? "",
                             phone: item.phone ?? "",
                             is_active: item.is_active,
+                            address: item.address
+                              ? {
+                                  description: item.address.description,
+                                  zip_code: item.address.zip_code,
+                                  street: item.address.street,
+                                  number: item.address.number,
+                                  complement: item.address.complement ?? "",
+                                  neighborhood: item.address.neighborhood,
+                                  city: item.address.city,
+                                  state: item.address.state,
+                                  ibge_code: item.address.ibge_code,
+                                }
+                              : emptyAddress,
                           });
                           setError(null);
                           setOpen(true);
@@ -224,13 +254,19 @@ export default function SuppliersPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {editing ? "Editar fornecedor" : "Novo fornecedor"}
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
+            {editing ? (
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Código</Label>
+                <Input value={editing.code ?? "Será gerado ao salvar"} readOnly />
+              </div>
+            ) : null}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Razão social</Label>
               <Input
@@ -290,6 +326,13 @@ export default function SuppliersPage() {
               Ativo
             </label>
           </div>
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium">Endereço principal</h3>
+            <AddressFields
+              form={form.address}
+              onChange={(address) => setForm((previous) => ({ ...previous, address }))}
+            />
+          </div>
           <ErrorAlert message={error} />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
@@ -300,6 +343,7 @@ export default function SuppliersPage() {
               disabled={
                 !form.name.trim() ||
                 !form.document.replace(/\D/g, "") ||
+                !addressReady(form.address) ||
                 save.isPending
               }
               onClick={() => save.mutate()}

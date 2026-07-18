@@ -9,6 +9,7 @@ from database.connection import get_db
 from models.category import CategoryCreate, CategoryDetailResponse, CategoryResponse, CategoryUpdate
 from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
 from models.user import User
+from repositories.category_repository import _UNSET
 from services.category_service import CategoryService
 
 router = APIRouter(prefix="/categories", tags=["Categorias"])
@@ -18,14 +19,16 @@ router = APIRouter(prefix="/categories", tags=["Categorias"])
 def list_categories(
     q: Annotated[str | None, Query(description="Busca por nome ou slug")] = None,
     is_active: Annotated[bool | None, Query(description="Filtrar por status ativo")] = None,
+    parent_id: Annotated[int | None, Query(description="Filtrar por categoria pai (ID)")] = None,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=DEFAULT_PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("categories:read")),
 ):
     company_id = company_id_of(current_user)
+    pid = parent_id if parent_id is not None else _UNSET
     return paginate(
-        CategoryService(db).list_categories(company_id, q=q, is_active=is_active),
+        CategoryService(db).list_categories(company_id, q=q, is_active=is_active, parent_id=pid),
         offset=offset,
         limit=limit,
     )

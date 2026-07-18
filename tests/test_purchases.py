@@ -24,8 +24,9 @@ def _confirm_purchase(client: TestClient) -> dict:
         "create_supplier": True,
         "supplier_name": preview["supplier"]["name"],
         "supplier_trade_name": preview["supplier"]["trade_name"],
-        "supplier_document": preview["supplier"]["document"],
+        "supplier_document": "12345678000195",
         "supplier_state_registration": preview["supplier"]["state_registration"],
+        "supplier_address": preview["supplier"]["address"],
         "items": [
             {
                 "supplier_product_code": item["supplier_product_code"],
@@ -79,7 +80,7 @@ def test_confirm_purchase_creates_supplier_stock_and_updates_cost(
     assert balance.status_code == 200
     assert Decimal(balance.json()["current_balance"]) > 0
 
-    suppliers = client.get("/suppliers/", params={"document": preview["supplier"]["document"]})
+    suppliers = client.get("/suppliers/", params={"document": "12345678000195"})
     assert suppliers.status_code == 200
     assert len(page_items(suppliers)) == 1
 
@@ -98,7 +99,8 @@ def test_duplicate_invoice_key_rejected(client: TestClient, seeded_catalog):
         "issue_date": preview["invoice"]["issue_date"],
         "create_supplier": True,
         "supplier_name": preview["supplier"]["name"],
-        "supplier_document": preview["supplier"]["document"],
+        "supplier_document": "12345678000195",
+        "supplier_address": preview["supplier"]["address"],
         "items": [
             {
                 "supplier_product_code": item["supplier_product_code"],
@@ -133,7 +135,8 @@ def test_cancel_purchase_reverses_stock(client: TestClient, seeded_catalog):
         "issue_date": preview["invoice"]["issue_date"],
         "create_supplier": True,
         "supplier_name": preview["supplier"]["name"],
-        "supplier_document": preview["supplier"]["document"],
+        "supplier_document": "12345678000195",
+        "supplier_address": preview["supplier"]["address"],
         "items": [
             {
                 "supplier_product_code": item["supplier_product_code"],
@@ -175,7 +178,8 @@ def test_cancel_purchase_insufficient_stock_returns_409(client: TestClient, seed
         "issue_date": preview["invoice"]["issue_date"],
         "create_supplier": True,
         "supplier_name": preview["supplier"]["name"],
-        "supplier_document": preview["supplier"]["document"],
+        "supplier_document": "12345678000195",
+        "supplier_address": preview["supplier"]["address"],
         "items": [
             {
                 "supplier_product_code": item["supplier_product_code"],
@@ -240,6 +244,17 @@ def test_supplier_crud(client: TestClient):
             "email": "teste@fornecedor.fake",
             "phone": "11999990000",
             "is_active": True,
+            "address": {
+                "description": "Principal",
+                "zip_code": "01310100",
+                "street": "Avenida Paulista",
+                "number": "1000",
+                "complement": None,
+                "neighborhood": "Bela Vista",
+                "city": "São Paulo",
+                "state": "SP",
+                "ibge_code": "3550308",
+            },
         },
     )
     assert create.status_code == 201

@@ -14,7 +14,9 @@ A API deste repositório é o contrato; apps externos falam **só** por HTTP.
 **Regra de ouro:** o **catálogo de produtos vive no ERP**. Nenhum app externo mantém bank paralelo de SKUs. Ordem obrigatória:
 
 ```text
-cadastrar no ERP (categorias → marcas → produtos → fornecedores)
+cadastrar no ERP (categorias, com hierarquia até folhas quando necessário
+        → fornecedores com endereço completo
+        → produtos com fornecedor principal e dados fiscais)
         → comprar (upload XML + confirm, com store_id)
         → vender (PDV: POST /sales, com estoque na loja)
 ```
@@ -113,13 +115,11 @@ Config: `PYERP_API_URL` (ex. `http://localhost:8000`).
 |--------|------|-----------|-------|
 | `GET`/`POST` | `/categories/` | `categories:read` / `write` | Filtros: `q`, `is_active`, `offset`, `limit` |
 | `GET` | `/categories/by-slug/{slug}` | `categories:read` | Lookup pela chave natural |
-| `GET`/`POST` | `/brands/` | `brands:read` / `write` | Filtro: `q`; marca é opcional por produto |
-| `GET` | `/brands/by-name/{name}` | `brands:read` | Trim + busca case-insensitive |
-| `GET`/`POST` | `/products/` | `products:read` / `write` | Filtros: `q`, `sku`, `barcode`, `category_id`, `brand_id`, `is_active`, paginação |
-| `GET` | `/products/by-sku/{sku}` | `products:read` | Lookup pela chave natural |
-| `GET` | `/products/by-barcode/{barcode}` | `products:read` | Lookup por EAN/código de barras |
 | `GET`/`POST` | `/suppliers/` | `suppliers:read` / `write` | Filtros: `name`, `document`, `active_only`, paginação |
 | `GET` | `/suppliers/by-document/{document}` | `suppliers:read` | Aceita CNPJ com ou sem pontuação |
+| `GET`/`POST` | `/products/` | `products:read` / `write` | Filtros: `q`, `sku`, `barcode`, `material_code`, `category_id`, `primary_supplier_id`, `is_active`, paginação |
+| `GET` | `/products/by-sku/{sku}` | `products:read` | Lookup pela chave natural |
+| `GET` | `/products/by-barcode/{barcode}` | `products:read` | Lookup por EAN/código de barras |
 
 Os endpoints de listagem retornam uma página (`items`, `total`, `offset`, `limit`). Os lookups
 `by-*` retornam `404` quando a chave não existe.
@@ -136,13 +136,34 @@ Categoria:
 }
 ```
 
-Marca:
+Fornecedor:
 
 ```json
 {
-  "name": "Marca Exemplo"
+  "name": "Fornecedor Exemplo Ltda.",
+  "trade_name": "Fornecedor Exemplo",
+  "document": "11.222.333/0001-81",
+  "state_registration": "123456789",
+  "email": "fiscal@example.com",
+  "phone": "11999999999",
+  "is_active": true,
+  "address": {
+    "description": "Principal",
+    "zip_code": "01310100",
+    "street": "Avenida Paulista",
+    "number": "1000",
+    "complement": "Sala 1",
+    "neighborhood": "Bela Vista",
+    "city": "São Paulo",
+    "state": "SP",
+    "ibge_code": "3550308"
+  }
 }
 ```
+
+O endereço principal completo é obrigatório na criação. O CNPJ é normalizado para
+14 dígitos e validado pelos dígitos verificadores. O backend gera `code` com 8 dígitos;
+o cliente não envia nem altera esse campo.
 
 Produto:
 
@@ -158,7 +179,7 @@ Produto:
   "weight_gross": "0.520",
   "unit_of_measure": "UN",
   "category_id": 1,
-  "brand_id": 1,
+  "primary_supplier_id": 1,
   "is_active": true,
   "fiscal": {
     "ncm": "09012100",
@@ -169,24 +190,10 @@ Produto:
 }
 ```
 
+`primary_supplier_id` é obrigatório e deve referenciar um fornecedor já cadastrado.
+O backend gera `material_code` com 7 dígitos; clientes não podem defini-lo ou alterá-lo.
 `sale_price` deve ser maior que zero. `ncm` exige 8 dígitos, `cfop_default` 4,
 `cest` 7 quando informado e `origem_produto` deve estar entre 0 e 8.
-
-Fornecedor:
-
-```json
-{
-  "name": "Fornecedor Exemplo Ltda.",
-  "trade_name": "Fornecedor Exemplo",
-  "document": "11.222.333/0001-81",
-  "state_registration": "123456789",
-  "email": "fiscal@example.com",
-  "phone": "11999999999",
-  "is_active": true
-}
-```
-
-O CNPJ é normalizado para 14 dígitos e validado pelos dígitos verificadores.
 As respostas incluem `id`; use `product_id` no mapeamento da compra.
 
 #### Idempotência e erros do catálogo
@@ -197,7 +204,7 @@ ou corrida concorrente, trate:
 | HTTP | Situação |
 |------|----------|
 | `404` | Lookup não encontrou o cadastro |
-| `409` | Slug, nome da marca, SKU/EAN ou CNPJ já existe na empresa |
+| `409` | Slug, SKU/EAN ou CNPJ já existe na empresa |
 | `422` | Payload ou dados fiscais/CNPJ inválidos |
 
 ### Compras (NF-e)
@@ -212,15 +219,17 @@ ou corrida concorrente, trate:
 Fluxo:
 
 1. Gerar XML com códigos/EAN/SKU **já existentes** no ERP (ou mapear no confirm).
-2. `POST /purchases/upload-xml` → preview (`supplier`, `invoice`, `items[]` com `mapping_status`, `suggested_product_id`).
+2. `POST /purchases/upload-xml` → preview (`supplier`, `invoice`, `items[]` com `mapping_status`, `suggested_product_id`). `supplier.address` recebe os campos disponíveis de `emit/enderEmit`; campos ausentes são `null` e não impedem o preview.
 3. Montar `PurchaseConfirmRequest` a partir do preview:
    - `access_key`, `invoice_number`, `invoice_series`, `issue_date`
-   - `supplier_id` **ou** `create_supplier: true` + dados do emitente
+   - `supplier_id` **ou** `create_supplier: true` + dados do emitente; não envie ambos
+   - ao criar, `supplier_address` é obrigatório e deve conter CEP, logradouro, número, bairro, cidade, UF e código IBGE válidos. Copie-o do preview e complete/corrija os campos ausentes antes de confirmar
    - `store_id` (loja que recebe o estoque)
    - `items[]`: `product_id` preenchido quando `mapped`; senão `create_product` (evitar no fluxo feliz do Data Sim — prefira cadastrar antes)
 4. `POST /purchases/confirm` → `201` + pedido; estoque da loja sobe; custo médio atualiza.
 
 Mapeamento automático no preview (ordem): de-para fornecedor → barcode → SKU = código do fornecedor.
+Fornecedor já existente na empresa é reutilizado pelo ID ou CNPJ normalizado, sem alteração do endereço pelo XML. Se o emitente ainda não existir, CNPJ e endereço são validados pelo mesmo domínio do cadastro de fornecedores; XML incompleto sem complementação de `supplier_address` recebe `422` e não persiste a compra nem entidades intermediárias.
 
 ---
 
@@ -287,8 +296,8 @@ Erros que o PDV deve tratar:
 ## Fluxo demo ponta a ponta
 
 ```text
-1. Data Sim: login → POST categories → brands → products (+ fiscal) → suppliers (+ IE)
-2. Data Sim: GET by-slug / by-name / by-sku / by-document → mesmo id
+1. Data Sim: login → POST categories (hierarquia até folhas, se necessária) → suppliers (endereço completo) → products (fornecedor principal + fiscal)
+2. Data Sim: GET by-slug / by-sku / by-document → mesmo id
 3. Replay das chaves naturais → 409; NCM/CNPJ inválidos → 422
 4. Data Sim: gera XML alinhado aos EAN/SKU → upload-xml → confirm (store_id)
 5. Conferir: GET /stock/product/{id}/balance?store_id=…
@@ -315,7 +324,7 @@ Aceite mínimo do ecossistema: produto criado pelo Data Sim aparece em `GET /pro
 - [ ] Auth com Bearer em todas as chamadas pós-login
 - [ ] Não inventa `company_id` no client — vem do token
 - [ ] Envia ou resolve `store_id` em compra / venda / saldo
-- [ ] Data Sim: login e cadastro na ordem categoria → marca → produto → fornecedor
+- [ ] Data Sim: login e cadastro na ordem categorias (até folhas) → fornecedores com endereço completo → produtos com fornecedor principal/fiscal
 - [ ] Cada cadastro criado é recuperado pelo respectivo `GET by-*` com o mesmo `id`
 - [ ] Replay das chaves naturais recebe `409`, sem duplicata silenciosa
 - [ ] Produto fiscal inválido recebe `422`; produto válido persiste NCM/CEST/CFOP/origem

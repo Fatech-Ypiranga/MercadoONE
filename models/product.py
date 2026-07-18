@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum as PyEnum
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Annotated, Optional
 
-import sqlalchemy as sa
-from sqlalchemy import Index, UniqueConstraint
+from pydantic import StringConstraints
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -15,36 +15,6 @@ class UnitOfMeasure(str, PyEnum):
     UN = "UN"
     KG = "KG"
     CX = "CX"
-
-
-class BrandBase(SQLModel):
-    name: str = Field(index=True, max_length=100)
-
-
-class BrandCreate(BrandBase):
-    pass
-
-
-class BrandUpdate(SQLModel):
-    name: Optional[str] = None
-
-
-class BrandResponse(BrandBase):
-    id: int
-    company_id: int
-
-
-class Brand(BrandBase, table=True):
-    __tablename__ = "brands"
-    __table_args__ = (
-        Index("uq_brands_company_lower_name", "company_id", sa.func.lower("name"), unique=True),
-    )
-    id: Optional[int] = Field(default=None, primary_key=True)
-    company_id: int = Field(foreign_key="companies.id", index=True)
-    created_by: Optional[int] = Field(default=None, foreign_key="users.id")
-    updated_by: Optional[int] = Field(default=None, foreign_key="users.id")
-
-    products: List["Product"] = Relationship(back_populates="brand")
 
 
 class ProductFiscalBase(SQLModel):
@@ -84,10 +54,10 @@ class ProductBase(SQLModel):
     unit_of_measure: UnitOfMeasure = Field(default=UnitOfMeasure.UN)
 
     category_id: int = Field(foreign_key="categories.id")
-    brand_id: Optional[int] = Field(default=None, foreign_key="brands.id")
 
 
 class ProductCreate(ProductBase):
+    primary_supplier_id: int
     fiscal: Optional[ProductFiscalCreate] = None
 
 
@@ -103,13 +73,15 @@ class ProductUpdate(SQLModel):
     weight_gross: Optional[Decimal] = None
     unit_of_measure: Optional[UnitOfMeasure] = None
     category_id: Optional[int] = None
-    brand_id: Optional[int] = None
+    primary_supplier_id: Optional[int] = None
     fiscal: Optional[ProductFiscalCreate] = None
 
 
 class ProductResponse(ProductBase):
     id: int
     company_id: int
+    material_code: Annotated[str, StringConstraints(pattern=r"^\d{7}$")]
+    primary_supplier_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
     created_by: Optional[int] = None
@@ -118,16 +90,28 @@ class ProductResponse(ProductBase):
 
 class ProductDetailResponse(ProductResponse):
     category: "CategoryResponse"
-    brand: Optional[BrandResponse] = None
     fiscal: Optional[ProductFiscalResponse] = None
 
 
 class Product(ProductBase, table=True):
     __tablename__ = "products"
-    __table_args__ = (UniqueConstraint("company_id", "sku", name="uq_products_company_sku"),)
+    __table_args__ = (
+        UniqueConstraint("company_id", "sku", name="uq_products_company_sku"),
+        UniqueConstraint(
+            "company_id",
+            "material_code",
+            name="uq_products_company_material_code",
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     company_id: int = Field(foreign_key="companies.id", index=True)
+    material_code: str = Field(max_length=7)
+    primary_supplier_id: Optional[int] = Field(
+        default=None,
+        foreign_key="suppliers.id",
+        index=True,
+    )
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -135,8 +119,17 @@ class Product(ProductBase, table=True):
     updated_by: Optional[int] = Field(default=None, foreign_key="users.id")
 
     category: "Category" = Relationship(back_populates="products")
-    brand: Optional[Brand] = Relationship(back_populates="products")
     fiscal: Optional[ProductFiscal] = Relationship(back_populates="product")
+
+
+class ProductMaterialSequence(SQLModel, table=True):
+    __tablename__ = "product_material_sequences"
+
+    company_id: int = Field(
+        primary_key=True,
+        foreign_key="companies.id",
+    )
+    last_sequence: int = Field(default=0)
 
 
 from .category import CategoryResponse

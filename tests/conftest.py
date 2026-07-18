@@ -16,7 +16,9 @@ from database.connection import get_db
 from database.migrate import upgrade_head
 from database.seed import ensure_demo_organization, seed_admin_user
 from main import create_app
+from models.company import Branch, Company, Store
 from models.user import User
+from repositories.company_repository import BranchRepository, CompanyRepository, StoreRepository
 from repositories.user_repository import UserRepository
 from tests.catalog_seed import seed_purchase_test_catalog
 from utils.enums import UserProfile
@@ -35,6 +37,10 @@ TABLES = (
     "purchase_items",
     "purchase_orders",
     "supplier_product_mappings",
+    "supplier_addresses",
+    "supplier_sequences",
+    "supplier_municipalities",
+    "product_material_sequences",
     "suppliers",
     "stock_movements",
     "sale_items",
@@ -43,7 +49,6 @@ TABLES = (
     "products",
     "customer_addresses",
     "customers",
-    "brands",
     "categories",
     "users",
     "stores",
@@ -277,7 +282,31 @@ def category(client: TestClient) -> dict:
 
 
 @pytest.fixture
-def product(client: TestClient, category: dict) -> dict:
+def supplier(client: TestClient) -> dict:
+    response = client.post(
+        "/suppliers/",
+        json={
+            "name": "Fornecedor padrão",
+            "document": "11.222.333/0001-81",
+            "is_active": True,
+            "address": {
+                "description": "Principal",
+                "zip_code": "01310100",
+                "street": "Avenida Paulista",
+                "number": "1000",
+                "neighborhood": "Bela Vista",
+                "city": "São Paulo",
+                "state": "SP",
+                "ibge_code": "3550308",
+            },
+        },
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+@pytest.fixture
+def product(client: TestClient, category: dict, supplier: dict) -> dict:
     response = client.post(
         "/products/",
         json={
@@ -286,10 +315,72 @@ def product(client: TestClient, category: dict) -> dict:
             "sale_price": "50.00",
             "cost_price": "30.00",
             "category_id": category["id"],
+            "primary_supplier_id": supplier["id"],
         },
     )
     assert response.status_code == 201
     return response.json()
+
+
+@pytest.fixture
+def second_company_client(test_engine, client):
+    from datetime import datetime, timezone
+
+    with Session(test_engine) as session:
+        company = CompanyRepository.create(
+            session,
+            Company(
+                legal_name="Segunda Empresa Ltda",
+                trade_name="Empresa 2",
+                document="22333444000155",
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            ),
+        )
+        branch = BranchRepository.create(
+            session,
+            Branch(
+                company_id=company.id,
+                name="Filial 2",
+                code="FILIAL-2-CAT",
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            ),
+        )
+        store = StoreRepository.create(
+            session,
+            Store(
+                company_id=company.id,
+                branch_id=branch.id,
+                name="Loja 2",
+                code="LOJA-2-CAT",
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            ),
+        )
+        admin2 = User(
+            full_name="Admin Empresa 2",
+            cpf="88888888888",
+            email="admin2cat@test.local",
+            username="admin2cat",
+            password_hash=hash_password("admin2cat123"),
+            profile=UserProfile.ADMIN,
+            is_active=True,
+            company_id=company.id,
+            default_branch_id=branch.id,
+            default_store_id=store.id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        UserRepository.create(session, admin2)
+        session.commit()
+
+    test_client = make_client(test_engine, username="admin2cat", password="admin2cat123")
+    yield test_client
+    test_client.app.dependency_overrides.clear()
 
 
 @pytest.fixture

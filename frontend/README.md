@@ -64,7 +64,7 @@ app/
   (auth)/login/     # Login público
   (app)/            # Shell autenticado (sidebar RBAC + header + seletor de loja)
     dashboard/
-    products|categories|brands|customers|...
+    products|categories|customers|suppliers|...
     sales|sales/[id]|stock|purchases|reports
     branches|stores|users|audit
 lib/

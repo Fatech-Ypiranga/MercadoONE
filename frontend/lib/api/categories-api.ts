@@ -1,13 +1,20 @@
 import { apiFetch, unwrapPageItems } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
 
-export type CategoryResponse = components["schemas"]["CategoryResponse"];
-export type CategoryCreate = components["schemas"]["CategoryCreate"];
-export type CategoryUpdate = components["schemas"]["CategoryUpdate"];
+export type CategoryResponse = components["schemas"]["CategoryResponse"] & {
+  parent_id?: number | null;
+};
+export type CategoryCreate = components["schemas"]["CategoryCreate"] & {
+  parent_id?: number | null;
+};
+export type CategoryUpdate = components["schemas"]["CategoryUpdate"] & {
+  parent_id?: number | null;
+};
 
 export type ListCategoriesQuery = {
   q?: string;
   is_active?: boolean;
+  parent_id?: number;
   offset?: number;
   limit?: number;
 };

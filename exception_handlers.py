@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from services.exceptions import (
     BusinessRuleException,
     ConflictException,
+    ExternalServiceException,
     ForbiddenException,
     InsufficientStockException,
     ResourceNotFoundException,
@@ -40,3 +41,9 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ForbiddenException)
     async def forbidden_handler(_request: Request, exc: ForbiddenException):
         return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+    @app.exception_handler(ExternalServiceException)
+    async def external_service_handler(
+        _request: Request, exc: ExternalServiceException
+    ):
+        return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})

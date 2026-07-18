@@ -36,11 +36,21 @@ def create_product(
     summary="Listar produtos",
 )
 def list_products(
-    q: Annotated[str | None, Query(description="Busca por nome ou SKU (ilike)")] = None,
+    q: Annotated[
+        str | None,
+        Query(description="Busca por nome, SKU, barcode ou código de material (ilike)"),
+    ] = None,
     sku: Annotated[str | None, Query(description="Filtro exato por SKU")] = None,
     barcode: Annotated[str | None, Query(description="Filtro exato por código de barras")] = None,
+    material_code: Annotated[
+        str | None,
+        Query(description="Filtro exato por código interno de material"),
+    ] = None,
     category_id: Annotated[int | None, Query(description="Filtro por categoria")] = None,
-    brand_id: Annotated[int | None, Query(description="Filtro por marca")] = None,
+    primary_supplier_id: Annotated[
+        int | None,
+        Query(description="Filtro por fornecedor principal"),
+    ] = None,
     is_active: Annotated[bool | None, Query(description="Filtrar por status ativo")] = None,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=DEFAULT_PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
@@ -53,8 +63,9 @@ def list_products(
         q=q,
         sku=sku,
         barcode=barcode,
+        material_code=material_code,
         category_id=category_id,
-        brand_id=brand_id,
+        primary_supplier_id=primary_supplier_id,
         is_active=is_active,
     )
     return paginate(products, offset=offset, limit=limit)
