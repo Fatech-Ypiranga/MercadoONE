@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/components/auth-provider";
-import { DataSourceBanner } from "@/components/data-source-banner";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -41,10 +40,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader />
-          <main className="flex-1 px-4 py-6 sm:px-6">
-            <DataSourceBanner />
-            {children}
-          </main>
+          <main className="flex-1 px-4 py-6 sm:px-6">{children}</main>
         </div>
       </div>
     </div>

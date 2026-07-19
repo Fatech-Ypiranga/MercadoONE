@@ -2,13 +2,22 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useMemo, type ReactNode } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { PageHeader } from "@/components/page-header";
 import { RefreshControls } from "@/components/refresh-controls";
 import { RequirePermission } from "@/components/require-permission";
-import { EmptyState, ErrorAlert, LoadingState } from "@/components/ui-states";
+import { EmptyState, ErrorAlert } from "@/components/ui-states";
 import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -24,12 +33,21 @@ import {
   getTopProducts,
 } from "@/lib/api/reports-api";
 import { listSales } from "@/lib/api/sales-api";
+import {
+  DASHBOARD_PERIOD_DAYS,
+  DASHBOARD_SALES_LIMIT,
+  periodStartIso,
+  purchaseStatusBadge,
+  saleStatusBadge,
+  summarizeSales,
+} from "@/lib/dashboard-metrics";
 import { errorMessage, formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { latestDataUpdatedAt, liveQueryOptions } from "@/lib/live-query";
 
 export default function DashboardPage() {
   const { user, activeStoreId, activeStore } = useAuth();
   const storeQuery = activeStoreId ?? undefined;
+  const dateFrom = useMemo(() => periodStartIso(DASHBOARD_PERIOD_DAYS), []);
 
   const top = useQuery({
     queryKey: ["reports", "top", storeQuery],
@@ -47,15 +65,25 @@ export default function DashboardPage() {
     ...liveQueryOptions,
   });
   const sales = useQuery({
-    queryKey: ["sales", "recent", storeQuery],
-    queryFn: () => listSales({ store_id: storeQuery }),
+    queryKey: ["sales", "recent", storeQuery, dateFrom],
+    queryFn: () =>
+      listSales({
+        store_id: storeQuery,
+        date_from: dateFrom,
+        limit: DASHBOARD_SALES_LIMIT,
+      }),
     ...liveQueryOptions,
   });
   const purchases = useQuery({
     queryKey: ["purchases", "recent", storeQuery],
-    queryFn: () => listPurchases({ store_id: storeQuery }),
+    queryFn: () => listPurchases({ store_id: storeQuery, limit: 6 }),
     ...liveQueryOptions,
   });
+
+  const salesSummary = useMemo(
+    () => summarizeSales(sales.data ?? []),
+    [sales.data],
+  );
 
   if (!user) return null;
 
@@ -75,14 +103,16 @@ export default function DashboardPage() {
     purchases.dataUpdatedAt,
   );
 
+  const periodHint = `Últimos ${DASHBOARD_PERIOD_DAYS} dias`;
+
   return (
     <RequirePermission module="reports">
       <PageHeader
         title="Dashboard"
         description={
           activeStore
-            ? `Visão da loja ${activeStore.name}. Troque a loja no header para filtrar.`
-            : "Selecione uma loja no header para filtrar indicadores."
+            ? `Visão da loja ${activeStore.name} · ${periodHint.toLowerCase()}. Troque a loja no header para filtrar.`
+            : `Selecione uma loja no header para filtrar indicadores · ${periodHint.toLowerCase()}.`
         }
         trailing={
           <RefreshControls
@@ -103,49 +133,47 @@ export default function DashboardPage() {
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
+          label="Receita"
+          hint={periodHint}
+          loading={sales.isLoading}
+          value={formatMoney(salesSummary.revenue)}
+          note={salesSummary.capped ? `Até ${DASHBOARD_SALES_LIMIT} vendas` : undefined}
+        />
+        <MetricCard
+          label="Vendas"
+          hint={periodHint}
+          loading={sales.isLoading}
+          value={formatNumber(salesSummary.count)}
+          note={salesSummary.capped ? `Até ${DASHBOARD_SALES_LIMIT} vendas` : undefined}
+        />
+        <MetricCard
           label="Ticket médio"
-          value={
-            ticket.isLoading
-              ? "…"
-              : formatMoney(ticket.data?.average_ticket)
-          }
+          hint="Histórico da loja"
+          loading={ticket.isLoading}
+          value={formatMoney(ticket.data?.average_ticket)}
         />
         <MetricCard
-          label="Itens críticos"
-          value={
-            critical.isLoading
-              ? "…"
-              : formatNumber(critical.data?.length ?? 0)
-          }
-        />
-        <MetricCard
-          label="Vendas (lista)"
-          value={
-            sales.isLoading ? "…" : formatNumber(sales.data?.length ?? 0)
-          }
-        />
-        <MetricCard
-          label="Compras (lista)"
-          value={
-            purchases.isLoading
-              ? "…"
-              : formatNumber(purchases.data?.length ?? 0)
-          }
+          label="Estoque crítico"
+          hint="Limiar ≥ 5"
+          loading={critical.isLoading}
+          value={formatNumber(critical.data?.length ?? 0)}
         />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-xl border border-border p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Top produtos</h2>
-            <Link href="/reports" className="text-xs text-muted-foreground hover:underline">
-              Ver relatórios
-            </Link>
-          </div>
+        <DashboardPanel
+          title="Top produtos"
+          actionHref="/reports"
+          actionLabel="Ver relatórios"
+        >
           {top.isLoading ? (
-            <LoadingState />
+            <TableSkeleton rows={5} cols={2} />
           ) : !top.data?.length ? (
-            <EmptyState message="Sem vendas no período/loja." />
+            <EmptyState
+              message="Sem vendas no período/loja."
+              actionLabel="Ver relatórios"
+              actionHref="/reports"
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -166,17 +194,15 @@ export default function DashboardPage() {
               </TableBody>
             </Table>
           )}
-        </section>
+        </DashboardPanel>
 
-        <section className="rounded-xl border border-border p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Estoque crítico</h2>
-            <Link href="/stock" className="text-xs text-muted-foreground hover:underline">
-              Ir ao estoque
-            </Link>
-          </div>
+        <DashboardPanel
+          title="Estoque crítico"
+          actionHref="/stock"
+          actionLabel="Ir ao estoque"
+        >
           {critical.isLoading ? (
-            <LoadingState />
+            <TableSkeleton rows={5} cols={3} />
           ) : !critical.data?.length ? (
             <EmptyState message="Nenhum item abaixo do limiar." />
           ) : (
@@ -205,19 +231,22 @@ export default function DashboardPage() {
               </TableBody>
             </Table>
           )}
-        </section>
+        </DashboardPanel>
 
-        <section className="rounded-xl border border-border p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Últimas vendas</h2>
-            <Link href="/sales" className="text-xs text-muted-foreground hover:underline">
-              Ver todas
-            </Link>
-          </div>
+        <DashboardPanel
+          title="Últimas vendas"
+          description={periodHint}
+          actionHref="/sales"
+          actionLabel="Ver todas"
+        >
           {sales.isLoading ? (
-            <LoadingState />
+            <TableSkeleton rows={6} cols={4} />
           ) : !sales.data?.length ? (
-            <EmptyState message="Nenhuma venda encontrada." />
+            <EmptyState
+              message="Nenhuma venda encontrada."
+              actionLabel="Ver vendas"
+              actionHref="/sales"
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -229,32 +258,46 @@ export default function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sales.data.slice(0, 6).map((sale) => (
-                  <TableRow key={sale.id}>
-                    <TableCell>{sale.id}</TableCell>
-                    <TableCell>{formatDate(sale.sale_date)}</TableCell>
-                    <TableCell>{sale.status}</TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(sale.total_amount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {sales.data.slice(0, 6).map((sale) => {
+                  const status = saleStatusBadge(sale.status);
+                  return (
+                    <TableRow key={sale.id}>
+                      <TableCell>
+                        <Link
+                          href={`/sales/${sale.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {sale.id}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{formatDate(sale.sale_date)}</TableCell>
+                      <TableCell>
+                        <Badge variant={status.variant}>{status.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(sale.total_amount)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
-        </section>
+        </DashboardPanel>
 
-        <section className="rounded-xl border border-border p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Últimas compras</h2>
-            <Link href="/purchases" className="text-xs text-muted-foreground hover:underline">
-              Ver todas
-            </Link>
-          </div>
+        <DashboardPanel
+          title="Últimas compras"
+          actionHref="/purchases"
+          actionLabel="Ver todas"
+        >
           {purchases.isLoading ? (
-            <LoadingState />
+            <TableSkeleton rows={6} cols={4} />
           ) : !purchases.data?.length ? (
-            <EmptyState message="Nenhuma compra encontrada." />
+            <EmptyState
+              message="Nenhuma compra encontrada."
+              actionLabel="Ver compras"
+              actionHref="/purchases"
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -266,32 +309,120 @@ export default function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {purchases.data.slice(0, 6).map((po) => (
-                  <TableRow key={po.id}>
-                    <TableCell>{po.invoice_number ?? po.id}</TableCell>
-                    <TableCell>{po.supplier_name ?? po.supplier_id}</TableCell>
-                    <TableCell>{po.status}</TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(po.total_amount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {purchases.data.map((po) => {
+                  const status = purchaseStatusBadge(po.status);
+                  return (
+                    <TableRow key={po.id}>
+                      <TableCell>
+                        <Link
+                          href={`/purchases/${po.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {po.invoice_number ?? po.id}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{po.supplier_name ?? po.supplier_id}</TableCell>
+                      <TableCell>
+                        <Badge variant={status.variant}>{status.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(po.total_amount)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
-        </section>
+        </DashboardPanel>
       </div>
     </RequirePermission>
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function MetricCard({
+  label,
+  value,
+  hint,
+  note,
+  loading,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  note?: string;
+  loading?: boolean;
+}) {
   return (
-    <div className="rounded-xl border border-border p-4">
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
+    <Card size="sm">
+      <CardHeader>
+        <CardDescription className="text-xs font-medium tracking-wide uppercase">
+          {label}
+        </CardDescription>
+        {loading ? (
+          <div className="mt-1 h-8 w-24 animate-pulse rounded-md bg-muted" />
+        ) : (
+          <CardTitle className="text-2xl font-semibold tracking-tight">
+            {value}
+          </CardTitle>
+        )}
+        {hint ? (
+          <p className="text-xs text-muted-foreground">{hint}</p>
+        ) : null}
+        {note && !loading ? (
+          <p className="text-xs text-muted-foreground">{note}</p>
+        ) : null}
+      </CardHeader>
+    </Card>
+  );
+}
+
+function DashboardPanel({
+  title,
+  description,
+  actionHref,
+  actionLabel,
+  children,
+}: {
+  title: string;
+  description?: string;
+  actionHref: string;
+  actionLabel: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>{title}</CardTitle>
+        {description ? <CardDescription>{description}</CardDescription> : null}
+        <CardAction>
+          <Link
+            href={actionHref}
+            className="text-xs text-muted-foreground hover:underline"
+          >
+            {actionLabel}
+          </Link>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="pt-(--card-spacing)">{children}</CardContent>
+    </Card>
+  );
+}
+
+function TableSkeleton({ rows, cols }: { rows: number; cols: number }) {
+  return (
+    <div className="space-y-2" aria-hidden>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex gap-3">
+          {Array.from({ length: cols }, (_, j) => (
+            <div
+              key={j}
+              className="h-4 flex-1 animate-pulse rounded bg-muted"
+              style={{ maxWidth: j === cols - 1 ? "4rem" : undefined }}
+            />
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
