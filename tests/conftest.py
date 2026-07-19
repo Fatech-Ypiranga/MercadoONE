@@ -3,6 +3,7 @@ import os
 os.environ.setdefault("ENV", "development")
 # Testes locais: senha só no ambiente de teste (seed exige ADMIN_PASSWORD sem default).
 os.environ.setdefault("ADMIN_PASSWORD", "admin123")
+os.environ.setdefault("PLATFORM_API_KEY", "test-platform-key")
 # Evita 429 nos muitos logins da suíte (P2-06 rate limit).
 os.environ.setdefault("LOGIN_RATE_LIMIT", "10000")
 
@@ -53,6 +54,7 @@ TABLES = (
     "customers",
     "categories",
     "users",
+    "company_registration_requests",
     "stores",
     "branches",
     "companies",

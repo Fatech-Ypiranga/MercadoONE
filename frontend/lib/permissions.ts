@@ -66,7 +66,7 @@ const MODULE_PERMISSIONS: Record<string, Partial<Record<UserProfile, Set<Action>
   branches: { ...ALL_READ },
   stores: { ...ALL_READ },
   companies: {
-    admin: new Set(["read"]),
+    admin: new Set(["read", "write"]),
     gerente: new Set(["read"]),
     supervisor: new Set(["read"]),
     operador: new Set(["read"]),

@@ -7,12 +7,14 @@ from models.company import (
     BranchCreate,
     BranchUpdate,
     Company,
+    CompanyUpdate,
     Store,
     StoreCreate,
     StoreUpdate,
 )
 from repositories.company_repository import BranchRepository, CompanyRepository, StoreRepository
 from services.exceptions import ResourceNotFoundException, ValidationError
+from utils.cnpj import is_valid_cnpj, normalize_cnpj
 
 
 class OrgService:
@@ -23,6 +25,34 @@ class OrgService:
         company = CompanyRepository.find_by_id(self.db, company_id)
         if not company:
             raise ResourceNotFoundException(f"Company with ID {company_id} was not found.")
+        return company
+
+    def update_company(
+        self,
+        company_id: int,
+        company_in: CompanyUpdate,
+        *,
+        actor_id: int,
+    ) -> Company:
+        company = self.get_company(company_id)
+        update_data = company_in.model_dump(exclude_unset=True)
+
+        if "document" in update_data:
+            document = normalize_cnpj(update_data["document"])
+            if not is_valid_cnpj(document):
+                raise ValidationError("Invalid CNPJ.")
+            existing = CompanyRepository.find_by_document(self.db, document)
+            if existing and existing.id != company_id:
+                raise ValidationError("A company with this CNPJ already exists.")
+            update_data["document"] = document
+
+        for field_name, field_value in update_data.items():
+            setattr(company, field_name, field_value)
+        company.updated_at = datetime.now(timezone.utc)
+        company.updated_by = actor_id
+        self.db.add(company)
+        self.db.commit()
+        self.db.refresh(company)
         return company
 
     def list_branches(self, company_id: int) -> list[Branch]:

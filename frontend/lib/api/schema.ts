@@ -211,6 +211,76 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** Atualizar empresa do usuário autenticado */
+        patch: operations["update_my_company_companies_me_patch"];
+        trace?: never;
+    };
+    "/company-registrations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar solicitações (gestora / Appsmith) */
+        get: operations["list_company_registrations_company_registrations__get"];
+        put?: never;
+        /** Solicitar cadastro de empresa (público) */
+        post: operations["create_company_registration_company_registrations__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/company-registrations/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalhe da solicitação (gestora / Appsmith) */
+        get: operations["get_company_registration_company_registrations__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/company-registrations/{request_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aprovar solicitação e provisionar tenant */
+        post: operations["approve_company_registration_company_registrations__request_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/company-registrations/{request_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rejeitar solicitação */
+        post: operations["reject_company_registration_company_registrations__request_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -1050,6 +1120,111 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** CompanyRegistrationApprove */
+        CompanyRegistrationApprove: {
+            /**
+             * Has Branches
+             * @default false
+             */
+            has_branches: boolean;
+            /** Notes */
+            notes?: string | null;
+            /** Initial Store Name */
+            initial_store_name?: string | null;
+            /** Initial Store Code */
+            initial_store_code?: string | null;
+        };
+        /** CompanyRegistrationApproveResponse */
+        CompanyRegistrationApproveResponse: {
+            registration: components["schemas"]["CompanyRegistrationResponse"];
+            /** Company Id */
+            company_id: number;
+            /** Admin Username */
+            admin_username: string;
+            /** Admin Email */
+            admin_email: string;
+            /** Temporary Password */
+            temporary_password: string;
+        };
+        /** CompanyRegistrationCreate */
+        CompanyRegistrationCreate: {
+            /** Legal Name */
+            legal_name: string;
+            /** Trade Name */
+            trade_name?: string | null;
+            /**
+             * Document
+             * @description CNPJ
+             */
+            document: string;
+            /** State Registration */
+            state_registration?: string | null;
+            /** Admin Name */
+            admin_name: string;
+            /** Admin Email */
+            admin_email: string;
+            /**
+             * Admin Cpf
+             * @description CPF do admin inicial
+             */
+            admin_cpf: string;
+            /** Admin Phone */
+            admin_phone?: string | null;
+            /** Declared Store Count */
+            declared_store_count: number;
+        };
+        /** CompanyRegistrationReject */
+        CompanyRegistrationReject: {
+            /** Notes */
+            notes?: string | null;
+        };
+        /** CompanyRegistrationResponse */
+        CompanyRegistrationResponse: {
+            /** Id */
+            id: number;
+            /** Legal Name */
+            legal_name: string;
+            /** Trade Name */
+            trade_name?: string | null;
+            /** Document */
+            document: string;
+            /** State Registration */
+            state_registration?: string | null;
+            /** Admin Name */
+            admin_name: string;
+            /** Admin Email */
+            admin_email: string;
+            /** Admin Cpf */
+            admin_cpf: string;
+            /** Admin Phone */
+            admin_phone?: string | null;
+            /** Declared Store Count */
+            declared_store_count: number;
+            status: components["schemas"]["CompanyRegistrationStatus"];
+            /** Notes */
+            notes?: string | null;
+            /** Reviewed At */
+            reviewed_at?: string | null;
+            /** Reviewed By */
+            reviewed_by?: string | null;
+            /** Created Company Id */
+            created_company_id?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * CompanyRegistrationStatus
+         * @enum {string}
+         */
+        CompanyRegistrationStatus: "pending" | "approved" | "rejected";
         /** CompanyResponse */
         CompanyResponse: {
             /** Legal Name */
@@ -1068,6 +1243,11 @@ export interface components {
              * @default true
              */
             is_active: boolean;
+            /**
+             * Has Branches
+             * @default false
+             */
+            has_branches: boolean;
             /** Id */
             id: number;
             /**
@@ -1084,6 +1264,21 @@ export interface components {
             created_by?: number | null;
             /** Updated By */
             updated_by?: number | null;
+        };
+        /** CompanyUpdate */
+        CompanyUpdate: {
+            /** Legal Name */
+            legal_name?: string | null;
+            /** Trade Name */
+            trade_name?: string | null;
+            /** Document */
+            document?: string | null;
+            /** State Registration */
+            state_registration?: string | null;
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Has Branches */
+            has_branches?: boolean | null;
         };
         /** CustomerAddressCreate */
         CustomerAddressCreate: {
@@ -1364,6 +1559,11 @@ export interface components {
             trade_name?: string | null;
             /** Document */
             document: string;
+            /**
+             * Has Branches
+             * @default false
+             */
+            has_branches: boolean;
         };
         /** MeResponse */
         MeResponse: {
@@ -1561,6 +1761,17 @@ export interface components {
         Page_CategoryResponse_: {
             /** Items */
             items: components["schemas"]["CategoryResponse"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
+        /** Page[CompanyRegistrationResponse] */
+        Page_CompanyRegistrationResponse_: {
+            /** Items */
+            items: components["schemas"]["CompanyRegistrationResponse"][];
             /** Total */
             total: number;
             /** Offset */
@@ -3133,6 +3344,214 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompanyResponse"];
+                };
+            };
+        };
+    };
+    update_my_company_companies_me_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_company_registrations_company_registrations__get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: {
+                "X-Platform-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CompanyRegistrationResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_company_registration_company_registrations__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyRegistrationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyRegistrationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_company_registration_company_registrations__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Platform-Key"?: string | null;
+            };
+            path: {
+                request_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyRegistrationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_company_registration_company_registrations__request_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Platform-Key"?: string | null;
+            };
+            path: {
+                request_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CompanyRegistrationApprove"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyRegistrationApproveResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_company_registration_company_registrations__request_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Platform-Key"?: string | null;
+            };
+            path: {
+                request_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CompanyRegistrationReject"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyRegistrationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -96,13 +96,17 @@ Token JWT contém `sub` (user_id), `profile` e `company_id`. Expiração configu
 
 Seed: 1 empresa (PyERP Demo Ltda) → 1 filial (Matriz) → 1 loja (Loja Centro). Cadastros mestres têm `company_id`; operações têm `company_id` + `store_id`. Isolamento: recurso de outra empresa → 404.
 
+Flag `companies.has_branches` (default `false`): quando falsa, o frontend esconde o módulo Filiais e o seletor de filial padrão. A filial Matriz continua no banco.
+
+Cadastro de novos tenants: self-service público em `POST /company-registrations` (landing `/cadastro`, até 15 lojas). Aprovação/rejeição e provisionamento só via API da gestora com header `X-Platform-Key` (`PLATFORM_API_KEY`) — operação em Appsmith externo (`ops/appsmith/`). Tenant admin edita a própria empresa em `PATCH /companies/me` (tela Minha empresa).
+
 ### Usuários (`/users`) — somente admin
 
 CRUD com filtros (`q`, `profile`, `is_active`). Perfis: `admin`, `gerente`, `supervisor`, `operador`, `conferente`, `colaborador`.
 
 Credenciais de PDV (geradas no ERP, nunca no caixa):
 
-- `pdv_id`: 6 dígitos numéricos, únicos por empresa, distintos de `users.id`. Atribuídos a `operador` e Supervisor+ (`supervisor`/`gerente`/`admin`).
+- `pdv_id`: 6 dígitos numéricos aleatórios (não sequenciais), únicos por empresa, distintos de `users.id`. Códigos previsíveis (ex.: `000000`, `123456`) são rejeitados. Atribuídos a `operador` e Supervisor+ (`supervisor`/`gerente`/`admin`).
 - PIN PDV: 12 dígitos numéricos, só Supervisor+. Gerado/regenerado por admin via `POST /users/{id}/pdv-pin` (one-shot). Armazenado como hash; uso por digitação ou código de barras.
 - CPF validado com dígitos verificadores.
 

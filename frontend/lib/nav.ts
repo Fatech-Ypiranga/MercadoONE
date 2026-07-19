@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Building2,
   ClipboardList,
   FileBarChart,
   LayoutDashboard,
@@ -10,7 +11,6 @@ import {
   Truck,
   Users,
   Warehouse,
-  Building2,
 } from "lucide-react";
 
 import type { UserProfile } from "@/lib/permissions";
@@ -23,6 +23,8 @@ export type NavItem = {
   module?: string;
   /** Ação exigida para aparecer no menu (default: read). */
   action?: "read" | "write";
+  /** Só exibir quando a empresa tem filiais habilitadas. */
+  requiresBranches?: boolean;
 };
 
 export type NavSection = {
@@ -54,11 +56,18 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Organização",
     items: [
       {
+        href: "/company",
+        label: "Minha empresa",
+        icon: Building2,
+        module: "companies",
+      },
+      {
         href: "/branches",
         label: "Filiais",
         icon: Building2,
         module: "branches",
         action: "write",
+        requiresBranches: true,
       },
       { href: "/stores", label: "Lojas", icon: Store, module: "stores", action: "write" },
       { href: "/users", label: "Usuários", icon: Users, module: "users" },
@@ -67,10 +76,15 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-export function visibleNavSections(profile: UserProfile): NavSection[] {
+export function visibleNavSections(
+  profile: UserProfile,
+  options: { hasBranches?: boolean } = {},
+): NavSection[] {
+  const hasBranches = options.hasBranches ?? false;
   return NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter((item) => {
+      if (item.requiresBranches && !hasBranches) return false;
       if (!item.module) return true;
       return can(profile, item.module, item.action ?? "read");
     }),

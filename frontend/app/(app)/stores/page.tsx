@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { useAuth } from "@/components/auth-provider";
 import { PageHeader } from "@/components/page-header";
 import { RequirePermission } from "@/components/require-permission";
 import { EmptyState, ErrorAlert, LoadingState } from "@/components/ui-states";
@@ -18,6 +19,8 @@ import { listOrgStores } from "@/lib/api/org-api";
 import { errorMessage } from "@/lib/format";
 
 export default function StoresPage() {
+  const { user } = useAuth();
+  const hasBranches = Boolean(user?.company?.has_branches);
   const list = useQuery({ queryKey: ["stores"], queryFn: listOrgStores });
 
   return (
@@ -40,7 +43,7 @@ export default function StoresPage() {
               <TableRow>
                 <TableHead>Código</TableHead>
                 <TableHead>Nome</TableHead>
-                <TableHead>Filial</TableHead>
+                {hasBranches ? <TableHead>Filial</TableHead> : null}
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -49,7 +52,9 @@ export default function StoresPage() {
                 <TableRow key={store.id}>
                   <TableCell className="font-mono text-xs">{store.code}</TableCell>
                   <TableCell className="font-medium">{store.name}</TableCell>
-                  <TableCell>#{store.branch_id}</TableCell>
+                  {hasBranches ? (
+                    <TableCell>#{store.branch_id}</TableCell>
+                  ) : null}
                   <TableCell>
                     <Badge variant={store.is_active ? "default" : "secondary"}>
                       {store.is_active ? "Ativa" : "Inativa"}

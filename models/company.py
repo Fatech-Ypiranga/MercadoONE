@@ -11,6 +11,7 @@ class CompanyBase(SQLModel):
     document: str = Field(max_length=14, index=True, description="CNPJ, somente dígitos")
     state_registration: Optional[str] = Field(default=None, max_length=14)
     is_active: bool = Field(default=True)
+    has_branches: bool = Field(default=False)
 
 
 class CompanyCreate(CompanyBase):
@@ -23,6 +24,7 @@ class CompanyUpdate(SQLModel):
     document: Optional[str] = None
     state_registration: Optional[str] = None
     is_active: Optional[bool] = None
+    has_branches: Optional[bool] = None
 
 
 class CompanyResponse(CompanyBase):

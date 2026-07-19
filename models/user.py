@@ -62,6 +62,7 @@ class MeCompanyInfo(SQLModel):
     legal_name: str
     trade_name: Optional[str] = None
     document: str
+    has_branches: bool = False
 
 
 class MeBranchInfo(SQLModel):

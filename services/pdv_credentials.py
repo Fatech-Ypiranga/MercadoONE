@@ -11,6 +11,7 @@ from utils.enums import UserProfile
 
 PDV_ID_LENGTH = 6
 PDV_PIN_LENGTH = 12
+PDV_ID_MAX_ATTEMPTS = 64
 
 PDV_ELIGIBLE_PROFILES = frozenset(
     {
@@ -29,6 +30,28 @@ SUPERVISOR_PLUS_PROFILES = frozenset(
     }
 )
 
+# Predictable codes that operators should not receive as PDV IDs.
+_WEAK_PDV_IDS = frozenset(
+    {
+        "000000",
+        "111111",
+        "222222",
+        "333333",
+        "444444",
+        "555555",
+        "666666",
+        "777777",
+        "888888",
+        "999999",
+        "123456",
+        "654321",
+        "012345",
+        "543210",
+        "112233",
+        "121212",
+    }
+)
+
 
 def is_pdv_eligible(profile: UserProfile) -> bool:
     return profile in PDV_ELIGIBLE_PROFILES
@@ -38,8 +61,12 @@ def is_supervisor_plus(profile: UserProfile) -> bool:
     return profile in SUPERVISOR_PLUS_PROFILES
 
 
+def is_weak_pdv_id(code: str) -> bool:
+    return code in _WEAK_PDV_IDS
+
+
 def generate_pdv_id(db: Session, company_id: int) -> str:
-    """Allocate the next unused 6-digit PDV ID for the company."""
+    """Allocate a random unused 6-digit PDV ID for the company."""
     existing = {
         row
         for row in db.exec(
@@ -48,12 +75,13 @@ def generate_pdv_id(db: Session, company_id: int) -> str:
         if row
     }
 
-    for candidate in range(1, 10**PDV_ID_LENGTH):
-        code = f"{candidate:0{PDV_ID_LENGTH}d}"
-        if code not in existing:
-            return code
+    for _ in range(PDV_ID_MAX_ATTEMPTS):
+        code = f"{secrets.randbelow(10**PDV_ID_LENGTH):0{PDV_ID_LENGTH}d}"
+        if code in existing or is_weak_pdv_id(code):
+            continue
+        return code
 
-    raise RuntimeError("No available PDV IDs for this company.")
+    raise RuntimeError("Unable to allocate a unique PDV ID for this company.")
 
 
 def generate_pdv_pin() -> str:

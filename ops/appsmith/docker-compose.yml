@@ -1,0 +1,15 @@
+services:
+  appsmith:
+    image: index.docker.io/appsmith/appsmith-ce
+    container_name: pyerp-appsmith
+    ports:
+      - "8088:80"
+    environment:
+      APPSMITH_ENCRYPTION_PASSWORD: ${APPSMITH_ENCRYPTION_PASSWORD:-appsmith}
+      APPSMITH_ENCRYPTION_SALT: ${APPSMITH_ENCRYPTION_SALT:-appsmith}
+    volumes:
+      - appsmith_stacks:/appsmith-stacks
+    restart: unless-stopped
+
+volumes:
+  appsmith_stacks:

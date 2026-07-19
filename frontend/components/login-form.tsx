@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -119,6 +120,13 @@ export function LoginForm() {
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Entrando…" : "Entrar"}
           </Button>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Nova empresa?{" "}
+            <Link href="/cadastro" className="font-medium underline">
+              Solicitar cadastro
+            </Link>
+          </p>
         </form>
       </CardContent>
     </Card>

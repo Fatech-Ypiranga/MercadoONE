@@ -34,6 +34,7 @@ from routers import (
     branch_router,
     category_router,
     cep_router,
+    company_registration_router,
     company_router,
     customer_router,
     product_router,
@@ -79,6 +80,7 @@ def create_app(*, init_database: bool = True, validate_config: bool = True) -> F
     application.include_router(user_router.router)
     application.include_router(audit_router.router)
     application.include_router(company_router.router)
+    application.include_router(company_registration_router.router)
     application.include_router(branch_router.router)
     application.include_router(store_router.router)
     application.include_router(product_router.router)

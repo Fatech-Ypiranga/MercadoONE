@@ -796,6 +796,385 @@
             "HTTPBearer": []
           }
         ]
+      },
+      "patch": {
+        "tags": [
+          "Empresas"
+        ],
+        "summary": "Atualizar empresa do usuário autenticado",
+        "operationId": "update_my_company_companies_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/company-registrations/": {
+      "post": {
+        "tags": [
+          "Cadastro de empresas"
+        ],
+        "summary": "Solicitar cadastro de empresa (público)",
+        "operationId": "create_company_registration_company_registrations__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyRegistrationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Cadastro de empresas"
+        ],
+        "summary": "Listar solicitações (gestora / Appsmith)",
+        "operationId": "list_company_registrations_company_registrations__get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Platform-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Platform-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_CompanyRegistrationResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/company-registrations/{request_id}": {
+      "get": {
+        "tags": [
+          "Cadastro de empresas"
+        ],
+        "summary": "Detalhe da solicitação (gestora / Appsmith)",
+        "operationId": "get_company_registration_company_registrations__request_id__get",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "X-Platform-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Platform-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/company-registrations/{request_id}/approve": {
+      "post": {
+        "tags": [
+          "Cadastro de empresas"
+        ],
+        "summary": "Aprovar solicitação e provisionar tenant",
+        "operationId": "approve_company_registration_company_registrations__request_id__approve_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "X-Platform-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Platform-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CompanyRegistrationApprove"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyRegistrationApproveResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/company-registrations/{request_id}/reject": {
+      "post": {
+        "tags": [
+          "Cadastro de empresas"
+        ],
+        "summary": "Rejeitar solicitação",
+        "operationId": "reject_company_registration_company_registrations__request_id__reject_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "X-Platform-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Platform-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CompanyRegistrationReject"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/branches/": {
@@ -4451,6 +4830,332 @@
         ],
         "title": "ChangePasswordRequest"
       },
+      "CompanyRegistrationApprove": {
+        "properties": {
+          "has_branches": {
+            "type": "boolean",
+            "title": "Has Branches",
+            "default": false
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "initial_store_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial Store Name"
+          },
+          "initial_store_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial Store Code"
+          }
+        },
+        "type": "object",
+        "title": "CompanyRegistrationApprove"
+      },
+      "CompanyRegistrationApproveResponse": {
+        "properties": {
+          "registration": {
+            "$ref": "#/components/schemas/CompanyRegistrationResponse"
+          },
+          "company_id": {
+            "type": "integer",
+            "title": "Company Id"
+          },
+          "admin_username": {
+            "type": "string",
+            "title": "Admin Username"
+          },
+          "admin_email": {
+            "type": "string",
+            "title": "Admin Email"
+          },
+          "temporary_password": {
+            "type": "string",
+            "title": "Temporary Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "registration",
+          "company_id",
+          "admin_username",
+          "admin_email",
+          "temporary_password"
+        ],
+        "title": "CompanyRegistrationApproveResponse"
+      },
+      "CompanyRegistrationCreate": {
+        "properties": {
+          "legal_name": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Legal Name"
+          },
+          "trade_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trade Name"
+          },
+          "document": {
+            "type": "string",
+            "maxLength": 18,
+            "title": "Document",
+            "description": "CNPJ"
+          },
+          "state_registration": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 14
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Registration"
+          },
+          "admin_name": {
+            "type": "string",
+            "maxLength": 150,
+            "title": "Admin Name"
+          },
+          "admin_email": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Admin Email"
+          },
+          "admin_cpf": {
+            "type": "string",
+            "maxLength": 14,
+            "title": "Admin Cpf",
+            "description": "CPF do admin inicial"
+          },
+          "admin_phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin Phone"
+          },
+          "declared_store_count": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Declared Store Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "legal_name",
+          "document",
+          "admin_name",
+          "admin_email",
+          "admin_cpf",
+          "declared_store_count"
+        ],
+        "title": "CompanyRegistrationCreate"
+      },
+      "CompanyRegistrationReject": {
+        "properties": {
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "title": "CompanyRegistrationReject"
+      },
+      "CompanyRegistrationResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "legal_name": {
+            "type": "string",
+            "title": "Legal Name"
+          },
+          "trade_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trade Name"
+          },
+          "document": {
+            "type": "string",
+            "title": "Document"
+          },
+          "state_registration": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Registration"
+          },
+          "admin_name": {
+            "type": "string",
+            "title": "Admin Name"
+          },
+          "admin_email": {
+            "type": "string",
+            "title": "Admin Email"
+          },
+          "admin_cpf": {
+            "type": "string",
+            "title": "Admin Cpf"
+          },
+          "admin_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin Phone"
+          },
+          "declared_store_count": {
+            "type": "integer",
+            "title": "Declared Store Count"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CompanyRegistrationStatus"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "created_company_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Company Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "legal_name",
+          "document",
+          "admin_name",
+          "admin_email",
+          "admin_cpf",
+          "declared_store_count",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CompanyRegistrationResponse"
+      },
+      "CompanyRegistrationStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected"
+        ],
+        "title": "CompanyRegistrationStatus"
+      },
       "CompanyResponse": {
         "properties": {
           "legal_name": {
@@ -4492,6 +5197,11 @@
             "type": "boolean",
             "title": "Is Active",
             "default": true
+          },
+          "has_branches": {
+            "type": "boolean",
+            "title": "Has Branches",
+            "default": false
           },
           "id": {
             "type": "integer",
@@ -4539,6 +5249,78 @@
           "updated_at"
         ],
         "title": "CompanyResponse"
+      },
+      "CompanyUpdate": {
+        "properties": {
+          "legal_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legal Name"
+          },
+          "trade_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trade Name"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document"
+          },
+          "state_registration": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Registration"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "has_branches": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Branches"
+          }
+        },
+        "type": "object",
+        "title": "CompanyUpdate"
       },
       "CustomerAddressCreate": {
         "properties": {
@@ -5350,6 +6132,11 @@
           "document": {
             "type": "string",
             "title": "Document"
+          },
+          "has_branches": {
+            "type": "boolean",
+            "title": "Has Branches",
+            "default": false
           }
         },
         "type": "object",
@@ -6005,6 +6792,41 @@
           "limit"
         ],
         "title": "Page[CategoryResponse]"
+      },
+      "Page_CompanyRegistrationResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyRegistrationResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[CompanyRegistrationResponse]"
       },
       "Page_CustomerResponse_": {
         "properties": {

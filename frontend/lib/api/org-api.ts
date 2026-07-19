@@ -85,3 +85,14 @@ export async function listOrgStores(): Promise<StoreResponse[]> {
     apiFetch("/stores/", { method: "get", query: { limit: 200 } }),
   );
 }
+
+export type CompanyResponse = components["schemas"]["CompanyResponse"];
+export type CompanyUpdate = components["schemas"]["CompanyUpdate"];
+
+export function getMyCompany(): Promise<CompanyResponse> {
+  return apiFetch("/companies/me", { method: "get" });
+}
+
+export function updateMyCompany(body: CompanyUpdate): Promise<CompanyResponse> {
+  return apiFetch("/companies/me", { method: "patch", body });
+}
