@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function ErrorAlert({ message }: { message: string | null }) {
@@ -11,11 +13,27 @@ export function ErrorAlert({ message }: { message: string | null }) {
   );
 }
 
-export function EmptyState({ message }: { message: string }) {
+export function EmptyState({
+  message,
+  actionLabel,
+  actionHref,
+}: {
+  message: string;
+  actionLabel?: string;
+  actionHref?: string;
+}) {
   return (
-    <p className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
-      {message}
-    </p>
+    <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
+      <p className="text-sm text-muted-foreground">{message}</p>
+      {actionLabel && actionHref ? (
+        <Link
+          href={actionHref}
+          className="mt-3 inline-block text-sm font-medium text-foreground underline-offset-4 hover:underline"
+        >
+          {actionLabel}
+        </Link>
+      ) : null}
+    </div>
   );
 }
 
