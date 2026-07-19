@@ -114,7 +114,7 @@ export default function ReportsPage() {
         </section>
 
         <section className="rounded-xl border border-border p-4">
-          <h2 className="mb-3 text-sm font-semibold">Estoque crítico (≤ 5)</h2>
+          <h2 className="mb-3 text-sm font-semibold">Estoque crítico</h2>
           {critical.isLoading ? (
             <LoadingState />
           ) : !critical.data?.length ? (
@@ -125,6 +125,7 @@ export default function ReportsPage() {
                 <TableRow>
                   <TableHead>Produto</TableHead>
                   <TableHead className="text-right">Saldo</TableHead>
+                  <TableHead className="text-right">Mínimo</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -133,6 +134,9 @@ export default function ReportsPage() {
                     <TableCell>{item.name}</TableCell>
                     <TableCell className="text-right">
                       {formatNumber(item.current_stock, 3)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatNumber(item.min_stock, 3)}
                     </TableCell>
                   </TableRow>
                 ))}

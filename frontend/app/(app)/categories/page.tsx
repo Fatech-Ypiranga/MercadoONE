@@ -63,7 +63,7 @@ export default function CategoriesPage() {
         q: search.trim() || undefined,
         is_active:
           activeFilter === "all" ? undefined : activeFilter === "active",
-        limit: 500,
+        limit: 200,
       }),
   });
 

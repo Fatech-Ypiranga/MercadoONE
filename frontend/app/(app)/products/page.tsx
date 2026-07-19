@@ -50,6 +50,7 @@ type FormState = {
   sale_price: string;
   weight_net: string;
   weight_gross: string;
+  min_stock: string;
   category_id: string;
   primary_supplier_id: string;
   unit_of_measure: "UN" | "KG" | "CX";
@@ -69,6 +70,7 @@ const emptyForm: FormState = {
   sale_price: "0",
   weight_net: "",
   weight_gross: "",
+  min_stock: "",
   category_id: "",
   primary_supplier_id: "",
   unit_of_measure: "UN",
@@ -157,6 +159,7 @@ export default function ProductsPage() {
         sale_price: form.sale_price || "0",
         weight_net: form.weight_net || null,
         weight_gross: form.weight_gross || null,
+        min_stock: form.min_stock.trim() || null,
         category_id: Number(form.category_id),
         primary_supplier_id: Number(form.primary_supplier_id),
         unit_of_measure: form.unit_of_measure,
@@ -219,6 +222,7 @@ export default function ProductsPage() {
         sale_price: String(detail.sale_price),
         weight_net: detail.weight_net == null ? "" : String(detail.weight_net),
         weight_gross: detail.weight_gross == null ? "" : String(detail.weight_gross),
+        min_stock: detail.min_stock == null ? "" : String(detail.min_stock),
         category_id: String(detail.category_id),
         primary_supplier_id: detail.primary_supplier_id
           ? String(detail.primary_supplier_id)
@@ -488,6 +492,22 @@ export default function ProductsPage() {
               />
             </div>
             <div className="space-y-1.5">
+              <Label>Estoque mínimo</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.001"
+                placeholder="Usar limiar global"
+                value={form.min_stock}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, min_stock: e.target.value }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Vazio usa o limiar global do dashboard (5).
+              </p>
+            </div>
+            <div className="space-y-1.5">
               <Label>Categoria</Label>
               <select
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
@@ -521,7 +541,7 @@ export default function ProductsPage() {
                   </option>
                 ))}
               </select>
-              {editing?.primary_supplier_id == null ? (
+              {editing != null && editing.primary_supplier_id == null ? (
                 <p className="text-xs text-destructive">
                   Produto legado: selecione um fornecedor antes de salvar.
                 </p>

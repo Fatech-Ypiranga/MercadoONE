@@ -22,7 +22,9 @@ class CepService:
         cep = CepService._normalize(raw_cep)
 
         try:
-            async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+            # Force IPv4: ViaCEP publishes AAAA; Railway egress can fail on IPv6.
+            transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")
+            async with httpx.AsyncClient(timeout=TIMEOUT, transport=transport) as client:
                 response = await client.get(VIACEP_URL.format(cep=cep))
                 response.raise_for_status()
                 data = response.json()

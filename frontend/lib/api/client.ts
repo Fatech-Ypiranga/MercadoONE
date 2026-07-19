@@ -50,7 +50,11 @@ type SuccessJson<Op> = Op extends {
         responses: { 201: { content: { "application/json": infer R } } };
       }
     ? R
-    : unknown;
+    : Op extends {
+          responses: { 204: unknown };
+        }
+      ? void
+      : unknown;
 
 function interpolatePath(
   path: string,

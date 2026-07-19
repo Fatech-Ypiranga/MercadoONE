@@ -41,6 +41,8 @@ def test_alembic_upgrade_creates_all_tables(test_engine):
     assert {"pdv_id", "pdv_pin_hash"}.issubset(user_columns)
     sale_columns = {column["name"] for column in inspector.get_columns("sales")}
     assert "discount_amount" in sale_columns
+    product_columns = {column["name"] for column in inspector.get_columns("products")}
+    assert "min_stock" in product_columns
 
 
 def test_epic4_migration_backfills_codes_infers_supplier_and_cycles(test_engine):

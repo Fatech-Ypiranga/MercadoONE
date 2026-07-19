@@ -1730,6 +1730,8 @@ export interface components {
             weight_gross: number | string | null;
             /** @default UN */
             unit_of_measure: components["schemas"]["UnitOfMeasure"];
+            /** Min Stock */
+            min_stock?: number | string | null;
             /** Category Id */
             category_id: number;
             /** Primary Supplier Id */
@@ -1773,6 +1775,8 @@ export interface components {
             weight_gross: string | null;
             /** @default UN */
             unit_of_measure: components["schemas"]["UnitOfMeasure"];
+            /** Min Stock */
+            min_stock?: string | null;
             /** Category Id */
             category_id: number;
             /** Id */
@@ -1867,6 +1871,8 @@ export interface components {
             weight_gross: string | null;
             /** @default UN */
             unit_of_measure: components["schemas"]["UnitOfMeasure"];
+            /** Min Stock */
+            min_stock?: string | null;
             /** Category Id */
             category_id: number;
             /** Id */
@@ -1913,6 +1919,8 @@ export interface components {
             /** Weight Gross */
             weight_gross?: number | string | null;
             unit_of_measure?: components["schemas"]["UnitOfMeasure"] | null;
+            /** Min Stock */
+            min_stock?: number | string | null;
             /** Category Id */
             category_id?: number | null;
             /** Primary Supplier Id */

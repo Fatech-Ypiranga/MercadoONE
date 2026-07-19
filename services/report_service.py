@@ -50,11 +50,14 @@ class ReportService:
         min_threshold: int = 5,
         store_id: int | None = None,
     ) -> list[dict]:
-        stmt = select(Product.id, Product.name).where(Product.company_id == company_id)
+        stmt = select(Product.id, Product.name, Product.min_stock).where(
+            Product.company_id == company_id
+        )
         products = db.exec(stmt).all()
+        fallback = Decimal(min_threshold)
 
         critical_products = []
-        for product_id, product_name in products:
+        for product_id, product_name, product_min_stock in products:
             balance_stmt = select(
                 func.coalesce(
                     func.sum(
@@ -72,13 +75,17 @@ class ReportService:
             if store_id is not None:
                 balance_stmt = balance_stmt.where(StockMovement.store_id == store_id)
 
-            current_stock = db.exec(balance_stmt).one()
-            if current_stock < min_threshold:
+            current_stock = Decimal(db.exec(balance_stmt).one() or 0)
+            effective_min = (
+                Decimal(product_min_stock) if product_min_stock is not None else fallback
+            )
+            if current_stock < effective_min:
                 critical_products.append(
                     {
                         "id": product_id,
                         "name": product_name,
                         "current_stock": current_stock,
+                        "min_stock": effective_min,
                     }
                 )
 

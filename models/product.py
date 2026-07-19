@@ -52,6 +52,7 @@ class ProductBase(SQLModel):
     weight_net: Optional[Decimal] = Field(default=Decimal("0"), decimal_places=3, max_digits=10)
     weight_gross: Optional[Decimal] = Field(default=Decimal("0"), decimal_places=3, max_digits=10)
     unit_of_measure: UnitOfMeasure = Field(default=UnitOfMeasure.UN)
+    min_stock: Optional[Decimal] = Field(default=None, decimal_places=3, max_digits=10, ge=0)
 
     category_id: int = Field(foreign_key="categories.id")
 
@@ -72,6 +73,7 @@ class ProductUpdate(SQLModel):
     weight_net: Optional[Decimal] = None
     weight_gross: Optional[Decimal] = None
     unit_of_measure: Optional[UnitOfMeasure] = None
+    min_stock: Optional[Decimal] = Field(default=None, ge=0)
     category_id: Optional[int] = None
     primary_supplier_id: Optional[int] = None
     fiscal: Optional[ProductFiscalCreate] = None

@@ -24,10 +24,11 @@ export function listCategories(query: ListCategoriesQuery): Promise<CategoryResp
 export async function listCategories(
   query?: ListCategoriesQuery,
 ): Promise<CategoryResponse[]> {
+  const limit = Math.min(query?.limit ?? 200, 200);
   return unwrapPageItems<CategoryResponse>(
     apiFetch("/categories/", {
       method: "get",
-      query: { ...query, limit: query?.limit ?? 200 },
+      query: { ...query, limit },
     }),
   );
 }

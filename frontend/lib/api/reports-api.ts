@@ -14,6 +14,7 @@ export type CriticalStockItem = {
   id: number;
   name: string;
   current_stock: number | string;
+  min_stock: number | string;
 };
 
 export function getTopProducts(query?: { limit?: number; store_id?: number }) {

@@ -185,6 +185,7 @@ export default function DashboardPage() {
                 <TableRow>
                   <TableHead>Produto</TableHead>
                   <TableHead className="text-right">Saldo</TableHead>
+                  <TableHead className="text-right">Mínimo</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -195,6 +196,9 @@ export default function DashboardPage() {
                       <Badge variant="destructive">
                         {formatNumber(item.current_stock, 3)}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatNumber(item.min_stock, 3)}
                     </TableCell>
                   </TableRow>
                 ))}

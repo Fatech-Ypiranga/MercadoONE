@@ -6454,6 +6454,22 @@
             "$ref": "#/components/schemas/UnitOfMeasure",
             "default": "UN"
           },
+          "min_stock": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,7}|(?=[\\d.]{1,11}0*$)\\d{0,7}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Stock"
+          },
           "category_id": {
             "type": "integer",
             "title": "Category Id"
@@ -6563,6 +6579,18 @@
           "unit_of_measure": {
             "$ref": "#/components/schemas/UnitOfMeasure",
             "default": "UN"
+          },
+          "min_stock": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,7}|(?=[\\d.]{1,11}0*$)\\d{0,7}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Stock"
           },
           "category_id": {
             "type": "integer",
@@ -6813,6 +6841,18 @@
             "$ref": "#/components/schemas/UnitOfMeasure",
             "default": "UN"
           },
+          "min_stock": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,7}|(?=[\\d.]{1,11}0*$)\\d{0,7}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Stock"
+          },
           "category_id": {
             "type": "integer",
             "title": "Category Id"
@@ -7013,6 +7053,22 @@
                 "type": "null"
               }
             ]
+          },
+          "min_stock": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Stock"
           },
           "category_id": {
             "anyOf": [
