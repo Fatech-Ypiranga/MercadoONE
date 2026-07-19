@@ -21,6 +21,15 @@ from .company import (
     StoreResponse,
     StoreUpdate,
 )
+from .company_registration import (
+    CompanyRegistrationApprove,
+    CompanyRegistrationApproveResponse,
+    CompanyRegistrationCreate,
+    CompanyRegistrationReject,
+    CompanyRegistrationRequest,
+    CompanyRegistrationResponse,
+    CompanyRegistrationStatus,
+)
 from .customer import (
     Customer,
     CustomerAddress,

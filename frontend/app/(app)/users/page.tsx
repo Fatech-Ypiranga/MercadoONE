@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { useAuth } from "@/components/auth-provider";
 import { PageHeader } from "@/components/page-header";
 import { RequirePermission } from "@/components/require-permission";
 import { EmptyState, ErrorAlert, LoadingState } from "@/components/ui-states";
@@ -84,6 +85,8 @@ const emptyForm: FormState = {
 
 export default function UsersPage() {
   const canWrite = useCan("users", "write");
+  const { user: currentUser } = useAuth();
+  const hasBranches = Boolean(currentUser?.company?.has_branches);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<UserResponse | null>(null);
@@ -118,7 +121,7 @@ export default function UsersPage() {
   const branches = useQuery({
     queryKey: ["branches"],
     queryFn: listBranches,
-    enabled: canWrite,
+    enabled: canWrite && hasBranches,
   });
   const stores = useQuery({
     queryKey: ["stores"],
@@ -127,12 +130,13 @@ export default function UsersPage() {
   });
 
   const filteredStores = useMemo(() => {
+    if (!hasBranches) return stores.data ?? [];
     const branchId = form.default_branch_id
       ? Number(form.default_branch_id)
       : null;
     if (!branchId || !stores.data) return stores.data ?? [];
     return stores.data.filter((store) => store.branch_id === branchId);
-  }, [form.default_branch_id, stores.data]);
+  }, [form.default_branch_id, hasBranches, stores.data]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -444,27 +448,29 @@ export default function UsersPage() {
                 />
               </div>
             ) : null}
-            <div className="space-y-1.5">
-              <Label>Filial padrão</Label>
-              <select
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={form.default_branch_id}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    default_branch_id: e.target.value,
-                    default_store_id: "",
-                  })
-                }
-              >
-                <option value="">Nenhuma</option>
-                {(branches.data ?? []).map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.code} — {branch.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {hasBranches ? (
+              <div className="space-y-1.5">
+                <Label>Filial padrão</Label>
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={form.default_branch_id}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      default_branch_id: e.target.value,
+                      default_store_id: "",
+                    })
+                  }
+                >
+                  <option value="">Nenhuma</option>
+                  {(branches.data ?? []).map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.code} — {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <div className="space-y-1.5">
               <Label>Loja padrão</Label>
               <select

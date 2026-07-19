@@ -13,7 +13,9 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   if (!user) return null;
 
-  const sections = visibleNavSections(user.profile);
+  const sections = visibleNavSections(user.profile, {
+    hasBranches: Boolean(user.company?.has_branches),
+  });
 
   return (
     <nav className="flex h-full flex-col gap-6 px-3 py-4">

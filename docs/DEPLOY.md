@@ -55,6 +55,7 @@ Espelho de [`.env.example`](../.env.example):
 | `ADMIN_PASSWORD` / `ADMIN_*` | fortes, só Dev | fortes, só Prod |
 | `CORS_ORIGINS` | URL Vercel + `http://localhost:3000` | `https://pyerp-frontend.vercel.app` (+ apps oficiais) |
 | `LOGIN_RATE_LIMIT` | ex. `10` | adequado ao tráfego |
+| `PLATFORM_API_KEY` | opcional (Appsmith local) | secreto forte — Appsmith gestora (`X-Platform-Key`) |
 | `PORT` | injetado pelo Railway | injetado pelo Railway |
 
 Com `ENV=production`, `validate_production_config()` recusa subir se

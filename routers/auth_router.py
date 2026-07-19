@@ -111,6 +111,7 @@ def me(current_user: User = Depends(get_current_user), db: Session = Depends(get
             legal_name=company.legal_name,
             trade_name=company.trade_name,
             document=company.document,
+            has_branches=company.has_branches,
         )
     if branch:
         data.default_branch = MeBranchInfo(

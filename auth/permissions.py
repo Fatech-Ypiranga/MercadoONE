@@ -91,7 +91,7 @@ MODULE_PERMISSIONS: dict[str, dict[UserProfile, set[str]]] = {
         UserProfile.COLABORADOR: {READ},
     },
     "companies": {
-        UserProfile.ADMIN: {READ},
+        UserProfile.ADMIN: {READ, WRITE},
         UserProfile.GERENTE: {READ},
         UserProfile.SUPERVISOR: {READ},
         UserProfile.OPERADOR: {READ},
