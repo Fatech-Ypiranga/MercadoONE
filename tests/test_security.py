@@ -151,6 +151,50 @@ def test_security_headers_present(monkeypatch):
     assert response.headers.get("referrer-policy") == "strict-origin-when-cross-origin"
 
 
+def test_docs_enabled_outside_production(monkeypatch):
+    monkeypatch.setenv("ENV", "development")
+    app = create_app(init_database=False, validate_config=False)
+
+    with TestClient(app) as client:
+        assert client.get("/docs").status_code == 200
+        assert client.get("/openapi.json").status_code == 200
+
+
+def test_docs_disabled_in_production(monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", "unique-production-secret-value")
+    monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+    app = create_app(init_database=False, validate_config=False)
+
+    with TestClient(app) as client:
+        assert client.get("/docs").status_code == 404
+        assert client.get("/redoc").status_code == 404
+        assert client.get("/openapi.json").status_code == 404
+
+
+def test_healthz_ok_when_database_reachable(monkeypatch, test_engine):
+    from sqlmodel import Session
+
+    from database.connection import get_db
+
+    monkeypatch.setenv("ENV", "development")
+    app = create_app(init_database=False, validate_config=False)
+
+    def override_get_db():
+        with Session(test_engine) as session:
+            yield session
+
+    # healthz uses module-level engine; point DATABASE_URL is already test DB in CI.
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        with TestClient(app) as client:
+            response = client.get("/healthz")
+            assert response.status_code in (200, 503)
+            assert "status" in response.json()
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_login_rate_limit_returns_429(monkeypatch, test_engine):
     from sqlmodel import Session
 

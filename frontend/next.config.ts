@@ -1,5 +1,22 @@
 import type { NextConfig } from "next";
 
+function apiConnectSources(): string {
+  const sources = new Set<string>([
+    "'self'",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+  ]);
+  const raw = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (raw) {
+    try {
+      sources.add(new URL(raw).origin);
+    } catch {
+      // Ignore invalid NEXT_PUBLIC_API_URL at build time.
+    }
+  }
+  return Array.from(sources).join(" ");
+}
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
@@ -22,7 +39,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000",
+              `connect-src ${apiConnectSources()}`,
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

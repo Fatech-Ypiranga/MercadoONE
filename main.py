@@ -21,11 +21,36 @@ def _load_dotenv() -> None:
 
 _load_dotenv()
 
-from fastapi import FastAPI
+
+def _init_sentry() -> None:
+    dsn = os.getenv("SENTRY_DSN", "").strip()
+    if not dsn:
+        return
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.starlette import StarletteIntegration
+
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=os.getenv("ENV", "development"),
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        integrations=[
+            StarletteIntegration(transaction_style="endpoint"),
+            FastApiIntegration(transaction_style="endpoint"),
+        ],
+        send_default_pii=False,
+    )
+
+
+_init_sentry()
+
+from fastapi import FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlmodel import Session
 
 from auth.security import validate_production_config
-from database.connection import init_db
+from database.connection import engine, init_db
 from exception_handlers import register_exception_handlers
 from middleware import LoginRateLimitMiddleware, SecurityHeadersMiddleware
 from routers import (
@@ -55,6 +80,10 @@ def get_cors_origins() -> list[str]:
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
+def _is_production() -> bool:
+    return os.getenv("ENV", "development").lower() == "production"
+
+
 def create_app(*, init_database: bool = True, validate_config: bool = True) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -64,7 +93,14 @@ def create_app(*, init_database: bool = True, validate_config: bool = True) -> F
             init_db()
         yield
 
-    application = FastAPI(title="ERP API", lifespan=lifespan)
+    docs_enabled = not _is_production()
+    application = FastAPI(
+        title="ERP API",
+        lifespan=lifespan,
+        docs_url="/docs" if docs_enabled else None,
+        redoc_url="/redoc" if docs_enabled else None,
+        openapi_url="/openapi.json" if docs_enabled else None,
+    )
     application.add_middleware(
         CORSMiddleware,
         allow_origins=get_cors_origins(),
@@ -96,6 +132,17 @@ def create_app(*, init_database: bool = True, validate_config: bool = True) -> F
     @application.get("/")
     def root():
         return {"status": "ERP online e pronto para receber requisições"}
+
+    @application.get("/healthz")
+    def healthz(response: Response):
+        """Liveness/readiness: process up + database reachable."""
+        try:
+            with Session(engine) as session:
+                session.execute(text("SELECT 1"))
+            return {"status": "ok"}
+        except Exception:
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            return {"status": "degraded", "database": "unreachable"}
 
     return application
 

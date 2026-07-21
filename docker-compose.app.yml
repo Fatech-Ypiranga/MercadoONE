@@ -43,6 +43,21 @@ services:
       CORS_ORIGINS: http://localhost:3000
       LOGIN_RATE_LIMIT: "10"
       LOGIN_RATE_WINDOW_SECONDS: "60"
+      RUN_MIGRATIONS: "1"
+      UVICORN_WORKERS: "1"
+      TRUSTED_PROXY_HOSTS: "127.0.0.1,::1"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     depends_on:
       postgres_db:
         condition: service_healthy

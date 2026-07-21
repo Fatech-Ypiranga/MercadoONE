@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from collections import defaultdict, deque
 from threading import Lock
+from typing import Protocol
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+
+logger = logging.getLogger(__name__)
 
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -67,24 +71,24 @@ def _login_rate_window() -> int:
     return int(os.getenv("LOGIN_RATE_WINDOW_SECONDS", "60"))
 
 
-class LoginRateLimitMiddleware(BaseHTTPMiddleware):
-    """In-memory sliding-window limiter for auth-sensitive POST endpoints."""
+class RateLimiter(Protocol):
+    def is_limited(self, key: str) -> bool: ...
 
-    def __init__(self, app):
-        super().__init__(app)
+
+class InMemoryRateLimiter:
+    """Process-local sliding-window limiter (fallback when Redis is unset)."""
+
+    def __init__(self) -> None:
         self._hits: dict[str, deque[float]] = defaultdict(deque)
         self._lock = Lock()
 
-    def _is_limited(self, key: str) -> bool:
+    def is_limited(self, key: str) -> bool:
         limit = _login_rate_limit()
         window = _login_rate_window()
         now = time.monotonic()
         with self._lock:
-            # Opportunistic GC of empty/expired buckets to bound memory.
             stale_keys = [
-                k
-                for k, bucket in self._hits.items()
-                if not bucket or now - bucket[-1] > window * 2
+                k for k, bucket in self._hits.items() if not bucket or now - bucket[-1] > window * 2
             ]
             for stale in stale_keys[:64]:
                 del self._hits[stale]
@@ -97,6 +101,49 @@ class LoginRateLimitMiddleware(BaseHTTPMiddleware):
             bucket.append(now)
             return False
 
+
+class RedisRateLimiter:
+    """Shared sliding-window limiter via Redis INCR + EXPIRE."""
+
+    def __init__(self, client) -> None:
+        self._client = client
+
+    def is_limited(self, key: str) -> bool:
+        limit = _login_rate_limit()
+        window = _login_rate_window()
+        redis_key = f"pyerp:login_rl:{key}"
+        count = self._client.incr(redis_key)
+        if count == 1:
+            self._client.expire(redis_key, window)
+        return int(count) > limit
+
+
+def build_rate_limiter() -> RateLimiter:
+    redis_url = os.getenv("REDIS_URL", "").strip()
+    if not redis_url:
+        return InMemoryRateLimiter()
+    try:
+        import redis
+
+        client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=2)
+        client.ping()
+        logger.info("Login rate limit backend: redis")
+        return RedisRateLimiter(client)
+    except Exception:
+        logger.warning(
+            "REDIS_URL set but unreachable; falling back to in-memory rate limit",
+            exc_info=True,
+        )
+        return InMemoryRateLimiter()
+
+
+class LoginRateLimitMiddleware(BaseHTTPMiddleware):
+    """Sliding-window limiter for auth-sensitive POST endpoints."""
+
+    def __init__(self, app, limiter: RateLimiter | None = None):
+        super().__init__(app)
+        self._limiter = limiter or build_rate_limiter()
+
     @staticmethod
     def _is_rate_limited_path(path: str) -> bool:
         return any(path.endswith(suffix) for suffix in _RATE_LIMITED_POST_SUFFIXES)
@@ -104,12 +151,10 @@ class LoginRateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         path = request.url.path.rstrip("/") or "/"
         if request.method == "POST" and self._is_rate_limited_path(path):
-            if self._is_limited(resolve_client_ip(request)):
+            if self._limiter.is_limited(resolve_client_ip(request)):
                 return JSONResponse(
                     status_code=429,
-                    content={
-                        "detail": "Muitas tentativas. Tente novamente em breve."
-                    },
+                    content={"detail": "Muitas tentativas. Tente novamente em breve."},
                     headers={"Retry-After": str(_login_rate_window())},
                 )
         return await call_next(request)

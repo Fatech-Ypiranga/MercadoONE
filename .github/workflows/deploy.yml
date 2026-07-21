@@ -1,6 +1,6 @@
 name: Deploy
 
-# Dev: após CI verde em main. Prod: tag v* (com smoke pytest no job).
+# Dev: após CI verde em main. Prod: tag v* (pytest smoke + healthz pós-deploy).
 on:
   workflow_run:
     workflows: [CI]
@@ -14,6 +14,12 @@ concurrency:
 
 env:
   RAILWAY_PROJECT_ID: e21dd1a9-d1c7-40f4-ad4b-ec18b067c0ed
+  # Defaults = nomes atuais no Railway. Após renomear, sete Variables
+  # RAILWAY_DEV_ENVIRONMENT=development e RAILWAY_PROD_ENVIRONMENT=production.
+  RAILWAY_DEV_ENVIRONMENT: ${{ vars.RAILWAY_DEV_ENVIRONMENT || 'production' }}
+  RAILWAY_PROD_ENVIRONMENT: ${{ vars.RAILWAY_PROD_ENVIRONMENT || 'prod' }}
+  RAILWAY_DEV_SERVICE: ${{ vars.RAILWAY_DEV_SERVICE || 'api' }}
+  RAILWAY_PROD_SERVICE: ${{ vars.RAILWAY_PROD_SERVICE || 'api-prod' }}
 
 jobs:
   deploy-dev:
@@ -39,10 +45,27 @@ jobs:
         run: |
           railway up \
             --project "$RAILWAY_PROJECT_ID" \
-            --environment production \
-            --service api \
+            --environment "$RAILWAY_DEV_ENVIRONMENT" \
+            --service "$RAILWAY_DEV_SERVICE" \
             --ci \
             -m "CI deploy Dev ${{ github.event.workflow_run.head_sha }}"
+
+      - name: Smoke Dev API
+        if: ${{ vars.DEV_API_URL != '' }}
+        env:
+          API_URL: ${{ vars.DEV_API_URL }}
+        run: |
+          set -e
+          for i in $(seq 1 12); do
+            if curl -fsS "$API_URL/healthz" | grep -q '"status"'; then
+              echo "Dev healthz OK"
+              exit 0
+            fi
+            echo "Waiting for Dev API... ($i)"
+            sleep 10
+          done
+          echo "Dev smoke failed"
+          exit 1
 
       - name: Install Vercel CLI
         run: npm i -g vercel
@@ -60,6 +83,32 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      packages: write
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: erp_user
+          POSTGRES_PASSWORD: erp_password
+          POSTGRES_DB: erp_vendas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U erp_user -d erp_vendas"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://erp_user:erp_password@localhost:5432/erp_vendas
+      TEST_DATABASE_URL: postgresql://erp_user:erp_password@localhost:5432/erp_vendas_test
+      JWT_SECRET: test-jwt-secret-ci
+      ENV: development
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+      ADMIN_EMAIL: admin@pyerp.local
+      LOGIN_RATE_LIMIT: "10000"
     steps:
       - uses: actions/checkout@v5
 
@@ -67,15 +116,49 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: |
+            requirements.lock
+            requirements-dev.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.lock -r requirements-dev.txt
 
       - name: Lint
         run: |
           ruff check .
           ruff format --check .
+
+      - name: Create test database
+        run: |
+          PGPASSWORD=erp_password psql -h localhost -U erp_user -d erp_vendas \
+            -c "CREATE DATABASE erp_vendas_test;"
+
+      - name: Smoke pytest
+        run: pytest -q
+
+      - name: Set image name
+        id: meta
+        run: |
+          echo "image=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/api" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push release image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ github.ref_name }}
+            ${{ steps.meta.outputs.image }}:${{ github.sha }}
+            ${{ steps.meta.outputs.image }}:prod
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Install Railway CLI
         run: npm i -g @railway/cli
@@ -86,10 +169,27 @@ jobs:
         run: |
           railway up \
             --project "$RAILWAY_PROJECT_ID" \
-            --environment prod \
-            --service api-prod \
+            --environment "$RAILWAY_PROD_ENVIRONMENT" \
+            --service "$RAILWAY_PROD_SERVICE" \
             --ci \
             -m "CI deploy Prod ${{ github.ref_name }} (${{ github.sha }})"
+
+      - name: Smoke Prod API
+        if: ${{ vars.PROD_API_URL != '' }}
+        env:
+          API_URL: ${{ vars.PROD_API_URL }}
+        run: |
+          set -e
+          for i in $(seq 1 18); do
+            if curl -fsS "$API_URL/healthz" | grep -q '"status"'; then
+              echo "Prod healthz OK"
+              exit 0
+            fi
+            echo "Waiting for Prod API... ($i)"
+            sleep 10
+          done
+          echo "Prod smoke failed"
+          exit 1
 
       - name: Install Vercel CLI
         run: npm i -g vercel
@@ -100,4 +200,5 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          NEXT_PUBLIC_API_URL: ${{ vars.PROD_API_URL }}
         run: vercel deploy --prod --token="$VERCEL_TOKEN" --yes

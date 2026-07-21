@@ -24,7 +24,6 @@ htmlcov
 coverage.xml
 *.log
 docker-compose*.yml
-Dockerfile
 .dockerignore
-pyproject.toml
 README.md
+ops
