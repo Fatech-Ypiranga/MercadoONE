@@ -226,9 +226,7 @@ class SupplierService:
         if SupplierRepository.count_purchase_orders(self.db, supplier_id) > 0:
             raise ConflictException("Fornecedor possui compras vinculadas.")
         if SupplierRepository.count_primary_products(self.db, supplier_id, company_id) > 0:
-            raise ConflictException(
-                "Fornecedor é fornecedor principal de produtos cadastrados."
-            )
+            raise ConflictException("Fornecedor é fornecedor principal de produtos cadastrados.")
 
         deleted = SupplierRepository.delete(self.db, supplier_id, company_id)
         if not deleted:
@@ -252,9 +250,7 @@ class SupplierService:
             raise ValidationError("Supplier document must be a valid CNPJ.")
         return normalized
 
-    def _allocate_code(
-        self, company_id: int, address: SupplierAddressCreate
-    ) -> str:
+    def _allocate_code(self, company_id: int, address: SupplierAddressCreate) -> str:
         state = address.state
         ibge_code = address.ibge_code
         self._transaction_lock(f"supplier-municipality:{state}")
@@ -284,9 +280,7 @@ class SupplierService:
             self.db.add(municipality)
             self.db.flush()
 
-        self._transaction_lock(
-            f"supplier-sequence:{company_id}:{municipality.id}"
-        )
+        self._transaction_lock(f"supplier-sequence:{company_id}:{municipality.id}")
         counter = self.db.exec(
             select(SupplierSequence)
             .where(

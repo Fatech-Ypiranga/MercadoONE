@@ -156,9 +156,7 @@ class UserService:
         self.db.add(user)
 
         action = AuditAction.ROLE_CHANGE if profile_changed or deactivated else AuditAction.UPDATE
-        details = {
-            k: (v.value if hasattr(v, "value") else v) for k, v in update_data.items()
-        }
+        details = {k: (v.value if hasattr(v, "value") else v) for k, v in update_data.items()}
         if not is_supervisor_plus(user.profile) and "profile" in update_data:
             details["pdv_pin_cleared"] = True
         AuditService(self.db).log(
@@ -214,7 +212,9 @@ class UserService:
         self.db.refresh(user)
         return user
 
-    def generate_pdv_pin(self, user_id: int, *, company_id: int, actor_id: int) -> UserPdvPinResponse:
+    def generate_pdv_pin(
+        self, user_id: int, *, company_id: int, actor_id: int
+    ) -> UserPdvPinResponse:
         user = self.get_by_id(user_id, company_id)
         if not is_supervisor_plus(user.profile):
             raise ValidationError("Only Supervisor+ profiles can have a PDV PIN.")

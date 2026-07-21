@@ -170,9 +170,7 @@ def test_create_ignores_client_supplied_supplier_code(client: TestClient):
     assert response.json()["code"] != "99999999"
 
 
-def test_legacy_supplier_is_regularized_on_next_update(
-    client: TestClient, db_session: Session
-):
+def test_legacy_supplier_is_regularized_on_next_update(client: TestClient, db_session: Session):
     user = db_session.exec(select(User).order_by(User.id)).first()
     assert user is not None
     legacy = Supplier(
@@ -295,9 +293,7 @@ def test_delete_supplier_with_purchase_returns_409(client: TestClient, db_sessio
     assert "compras vinculadas" in response.json()["detail"].lower()
 
 
-def test_delete_supplier_with_primary_product_returns_409(
-    client: TestClient, category: dict
-):
+def test_delete_supplier_with_primary_product_returns_409(client: TestClient, category: dict):
     supplier = client.post("/suppliers/", json=supplier_payload()).json()
     product = client.post(
         "/products/",

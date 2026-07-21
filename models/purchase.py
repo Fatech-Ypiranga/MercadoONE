@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Literal, Optional
 
-from sqlmodel import Field, Relationship, SQLModel
 from sqlalchemy import Index, text
+from sqlmodel import Field, Relationship, SQLModel
 
 from models.supplier import SupplierAddressCreate
 from utils.enums import PurchaseStatus, enum_column

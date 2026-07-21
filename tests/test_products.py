@@ -74,9 +74,7 @@ def test_create_product_with_zero_price_returns_422(
     assert response.status_code == 422
 
 
-def test_create_product_with_nonexistent_category_returns_404(
-    client: TestClient, supplier: dict
-):
+def test_create_product_with_nonexistent_category_returns_404(client: TestClient, supplier: dict):
     response = client.post(
         "/products/",
         json={
@@ -91,9 +89,7 @@ def test_create_product_with_nonexistent_category_returns_404(
     assert response.status_code == 404
 
 
-def test_product_weight_defaults_are_decimal(
-    client: TestClient, category: dict, supplier: dict
-):
+def test_product_weight_defaults_are_decimal(client: TestClient, category: dict, supplier: dict):
     response = client.post(
         "/products/",
         json={
@@ -114,9 +110,7 @@ def test_product_weight_defaults_are_decimal(
 # --- Épico 3: Produto (API) ---
 
 
-def test_get_by_sku_returns_product_with_fiscal(
-    client: TestClient, category: dict, supplier: dict
-):
+def test_get_by_sku_returns_product_with_fiscal(client: TestClient, category: dict, supplier: dict):
     """Create with fiscal → GET by-sku returns same id with fiscal data."""
     response = client.post(
         "/products/",
@@ -192,9 +186,7 @@ def test_duplicate_sku_returns_409(client: TestClient, category: dict, supplier:
     assert "sku" in response.json()["detail"].lower()
 
 
-def test_duplicate_barcode_returns_409(
-    client: TestClient, category: dict, supplier: dict
-):
+def test_duplicate_barcode_returns_409(client: TestClient, category: dict, supplier: dict):
     """Two products with same barcode → 409 on second create."""
     client.post(
         "/products/",
@@ -281,9 +273,7 @@ def test_invalid_cest_returns_422(client: TestClient, category: dict, supplier: 
     assert response.status_code == 422
 
 
-def test_invalid_origem_produto_returns_422(
-    client: TestClient, category: dict, supplier: dict
-):
+def test_invalid_origem_produto_returns_422(client: TestClient, category: dict, supplier: dict):
     """origem_produto out of 0–8 range → 422."""
     response = client.post(
         "/products/",
@@ -380,9 +370,7 @@ def test_list_filter_by_sku(client: TestClient, category: dict, supplier: dict):
     assert items[0]["sku"] == "TEC-LOG"
 
 
-def test_list_filter_by_category_id(
-    client: TestClient, category: dict, supplier: dict
-):
+def test_list_filter_by_category_id(client: TestClient, category: dict, supplier: dict):
     """List filter ?category_id= returns only products from that category."""
     cat2 = client.post(
         "/categories/",
@@ -418,9 +406,7 @@ def test_list_filter_by_category_id(
     assert any(i["name"] == "Cadeira" for i in items)
 
 
-def test_list_filter_by_is_active(
-    client: TestClient, category: dict, supplier: dict
-):
+def test_list_filter_by_is_active(client: TestClient, category: dict, supplier: dict):
     """List filter ?is_active= filters by active status."""
     client.post(
         "/products/",
@@ -456,16 +442,19 @@ def test_list_filter_by_is_active(
 # --- Épico 1: Produto deve usar categoria folha ---
 
 
-def test_create_product_on_leaf_subcategory_returns_201(
-    client: TestClient, supplier: dict
-):
+def test_create_product_on_leaf_subcategory_returns_201(client: TestClient, supplier: dict):
     root = client.post(
         "/categories/",
         json={"name": "Raiz Produto", "slug": "raiz-produto", "is_active": True},
     ).json()
     sub = client.post(
         "/categories/",
-        json={"name": "Sub Produto", "slug": "sub-produto", "is_active": True, "parent_id": root["id"]},
+        json={
+            "name": "Sub Produto",
+            "slug": "sub-produto",
+            "is_active": True,
+            "parent_id": root["id"],
+        },
     ).json()
 
     response = client.post(
@@ -482,9 +471,7 @@ def test_create_product_on_leaf_subcategory_returns_201(
     assert response.status_code == 201
 
 
-def test_create_product_on_root_with_no_children_returns_201(
-    client: TestClient, supplier: dict
-):
+def test_create_product_on_root_with_no_children_returns_201(client: TestClient, supplier: dict):
     root = client.post(
         "/categories/",
         json={"name": "Raiz Sem Filhos", "slug": "raiz-sem-filhos", "is_active": True},
@@ -504,9 +491,7 @@ def test_create_product_on_root_with_no_children_returns_201(
     assert response.status_code == 201
 
 
-def test_create_product_on_root_with_children_returns_422(
-    client: TestClient, supplier: dict
-):
+def test_create_product_on_root_with_children_returns_422(client: TestClient, supplier: dict):
     root = client.post(
         "/categories/",
         json={"name": "Raiz Com Filhos", "slug": "raiz-com-filhos", "is_active": True},
@@ -539,7 +524,12 @@ def test_update_product_category_to_root_with_children_returns_422(
     ).json()
     client.post(
         "/categories/",
-        json={"name": "Filho Raiz", "slug": "filho-raiz", "is_active": True, "parent_id": root["id"]},
+        json={
+            "name": "Filho Raiz",
+            "slug": "filho-raiz",
+            "is_active": True,
+            "parent_id": root["id"],
+        },
     )
     product = client.post(
         "/products/",

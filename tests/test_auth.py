@@ -20,9 +20,7 @@ def _login(login: str, password: str) -> dict:
 
 
 def test_login_with_username(client: TestClient):
-    response = client.post(
-        "/auth/login", json=_login(ADMIN_USERNAME, ADMIN_PASSWORD)
-    )
+    response = client.post("/auth/login", json=_login(ADMIN_USERNAME, ADMIN_PASSWORD))
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
@@ -87,9 +85,7 @@ def test_inactive_user_cannot_login(test_engine):
     app.dependency_overrides[get_db] = override_get_db
 
     with TestClient(app) as test_client:
-        response = test_client.post(
-            "/auth/login", json=_login("inativo", "inativo1")
-        )
+        response = test_client.post("/auth/login", json=_login("inativo", "inativo1"))
         assert response.status_code == 401
 
     app.dependency_overrides.clear()

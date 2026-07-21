@@ -234,7 +234,9 @@ def test_update_parent_id_on_category_with_children_returns_422(client: TestClie
     assert response.status_code == 422
 
 
-def test_tenant_isolation_cannot_use_other_company_parent(client: TestClient, second_company_client: TestClient):
+def test_tenant_isolation_cannot_use_other_company_parent(
+    client: TestClient, second_company_client: TestClient
+):
     root = client.post(
         "/categories/",
         json={"name": "RaizEmpresa1", "slug": "raiz-empresa-1", "is_active": True},
@@ -254,7 +256,12 @@ def test_list_categories_filter_by_parent_id(client: TestClient):
     ).json()
     client.post(
         "/categories/",
-        json={"name": "FilhoFilter", "slug": "filho-filter", "is_active": True, "parent_id": root["id"]},
+        json={
+            "name": "FilhoFilter",
+            "slug": "filho-filter",
+            "is_active": True,
+            "parent_id": root["id"],
+        },
     )
     client.post(
         "/categories/",

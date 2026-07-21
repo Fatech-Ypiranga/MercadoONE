@@ -1,4 +1,5 @@
 """Probe Dev/Prod vs local to diagnose stale deploys. Writes NDJSON debug logs."""
+
 from __future__ import annotations
 
 import json
@@ -19,7 +20,9 @@ NEW_FEATURE_PATHS = (
 )
 
 
-def log(hypothesis_id: str, location: str, message: str, data: dict, run_id: str = "pre-fix") -> None:
+def log(
+    hypothesis_id: str, location: str, message: str, data: dict, run_id: str = "pre-fix"
+) -> None:
     # #region agent log
     payload = {
         "sessionId": SESSION_ID,

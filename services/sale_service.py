@@ -84,15 +84,11 @@ class SaleService:
             for product_id in sorted(requested_by_product):
                 product = ProductRepository.lock_for_update(self.db, product_id, company_id)
                 if not product:
-                    raise ResourceNotFoundException(
-                        f"Product with ID {product_id} was not found."
-                    )
+                    raise ResourceNotFoundException(f"Product with ID {product_id} was not found.")
                 if not product.is_active:
                     raise ValidationError(f"Product '{product.name}' is inactive.")
 
-                current_stock = StockRepository.get_current_stock(
-                    self.db, product_id, store_id
-                )
+                current_stock = StockRepository.get_current_stock(self.db, product_id, store_id)
                 requested = requested_by_product[product_id]
                 if current_stock < requested:
                     raise InsufficientStockException(

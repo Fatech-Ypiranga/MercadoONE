@@ -30,9 +30,7 @@ def list_users(
     current_user: User = Depends(require_permission("users:read")),
 ):
     company_id = company_id_of(current_user)
-    users = UserService(db).list_users(
-        company_id, q=q, profile=profile, is_active=is_active
-    )
+    users = UserService(db).list_users(company_id, q=q, profile=profile, is_active=is_active)
     return paginate([to_user_response(user) for user in users], offset=offset, limit=limit)
 
 

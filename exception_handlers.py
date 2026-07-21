@@ -43,7 +43,5 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(status_code=403, content={"detail": str(exc)})
 
     @app.exception_handler(ExternalServiceException)
-    async def external_service_handler(
-        _request: Request, exc: ExternalServiceException
-    ):
+    async def external_service_handler(_request: Request, exc: ExternalServiceException):
         return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})

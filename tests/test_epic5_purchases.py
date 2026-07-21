@@ -59,9 +59,7 @@ def _count(session: Session, model) -> int:
     return session.exec(select(func.count()).select_from(model)).one()
 
 
-def test_preview_includes_complete_or_partial_supplier_address(
-    client: TestClient, seeded_catalog
-):
+def test_preview_includes_complete_or_partial_supplier_address(client: TestClient, seeded_catalog):
     complete_xml = """<NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe
       Id="NFe35260711222333000181550010000000011000000010"><ide><nNF>1</nNF>
       <serie>1</serie><dhEmi>2026-07-16T12:00:00-03:00</dhEmi></ide><emit>

@@ -1,4 +1,5 @@
 """Tests for GET /cep/{cep} endpoint — TDD (written before implementation)."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
@@ -113,9 +114,7 @@ def test_cep_not_found_returns_404(client: TestClient):
         mock_instance = AsyncMock()
         mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_instance)
         mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-        mock_instance.get = AsyncMock(
-            return_value=_mock_httpx_response(VIACEP_NOT_FOUND)
-        )
+        mock_instance.get = AsyncMock(return_value=_mock_httpx_response(VIACEP_NOT_FOUND))
 
         response = client.get(f"/cep/{VALID_CEP}")
 
@@ -155,9 +154,7 @@ def test_cep_network_error_returns_502_or_503(client: TestClient):
         mock_instance = AsyncMock()
         mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_instance)
         mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-        mock_instance.get = AsyncMock(
-            side_effect=real_httpx.ConnectError("connection refused")
-        )
+        mock_instance.get = AsyncMock(side_effect=real_httpx.ConnectError("connection refused"))
 
         response = client.get(f"/cep/{VALID_CEP}")
 

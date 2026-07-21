@@ -39,9 +39,7 @@ def _product_payload(category_id: int, supplier_id: int | None = None, **overrid
     return payload
 
 
-def test_ordinary_product_create_requires_primary_supplier(
-    client: TestClient, category: dict
-):
+def test_ordinary_product_create_requires_primary_supplier(client: TestClient, category: dict):
     response = client.post("/products/", json=_product_payload(category["id"]))
 
     assert response.status_code == 422
@@ -92,9 +90,7 @@ def test_product_rejects_primary_supplier_from_another_company(
     assert response.status_code == 404
 
 
-def test_client_material_code_cannot_override_generated_value(
-    client: TestClient, category: dict
-):
+def test_client_material_code_cannot_override_generated_value(client: TestClient, category: dict):
     supplier = client.post("/suppliers/", json=_supplier_payload()).json()
 
     response = client.post(
@@ -110,14 +106,11 @@ def test_client_material_code_cannot_override_generated_value(
     assert response.json()["material_code"] != "7654321"
 
 
-def test_update_changes_supplier_but_preserves_material_code(
-    client: TestClient, category: dict
-):
+def test_update_changes_supplier_but_preserves_material_code(client: TestClient, category: dict):
     first_supplier = client.post("/suppliers/", json=_supplier_payload()).json()
     second_supplier = client.post(
         "/suppliers/",
-        json=_supplier_payload("12.345.678/0001-95")
-        | {"name": "Segundo fornecedor"},
+        json=_supplier_payload("12.345.678/0001-95") | {"name": "Segundo fornecedor"},
     ).json()
     created = client.post(
         "/products/",
@@ -175,8 +168,7 @@ def test_product_list_searches_and_filters_material_code_and_supplier(
     first_supplier = client.post("/suppliers/", json=_supplier_payload()).json()
     second_supplier = client.post(
         "/suppliers/",
-        json=_supplier_payload("12.345.678/0001-95")
-        | {"name": "Segundo fornecedor"},
+        json=_supplier_payload("12.345.678/0001-95") | {"name": "Segundo fornecedor"},
     ).json()
     first = client.post(
         "/products/",
@@ -216,12 +208,10 @@ def test_brand_domain_is_absent_from_routes_permissions_navigation_and_openapi(
 
     root = Path(__file__).resolve().parents[1]
     assert '"brands"' not in (root / "auth" / "permissions.py").read_text(encoding="utf-8")
-    assert "brands:" not in (
-        root / "frontend" / "lib" / "permissions.ts"
-    ).read_text(encoding="utf-8")
-    assert "/brands" not in (root / "frontend" / "lib" / "nav.ts").read_text(
+    assert "brands:" not in (root / "frontend" / "lib" / "permissions.ts").read_text(
         encoding="utf-8"
     )
+    assert "/brands" not in (root / "frontend" / "lib" / "nav.ts").read_text(encoding="utf-8")
 
 
 def test_purchase_inline_product_receives_material_code_and_primary_supplier(

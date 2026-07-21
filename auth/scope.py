@@ -25,5 +25,3 @@ def resolve_store_id(
     if not store or not store.is_active:
         raise ValidationError("Invalid or inactive store for this company.")
     return store.id
-
-

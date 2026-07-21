@@ -17,7 +17,9 @@ def _login(login: str, password: str) -> dict:
     }
 
 
-def test_pdv_authorization_token_rejected_as_bearer(client: TestClient, operador_client: TestClient):
+def test_pdv_authorization_token_rejected_as_bearer(
+    client: TestClient, operador_client: TestClient
+):
     supervisor = client.post(
         "/users/",
         json={

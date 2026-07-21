@@ -84,9 +84,7 @@ class ProductService:
         ProductRepository.create(self.db, db_product)
 
         if product_in.fiscal:
-            db_fiscal = ProductFiscal(
-                product_id=db_product.id, **product_in.fiscal.model_dump()
-            )
+            db_fiscal = ProductFiscal(product_id=db_product.id, **product_in.fiscal.model_dump())
             self.db.add(db_fiscal)
 
         if actor_id is not None:
@@ -109,13 +107,9 @@ class ProductService:
         company_id: int,
         exclude_product_id: int | None = None,
     ) -> None:
-        existing_sku = ProductRepository.find_by_sku(
-            self.db, sku, company_id, active_only=False
-        )
+        existing_sku = ProductRepository.find_by_sku(self.db, sku, company_id, active_only=False)
         if existing_sku and existing_sku.id != exclude_product_id:
-            raise ConflictException(
-                f"Já existe um produto com o SKU '{sku}' nesta empresa."
-            )
+            raise ConflictException(f"Já existe um produto com o SKU '{sku}' nesta empresa.")
         if barcode:
             existing_barcode = ProductRepository.find_by_barcode(
                 self.db, barcode, company_id, active_only=False
@@ -318,9 +312,7 @@ class ProductService:
 
     def _ensure_supplier_exists(self, supplier_id: int, company_id: int) -> None:
         if not SupplierRepository.find_by_id(self.db, supplier_id, company_id):
-            raise ResourceNotFoundException(
-                f"Supplier with ID {supplier_id} was not found."
-            )
+            raise ResourceNotFoundException(f"Supplier with ID {supplier_id} was not found.")
 
     def allocate_material_code(self, company_id: int) -> str:
         if self.db.get_bind().dialect.name == "postgresql":
@@ -338,9 +330,7 @@ class ProductService:
         else:
             counter.last_sequence += 1
         if counter.last_sequence > 9_999_999:
-            raise ValidationError(
-                "Product material code capacity exhausted for this company."
-            )
+            raise ValidationError("Product material code capacity exhausted for this company.")
         self.db.add(counter)
         self.db.flush()
         return f"{counter.last_sequence:07d}"

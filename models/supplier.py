@@ -55,9 +55,7 @@ class SupplierAddressBase(SQLModel):
             raise ValueError("zip_code must contain 8 digits")
         return digits
 
-    @field_validator(
-        "description", "street", "number", "neighborhood", "city", mode="before"
-    )
+    @field_validator("description", "street", "number", "neighborhood", "city", mode="before")
     @classmethod
     def require_text(cls, value: object) -> str:
         normalized = str(value or "").strip()
@@ -171,9 +169,7 @@ class Supplier(SupplierBase, table=True):
 
 class SupplierAddress(SupplierAddressBase, table=True):
     __tablename__ = "supplier_addresses"
-    __table_args__ = (
-        UniqueConstraint("supplier_id", name="uq_supplier_addresses_supplier_id"),
-    )
+    __table_args__ = (UniqueConstraint("supplier_id", name="uq_supplier_addresses_supplier_id"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     supplier_id: int = Field(foreign_key="suppliers.id")

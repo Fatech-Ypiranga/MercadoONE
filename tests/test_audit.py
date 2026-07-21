@@ -94,9 +94,7 @@ def test_audit_log_pagination(client: TestClient, category: dict, supplier: dict
     assert body["limit"] == 2
 
 
-def test_audit_log_filters_by_date_range(
-    client: TestClient, category: dict, supplier: dict
-):
+def test_audit_log_filters_by_date_range(client: TestClient, category: dict, supplier: dict):
     from datetime import datetime, timedelta, timezone
 
     product = client.post(

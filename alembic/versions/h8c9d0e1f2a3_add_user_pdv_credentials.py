@@ -24,7 +24,9 @@ def upgrade() -> None:
 
     op.add_column(
         "sales",
-        sa.Column("discount_amount", sa.Numeric(precision=12, scale=2), nullable=False, server_default="0"),
+        sa.Column(
+            "discount_amount", sa.Numeric(precision=12, scale=2), nullable=False, server_default="0"
+        ),
     )
 
 

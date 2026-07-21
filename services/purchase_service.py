@@ -485,9 +485,7 @@ class PurchaseService:
             create_data = confirm_item.create_product
             sale_price = create_data.sale_price
             if sale_price is None:
-                sale_price = (create_data.cost_price * Decimal("1.35")).quantize(
-                    Decimal("0.01")
-                )
+                sale_price = (create_data.cost_price * Decimal("1.35")).quantize(Decimal("0.01"))
 
             unit = UnitOfMeasure.UN
             try:

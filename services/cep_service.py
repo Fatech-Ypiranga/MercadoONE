@@ -12,9 +12,7 @@ class CepService:
     def _normalize(raw_cep: str) -> str:
         digits = "".join(ch for ch in raw_cep if ch.isdigit())
         if len(digits) != 8:
-            raise ValidationError(
-                f"CEP inválido: '{raw_cep}'. Informe exatamente 8 dígitos."
-            )
+            raise ValidationError(f"CEP inválido: '{raw_cep}'. Informe exatamente 8 dígitos.")
         return digits
 
     @staticmethod
@@ -36,14 +34,12 @@ class CepService:
             ) from exc
         except httpx.HTTPError as exc:
             raise ExternalServiceException(
-                "Não foi possível consultar o serviço de CEP. "
-                "Preencha o endereço manualmente.",
+                "Não foi possível consultar o serviço de CEP. Preencha o endereço manualmente.",
                 status_code=502,
             ) from exc
         except ValueError as exc:
             raise ExternalServiceException(
-                "Resposta inválida do serviço de CEP. "
-                "Preencha o endereço manualmente.",
+                "Resposta inválida do serviço de CEP. Preencha o endereço manualmente.",
                 status_code=502,
             ) from exc
 
