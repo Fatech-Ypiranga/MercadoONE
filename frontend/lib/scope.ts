@@ -15,6 +15,7 @@ export function getActiveStoreId(): number | null {
 }
 
 export function setActiveStoreId(storeId: number): void {
+  if (typeof window === "undefined") return;
   window.localStorage.setItem(STORE_KEY, String(storeId));
 }
 

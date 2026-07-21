@@ -4,7 +4,7 @@ from sqlalchemy import case
 from sqlmodel import Session, func, select
 
 from models.product import Product
-from models.sale import Sale, SaleItem
+from models.sale import Sale, SaleItem, SaleStatus
 from models.stock_movement import MovementType, StockMovement
 
 
@@ -21,7 +21,11 @@ class ReportService:
             )
             .join(SaleItem, SaleItem.product_id == Product.id)
             .join(Sale, Sale.id == SaleItem.sale_id)
-            .where(Product.company_id == company_id, Sale.company_id == company_id)
+            .where(
+                Product.company_id == company_id,
+                Sale.company_id == company_id,
+                Sale.status != SaleStatus.CANCELADA,
+            )
             .group_by(Product.id, Product.name)
             .order_by(func.sum(SaleItem.quantity).desc())
             .limit(limit)
@@ -35,7 +39,8 @@ class ReportService:
     @staticmethod
     def get_average_ticket(db: Session, company_id: int, *, store_id: int | None = None) -> Decimal:
         stmt = select(func.coalesce(func.avg(Sale.total_amount), 0)).where(
-            Sale.company_id == company_id
+            Sale.company_id == company_id,
+            Sale.status != SaleStatus.CANCELADA,
         )
         if store_id is not None:
             stmt = stmt.where(Sale.store_id == store_id)

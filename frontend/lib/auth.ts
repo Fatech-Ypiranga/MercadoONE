@@ -1,11 +1,14 @@
 const TOKEN_KEY = "pyerp_access_token";
 
+export const AUTH_EXPIRED_EVENT = "pyerp:auth-expired";
+
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem(TOKEN_KEY);
 }
 
 export function setToken(token: string): void {
+  if (typeof window === "undefined") return;
   window.localStorage.setItem(TOKEN_KEY, token);
 }
 
@@ -14,6 +17,7 @@ export function clearToken(): void {
   window.localStorage.removeItem(TOKEN_KEY);
 }
 
-export function isAuthenticated(): boolean {
-  return Boolean(getToken());
+export function notifyAuthExpired(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
 }

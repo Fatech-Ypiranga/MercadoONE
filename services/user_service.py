@@ -2,11 +2,12 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session
 
-from auth.security import hash_password
+from auth.security import hash_password, hash_pdv_pin
 from models.user import User, UserCreate, UserPdvPinResponse, UserResponse, UserUpdate
 from repositories.company_repository import BranchRepository, StoreRepository
 from repositories.user_repository import UserRepository
 from services.audit_service import AuditService
+from services.auth_service import bump_token_version
 from services.exceptions import ConflictException, ResourceNotFoundException, ValidationError
 from services.pdv_credentials import (
     PDV_PIN_LENGTH,
@@ -147,18 +148,26 @@ class UserService:
         if not is_supervisor_plus(user.profile):
             user.pdv_pin_hash = None
 
+        if deactivated:
+            bump_token_version(user)
+
         user.updated_at = datetime.now(timezone.utc)
         user.updated_by = actor_id
         self.db.add(user)
 
         action = AuditAction.ROLE_CHANGE if profile_changed or deactivated else AuditAction.UPDATE
+        details = {
+            k: (v.value if hasattr(v, "value") else v) for k, v in update_data.items()
+        }
+        if not is_supervisor_plus(user.profile) and "profile" in update_data:
+            details["pdv_pin_cleared"] = True
         AuditService(self.db).log(
             user_id=actor_id,
             company_id=company_id,
             action=action,
             entity_type="user",
             entity_id=user.id,
-            details={k: (v.value if hasattr(v, "value") else v) for k, v in update_data.items()},
+            details=details,
         )
         self.db.commit()
         self.db.refresh(user)
@@ -169,6 +178,7 @@ class UserService:
     ) -> User:
         user = self.get_by_id(user_id, company_id)
         user.password_hash = hash_password(new_password)
+        bump_token_version(user)
         user.updated_at = datetime.now(timezone.utc)
         user.updated_by = actor_id
         self.db.add(user)
@@ -213,7 +223,7 @@ class UserService:
         if len(pin) != PDV_PIN_LENGTH or not pin.isdigit():
             raise ValidationError("Failed to generate a valid PDV PIN.")
 
-        user.pdv_pin_hash = hash_password(pin)
+        user.pdv_pin_hash = hash_pdv_pin(pin)
         user.updated_at = datetime.now(timezone.utc)
         user.updated_by = actor_id
         self.db.add(user)

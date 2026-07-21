@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class StockMovementBase(SQLModel):
     product_id: int = Field(foreign_key="products.id", index=True)
 
-    quantity: Decimal = Field(decimal_places=3, max_digits=10)
+    quantity: Decimal = Field(gt=0, decimal_places=3, max_digits=10)
 
     type: MovementType = Field(description="Entrada ou saída")
     reason: MovementReason = Field(description="Motivo da movimentação")

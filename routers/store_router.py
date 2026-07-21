@@ -4,7 +4,7 @@ from sqlmodel import Session
 from auth.dependencies import require_permission
 from auth.scope import company_id_of
 from database.connection import get_db
-from models.company import StoreCreate, StoreResponse, StoreUpdate
+from models.company import StoreCreate, StorePdvPinResponse, StoreResponse, StoreUpdate
 from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
 from models.user import User
 from services.org_service import OrgService
@@ -21,6 +21,23 @@ def list_stores(
 ):
     company_id = company_id_of(current_user)
     return paginate(OrgService(db).list_stores(company_id), offset=offset, limit=limit)
+
+
+@router.get(
+    "/{store_id}/pdv-pin",
+    response_model=StorePdvPinResponse,
+    summary="Obter hash do PIN PDV para sync no caixa",
+)
+def get_store_pdv_pin(
+    store_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("stores:read")),
+):
+    """Retorna o pin_hash Argon2id do usuário autenticado (Supervisor+) para a loja.
+
+    O PDV importa este PHC sem re-hash e usa offline para abrir turno / overrides.
+    """
+    return OrgService(db).get_store_pdv_pin(store_id, actor=current_user)
 
 
 @router.get("/{store_id}", response_model=StoreResponse, summary="Buscar loja por ID")

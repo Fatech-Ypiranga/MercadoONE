@@ -1,5 +1,6 @@
 import secrets
 
+from auth.security import hash_password, hash_pdv_pin, verify_pdv_pin
 from models.company import Company
 from repositories.company_repository import CompanyRepository
 from services.pdv_credentials import generate_pdv_id, is_weak_pdv_id
@@ -47,3 +48,15 @@ def test_generate_pdv_id_skips_weak_codes(monkeypatch, db_session):
     monkeypatch.setattr(secrets, "randbelow", lambda _n: next(values))
 
     assert generate_pdv_id(db_session, company.id) == "482917"
+
+
+def test_pdv_pin_hash_is_argon2id():
+    pin = "482917365018"
+    hashed = hash_pdv_pin(pin)
+
+    assert hashed.startswith("$argon2id$")
+    assert not hashed.startswith("$2b$")
+    assert verify_pdv_pin(pin, hashed) is True
+    assert verify_pdv_pin("000000000000", hashed) is False
+    assert verify_pdv_pin(pin, hash_password(pin)) is False
+    assert verify_pdv_pin(pin, "not-a-valid-hash") is False

@@ -95,6 +95,7 @@ class User(UserBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     password_hash: str = Field(max_length=255)
+    token_version: int = Field(default=1, ge=1)
     pdv_id: Optional[str] = Field(default=None, max_length=6, index=True)
     pdv_pin_hash: Optional[str] = Field(default=None, max_length=255)
     company_id: int = Field(foreign_key="companies.id", index=True)

@@ -10,10 +10,13 @@ from models.company import (
     CompanyUpdate,
     Store,
     StoreCreate,
+    StorePdvPinResponse,
     StoreUpdate,
 )
+from models.user import User
 from repositories.company_repository import BranchRepository, CompanyRepository, StoreRepository
 from services.exceptions import ResourceNotFoundException, ValidationError
+from services.pdv_credentials import is_supervisor_plus
 from utils.cnpj import is_valid_cnpj, normalize_cnpj
 
 
@@ -105,6 +108,25 @@ class OrgService:
         if not store:
             raise ResourceNotFoundException(f"Store with ID {store_id} was not found.")
         return store
+
+    def get_store_pdv_pin(self, store_id: int, *, actor: User) -> StorePdvPinResponse:
+        """PIN hash do usuário autenticado para importação offline no PDV da loja."""
+        self.get_store(store_id, actor.company_id)
+        if not is_supervisor_plus(actor.profile):
+            raise ValidationError("Only Supervisor+ profiles can sync a PDV PIN.")
+        if not actor.pdv_pin_hash:
+            raise ValidationError(
+                "No PDV PIN configured for this user. Generate one via POST /users/{id}/pdv-pin."
+            )
+        if not actor.pdv_pin_hash.startswith("$argon2id$"):
+            raise ValidationError(
+                "Stored PDV PIN hash is not Argon2id. Regenerate via POST /users/{id}/pdv-pin."
+            )
+        return StorePdvPinResponse(
+            pin_hash=actor.pdv_pin_hash,
+            store_id=store_id,
+            user_id=actor.id,
+        )
 
     def create_store(self, store_in: StoreCreate, *, company_id: int) -> Store:
         branch = BranchRepository.find_by_id_for_company(self.db, store_in.branch_id, company_id)

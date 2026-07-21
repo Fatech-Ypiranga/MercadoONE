@@ -5,11 +5,13 @@ from sqlmodel import Session
 
 from auth.permissions import has_permission
 from auth.security import (
+    PDV_AUTHORIZATION_TYP,
     create_access_token,
     create_pdv_authorization_token,
     decode_access_token,
     hash_password,
     verify_password,
+    verify_pdv_pin,
 )
 from models.user import User
 from repositories.company_repository import CompanyRepository
@@ -21,6 +23,10 @@ from utils.cnpj import normalize_cnpj
 from utils.enums import AuditAction
 
 ALLOWED_PDV_ACTIONS = frozenset({"discount", "cancel"})
+
+
+def bump_token_version(user: User) -> None:
+    user.token_version = int(getattr(user, "token_version", 1) or 1) + 1
 
 
 class AuthService:
@@ -64,7 +70,7 @@ class AuthService:
         ):
             raise UnauthorizedException("Invalid supervisor credentials.")
 
-        if not verify_password(self._normalize_pin(pin), supervisor.pdv_pin_hash):
+        if not verify_pdv_pin(self._normalize_pin(pin), supervisor.pdv_pin_hash):
             raise UnauthorizedException("Invalid supervisor credentials.")
 
         for action in normalized_actions:
@@ -98,7 +104,7 @@ class AuthService:
         except JWTError as exc:
             raise UnauthorizedException("Invalid supervisor authorization.") from exc
 
-        if payload.get("typ") != "pdv_authorization":
+        if payload.get("typ") != PDV_AUTHORIZATION_TYP:
             raise UnauthorizedException("Invalid supervisor authorization.")
         if int(payload.get("company_id", 0)) != operator.company_id:
             raise UnauthorizedException("Invalid supervisor authorization.")
@@ -121,8 +127,11 @@ class AuthService:
     ) -> None:
         if not verify_password(current_password, user.password_hash):
             raise ValidationError("Current password is incorrect.")
+        if verify_password(new_password, user.password_hash):
+            raise ValidationError("New password must be different from the current password.")
 
         user.password_hash = hash_password(new_password)
+        bump_token_version(user)
         user.updated_at = datetime.now(timezone.utc)
         user.updated_by = user.id
         self.db.add(user)
@@ -145,15 +154,16 @@ class AuthService:
             raise UnauthorizedException("Invalid credentials.")
 
         if not user.email and not user.username:
-            raise UnauthorizedException("User has no login identifier configured.")
+            raise UnauthorizedException("Invalid credentials.")
 
         if user.company_id is None:
-            raise UnauthorizedException("User is not linked to a company.")
+            raise UnauthorizedException("Invalid credentials.")
 
         token, expires_in = create_access_token(
             user_id=user.id,
             profile=user.profile.value,
             company_id=user.company_id,
+            token_version=int(getattr(user, "token_version", 1) or 1),
         )
         return {
             "access_token": token,

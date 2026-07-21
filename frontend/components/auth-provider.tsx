@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { fetchMe, type MeResponse } from "@/lib/api/auth-api";
 import { ApiError } from "@/lib/api/client";
 import { listStores, type StoreResponse } from "@/lib/api/stores-api";
-import { clearToken, getToken, setToken } from "@/lib/auth";
+import { AUTH_EXPIRED_EVENT, clearToken, getToken, setToken } from "@/lib/auth";
 import { STORE_SCOPED_QUERY_ROOTS } from "@/lib/live-query";
 import {
   clearActiveStoreId,
@@ -109,8 +109,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void refreshUser();
   }, [refreshUser]);
 
+  useEffect(() => {
+    const onExpired = () => {
+      clearToken();
+      clearActiveStoreId();
+      setUser(null);
+      setStores([]);
+      setActiveStoreIdState(null);
+      queryClient.clear();
+      router.replace("/login");
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+  }, [queryClient, router]);
+
   const loginWithToken = useCallback(
     async (token: string) => {
+      if (token.split(".").length !== 3) {
+        throw new Error("Token inválido.");
+      }
       setToken(token);
       setLoading(true);
       await refreshUser();
@@ -125,8 +142,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setStores([]);
     setActiveStoreIdState(null);
+    queryClient.clear();
     router.replace("/login");
-  }, [router]);
+  }, [queryClient, router]);
 
   const setStoreId = useCallback(
     (storeId: number) => {

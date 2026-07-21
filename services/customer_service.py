@@ -12,13 +12,27 @@ from models.customer import (
 from repositories.customer_address_repository import CustomerAddressRepository
 from repositories.customer_repository import CustomerRepository
 from services.audit_service import AuditService
-from services.exceptions import ResourceNotFoundException
-from utils.enums import AuditAction
+from services.exceptions import ResourceNotFoundException, ValidationError
+from utils.cnpj import is_valid_cnpj, normalize_cnpj
+from utils.cpf import is_valid_cpf, normalize_cpf
+from utils.enums import AuditAction, CustomerType
 
 
 class CustomerService:
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _normalize_document(*, document: str, customer_type: CustomerType) -> str:
+        if customer_type == CustomerType.FISICA:
+            normalized = normalize_cpf(document)
+            if not is_valid_cpf(normalized):
+                raise ValidationError("Customer document must be a valid CPF.")
+            return normalized
+        normalized = normalize_cnpj(document)
+        if not is_valid_cnpj(normalized):
+            raise ValidationError("Customer document must be a valid CNPJ.")
+        return normalized
 
     def list_customers(self, company_id: int) -> list[Customer]:
         return CustomerRepository.find_all(self.db, company_id)
@@ -36,6 +50,10 @@ class CustomerService:
 
     def create(self, customer_in: CustomerCreate, *, company_id: int, actor_id: int) -> Customer:
         customer_data = customer_in.model_dump(exclude={"addresses"})
+        customer_data["document"] = self._normalize_document(
+            document=customer_data["document"],
+            customer_type=customer_data["customer_type"],
+        )
         customer_data["company_id"] = company_id
         customer = Customer.model_validate(customer_data)
         customer.created_by = actor_id
@@ -67,11 +85,23 @@ class CustomerService:
         company_id: int,
         actor_id: int,
     ) -> Customer:
+        update_data = customer_in.model_dump(exclude_unset=True)
+        if "document" in update_data or "customer_type" in update_data:
+            current = CustomerRepository.find_by_id(self.db, customer_id, company_id)
+            if not current:
+                raise ResourceNotFoundException(f"Customer {customer_id} was not found.")
+            customer_type = update_data.get("customer_type", current.customer_type)
+            document = update_data.get("document", current.document)
+            update_data["document"] = self._normalize_document(
+                document=document,
+                customer_type=customer_type,
+            )
+
         customer = CustomerRepository.update(
             self.db,
             customer_id,
             company_id,
-            **customer_in.model_dump(exclude_unset=True),
+            **update_data,
         )
         if not customer:
             raise ResourceNotFoundException(f"Customer {customer_id} was not found.")

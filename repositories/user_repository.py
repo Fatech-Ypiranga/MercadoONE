@@ -92,20 +92,6 @@ class UserRepository:
         return user
 
     @staticmethod
-    def update(db: Session, user_id: int, *, company_id: int, **fields) -> User | None:
-        user = UserRepository.find_by_id(db, user_id, company_id=company_id)
-        if not user:
-            return None
-
-        for field_name, field_value in fields.items():
-            if field_name == "password_hash" or field_value is not None:
-                setattr(user, field_name, field_value)
-
-        db.add(user)
-        db.flush()
-        return user
-
-    @staticmethod
     def count_required_refs(db: Session, user_id: int) -> int:
         purchases = db.exec(
             select(func.count()).select_from(PurchaseOrder).where(PurchaseOrder.user_id == user_id)

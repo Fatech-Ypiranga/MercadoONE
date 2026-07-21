@@ -4,7 +4,7 @@ from enum import Enum as PyEnum
 from typing import TYPE_CHECKING, Annotated, Optional
 
 from pydantic import StringConstraints
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import Index, UniqueConstraint, text
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -103,6 +103,13 @@ class Product(ProductBase, table=True):
             "company_id",
             "material_code",
             name="uq_products_company_material_code",
+        ),
+        Index(
+            "uq_products_company_barcode",
+            "company_id",
+            "barcode",
+            unique=True,
+            postgresql_where=text("barcode IS NOT NULL"),
         ),
     )
 

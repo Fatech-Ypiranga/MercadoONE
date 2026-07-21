@@ -56,3 +56,21 @@ class AuditService:
             offset=offset,
             limit=limit,
         )
+
+    def count_logs(
+        self,
+        *,
+        company_id: int | None = None,
+        entity_type: str | None = None,
+        user_id: int | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> int:
+        return AuditRepository.count_all(
+            self.db,
+            company_id=company_id,
+            entity_type=entity_type,
+            user_id=user_id,
+            date_from=date_from,
+            date_to=date_to,
+        )

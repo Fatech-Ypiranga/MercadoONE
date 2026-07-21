@@ -50,7 +50,11 @@ def get_product_balance(
     current_user: User = Depends(require_permission("stock:read")),
 ):
     resolved_store_id = resolve_store_id(db, current_user, store_id)
-    balance = StockMovementService(db).get_current_balance(product_id, resolved_store_id)
+    balance = StockMovementService(db).get_current_balance(
+        product_id,
+        resolved_store_id,
+        company_id=company_id_of(current_user),
+    )
     return {
         "product_id": product_id,
         "store_id": resolved_store_id,

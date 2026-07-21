@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import Literal, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
+from sqlalchemy import Index, text
 
 from models.supplier import SupplierAddressCreate
 from utils.enums import PurchaseStatus, enum_column
@@ -23,7 +24,7 @@ class SupplierProductMapping(SupplierProductMappingBase, table=True):
 
 class PurchaseItemBase(SQLModel):
     product_id: int = Field(foreign_key="products.id")
-    quantity: Decimal = Field(decimal_places=3, max_digits=10)
+    quantity: Decimal = Field(gt=0, decimal_places=3, max_digits=10)
     unit_cost: Decimal = Field(decimal_places=2, max_digits=12)
     discount: Decimal = Field(default=Decimal("0.00"), decimal_places=2, max_digits=12)
     ipi_amount: Decimal = Field(default=Decimal("0.00"), decimal_places=2, max_digits=12)
@@ -78,6 +79,15 @@ class PurchaseOrderDetailResponse(PurchaseOrderResponse):
 
 class PurchaseOrder(PurchaseOrderBase, table=True):
     __tablename__ = "purchase_orders"
+    __table_args__ = (
+        Index(
+            "uq_purchase_orders_company_invoice_key",
+            "company_id",
+            "invoice_key",
+            unique=True,
+            postgresql_where=text("invoice_key IS NOT NULL"),
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     company_id: int = Field(foreign_key="companies.id", index=True)

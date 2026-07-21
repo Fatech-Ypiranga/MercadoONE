@@ -22,3 +22,19 @@ class StockRepository:
         entries = db.exec(entries_stmt).one()
         exits = db.exec(exits_stmt).one()
         return Decimal(entries or 0) - Decimal(exits or 0)
+
+    @staticmethod
+    def get_current_stock_company(db: Session, product_id: int, company_id: int) -> Decimal:
+        entries_stmt = select(func.coalesce(func.sum(StockMovement.quantity), 0)).where(
+            StockMovement.product_id == product_id,
+            StockMovement.company_id == company_id,
+            StockMovement.type == MovementType.ENTRADA,
+        )
+        exits_stmt = select(func.coalesce(func.sum(StockMovement.quantity), 0)).where(
+            StockMovement.product_id == product_id,
+            StockMovement.company_id == company_id,
+            StockMovement.type == MovementType.SAIDA,
+        )
+        entries = db.exec(entries_stmt).one()
+        exits = db.exec(exits_stmt).one()
+        return Decimal(entries or 0) - Decimal(exits or 0)

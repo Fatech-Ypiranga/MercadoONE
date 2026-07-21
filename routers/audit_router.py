@@ -30,7 +30,8 @@ def list_audit_log(
     current_user: User = Depends(require_permission("audit:read")),
 ):
     company_id = company_id_of(current_user)
-    logs = AuditService(db).list_logs(
+    service = AuditService(db)
+    logs = service.list_logs(
         company_id=company_id,
         entity_type=entity_type,
         user_id=user_id,
@@ -39,14 +40,11 @@ def list_audit_log(
         offset=offset,
         limit=limit,
     )
-    # total via a parallel unpaginated count path (same filters)
-    all_matching = AuditService(db).list_logs(
+    total = service.count_logs(
         company_id=company_id,
         entity_type=entity_type,
         user_id=user_id,
         date_from=date_from,
         date_to=date_to,
-        offset=0,
-        limit=10_000,
     )
-    return Page(items=logs, total=len(all_matching), offset=offset, limit=limit)
+    return Page(items=logs, total=total, offset=offset, limit=limit)

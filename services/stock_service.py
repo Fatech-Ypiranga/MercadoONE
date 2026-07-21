@@ -59,7 +59,13 @@ class StockMovementService:
             self.db.rollback()
             raise
 
-    def get_current_balance(self, product_id: int, store_id: int) -> Decimal:
+    def get_current_balance(
+        self, product_id: int, store_id: int, *, company_id: int | None = None
+    ) -> Decimal:
+        if company_id is not None:
+            product = ProductRepository.find_by_id(self.db, product_id, company_id)
+            if not product:
+                return Decimal("0")
         return StockRepository.get_current_stock(self.db, product_id, store_id)
 
     def get_extract_by_product(

@@ -1,6 +1,5 @@
 from sqlmodel import Session
 
-from models.company import Store
 from models.user import User
 from repositories.store_repository import StoreRepository
 from services.exceptions import ForbiddenException, ValidationError
@@ -28,8 +27,3 @@ def resolve_store_id(
     return store.id
 
 
-def assert_store_belongs(db: Session, store_id: int, company_id: int) -> Store:
-    store = StoreRepository.find_by_id_for_company(db, store_id, company_id)
-    if not store:
-        raise ValidationError("Invalid store for this company.")
-    return store

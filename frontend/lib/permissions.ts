@@ -82,7 +82,3 @@ export function can(
 ): boolean {
   return MODULE_PERMISSIONS[module]?.[profile]?.has(action) ?? false;
 }
-
-export function canManageUsers(profile: UserProfile): boolean {
-  return can(profile, "users", "write");
-}

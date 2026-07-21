@@ -4,6 +4,7 @@ from sqlmodel import Session
 
 from auth.dependencies import get_current_user, require_permission
 from database.connection import get_db
+from middleware.security import resolve_client_ip
 from models.user import MeBranchInfo, MeCompanyInfo, MeResponse, MeStoreInfo, User
 from repositories.company_repository import BranchRepository, CompanyRepository, StoreRepository
 from services.auth_service import AuthService
@@ -142,5 +143,5 @@ def change_password(
         current_user,
         current_password=body.current_password,
         new_password=body.new_password,
-        ip_address=request.client.host if request.client else None,
+        ip_address=resolve_client_ip(request),
     )

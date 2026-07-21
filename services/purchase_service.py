@@ -316,7 +316,8 @@ class PurchaseService:
 
         supplier = SupplierRepository.find_by_id(self.db, purchase.supplier_id, company_id)
         try:
-            for item in purchase.items:
+            items = sorted(purchase.items, key=lambda item: item.product_id)
+            for item in items:
                 product = ProductRepository.lock_for_update(self.db, item.product_id, company_id)
                 current_stock = StockRepository.get_current_stock(
                     self.db, item.product_id, purchase.store_id
@@ -582,7 +583,11 @@ class PurchaseService:
         entry_unit_cost: Decimal,
         store_id: int,
     ) -> None:
-        current_stock = StockRepository.get_current_stock(self.db, product.id, store_id)
+        # cost_price is company-global; weight against company-wide stock (not one store).
+        _ = store_id
+        current_stock = StockRepository.get_current_stock_company(
+            self.db, product.id, product.company_id
+        )
         previous_stock = current_stock - quantity
         current_cost = Decimal(product.cost_price)
 

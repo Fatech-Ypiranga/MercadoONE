@@ -72,25 +72,40 @@ class SaleService:
             validated_items: list[dict] = []
             total_sale_price = Decimal("0.00")
 
+            # Aggregate demand per product so duplicate lines cannot oversell.
+            requested_by_product: dict[int, int] = {}
             for item in items:
                 product_id = item["product_id"]
-                quantity = item["quantity"]
+                requested_by_product[product_id] = (
+                    requested_by_product.get(product_id, 0) + item["quantity"]
+                )
 
+            locked_products: dict[int, object] = {}
+            for product_id in sorted(requested_by_product):
                 product = ProductRepository.lock_for_update(self.db, product_id, company_id)
                 if not product:
-                    raise ResourceNotFoundException(f"Product with ID {product_id} was not found.")
+                    raise ResourceNotFoundException(
+                        f"Product with ID {product_id} was not found."
+                    )
                 if not product.is_active:
                     raise ValidationError(f"Product '{product.name}' is inactive.")
 
-                current_stock = StockRepository.get_current_stock(self.db, product_id, store_id)
-                if current_stock < quantity:
+                current_stock = StockRepository.get_current_stock(
+                    self.db, product_id, store_id
+                )
+                requested = requested_by_product[product_id]
+                if current_stock < requested:
                     raise InsufficientStockException(
-                        f"Not enough stock for '{product.name}'. Available: {current_stock}, requested: {quantity}."
+                        f"Not enough stock for '{product.name}'. "
+                        f"Available: {current_stock}, requested: {requested}."
                     )
+                locked_products[product_id] = product
 
+            for item in items:
+                product = locked_products[item["product_id"]]
+                quantity = item["quantity"]
                 item_total = Decimal(product.sale_price) * Decimal(quantity)
                 total_sale_price += item_total
-
                 validated_items.append(
                     {
                         "product": product,
@@ -188,7 +203,10 @@ class SaleService:
             supervisor_authorization=supervisor_authorization,
         )
 
-        sale_items = SaleRepository.find_items_by_sale(self.db, sale_id)
+        sale_items = sorted(
+            SaleRepository.find_items_by_sale(self.db, sale_id),
+            key=lambda item: item.product_id,
+        )
 
         try:
             for item in sale_items:

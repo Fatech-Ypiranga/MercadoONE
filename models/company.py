@@ -104,6 +104,14 @@ class StoreResponse(StoreBase):
     updated_at: datetime
 
 
+class StorePdvPinResponse(SQLModel):
+    """Hash Argon2id (PHC) do PIN PDV do usuário autenticado (Supervisor+), para sync offline no PDV."""
+
+    pin_hash: str
+    store_id: int
+    user_id: int
+
+
 class Store(StoreBase, table=True):
     __tablename__ = "stores"
     __table_args__ = (UniqueConstraint("company_id", "code", name="uq_stores_company_code"),)

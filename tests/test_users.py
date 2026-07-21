@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from database.seed import SEED_COMPANY_DOCUMENT
+from models.user import User
 from tests.conftest import page_items
 from utils.cpf import build_cpf
 
@@ -166,7 +167,7 @@ def test_invalid_cpf_rejected(client: TestClient):
     assert response.status_code == 422
 
 
-def test_admin_generates_supervisor_pdv_pin(client: TestClient):
+def test_admin_generates_supervisor_pdv_pin(client: TestClient, db_session):
     create = client.post(
         "/users/",
         json={
@@ -195,6 +196,12 @@ def test_admin_generates_supervisor_pdv_pin(client: TestClient):
     assert detail["has_pdv_pin"] is True
     assert "pdv_pin" not in detail
 
+    stored = db_session.get(User, user["id"])
+    assert stored is not None
+    assert stored.pdv_pin_hash is not None
+    assert stored.pdv_pin_hash.startswith("$argon2id$")
+    assert not stored.pdv_pin_hash.startswith("$2b$")
+
 
 def test_operador_cannot_receive_pdv_pin(client: TestClient):
     create = client.post(
@@ -212,3 +219,64 @@ def test_operador_cannot_receive_pdv_pin(client: TestClient):
     user_id = create.json()["id"]
     response = client.post(f"/users/{user_id}/pdv-pin")
     assert response.status_code == 422
+
+
+def test_store_pdv_pin_returns_argon2id_hash_for_sync(client: TestClient, db_session):
+    from auth.security import verify_pdv_pin
+    from models.user import User
+
+    me = client.get("/auth/me").json()
+    admin = db_session.get(User, me["id"])
+    assert admin is not None
+    store_id = me["default_store_id"]
+    assert store_id is not None
+
+    pin_body = client.post(f"/users/{admin.id}/pdv-pin").json()
+    pin = pin_body["pdv_pin"]
+    db_session.expire_all()
+    admin = db_session.get(User, me["id"])
+    assert admin is not None
+    assert admin.pdv_pin_hash is not None
+
+    response = client.get(f"/stores/{store_id}/pdv-pin")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["store_id"] == store_id
+    assert body["user_id"] == admin.id
+    assert body["pin_hash"].startswith("$argon2id$")
+    assert verify_pdv_pin(pin, body["pin_hash"]) is True
+
+
+def test_store_pdv_pin_requires_existing_pin(client: TestClient, db_session):
+    from models.user import User
+    from tests.conftest import login, page_items
+
+    create = client.post(
+        "/users/",
+        json={
+            "full_name": "Supervisor Sem Sync PIN",
+            "cpf": build_cpf(208),
+            "email": "supnosync@test.local",
+            "username": "supnosync",
+            "password": "senha123",
+            "profile": "supervisor",
+            "is_active": True,
+        },
+    )
+    assert create.status_code == 201
+    user = create.json()
+
+    stores = page_items(client.get("/stores/"))
+    assert stores
+    store_id = stores[0]["id"]
+
+    token = login(client, "supnosync", "senha123")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get(f"/stores/{store_id}/pdv-pin", headers=headers)
+    assert response.status_code == 422
+    assert "No PDV PIN" in response.json()["detail"]
+
+    stored = db_session.get(User, user["id"])
+    assert stored is not None
+    assert stored.pdv_pin_hash is None

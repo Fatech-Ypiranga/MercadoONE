@@ -1,8 +1,16 @@
 import type { paths } from "@/lib/api/schema";
-import { clearToken, getToken } from "@/lib/auth";
+import { clearToken, getToken, notifyAuthExpired } from "@/lib/auth";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000";
+
+if (
+  process.env.NODE_ENV === "production" &&
+  !process.env.NEXT_PUBLIC_API_URL &&
+  typeof window !== "undefined"
+) {
+  console.error("NEXT_PUBLIC_API_URL must be set in production.");
+}
 
 export class ApiError extends Error {
   constructor(
@@ -88,6 +96,7 @@ function parseErrorDetail(data: unknown, status: number): string {
 async function handleResponse<T>(response: Response, useAuth: boolean): Promise<T> {
   if (response.status === 401 && useAuth) {
     clearToken();
+    notifyAuthExpired();
   }
 
   if (response.status === 204) {

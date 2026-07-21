@@ -26,7 +26,7 @@ Contrato para integradores: [`INTEGRACOES.md`](INTEGRACOES.md) · OpenAPI: [`ope
 | ORM           | SQLModel (SQLAlchemy 2.x)           |
 | Banco         | PostgreSQL 16                       |
 | Migrações     | Alembic                             |
-| Auth          | JWT (`python-jose`) + bcrypt        |
+| Auth          | JWT (`python-jose`) + bcrypt (senhas) / Argon2id (PIN PDV) |
 | Frontend      | Next.js 15 + TypeScript + shadcn/ui |
 | Testes        | pytest + httpx (TestClient)         |
 | Infra local   | Docker Compose (Postgres + pgAdmin) |
@@ -107,7 +107,7 @@ CRUD com filtros (`q`, `profile`, `is_active`). Perfis: `admin`, `gerente`, `sup
 Credenciais de PDV (geradas no ERP, nunca no caixa):
 
 - `pdv_id`: 6 dígitos numéricos aleatórios (não sequenciais), únicos por empresa, distintos de `users.id`. Códigos previsíveis (ex.: `000000`, `123456`) são rejeitados. Atribuídos a `operador` e Supervisor+ (`supervisor`/`gerente`/`admin`).
-- PIN PDV: 12 dígitos numéricos, só Supervisor+. Gerado/regenerado por admin via `POST /users/{id}/pdv-pin` (one-shot). Armazenado como hash; uso por digitação ou código de barras.
+- PIN PDV: 12 dígitos numéricos, só Supervisor+. Gerado/regenerado por admin via `POST /users/{id}/pdv-pin` (one-shot). Armazenado como hash Argon2id; uso por digitação ou código de barras.
 - CPF validado com dígitos verificadores.
 
 ### Catálogo
