@@ -15,6 +15,7 @@ def test_production_rejects_missing_jwt_secret(monkeypatch):
     monkeypatch.setenv("ENV", "production")
     monkeypatch.delenv("JWT_SECRET", raising=False)
     monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+    monkeypatch.setenv("ALLOW_MISSING_SENTRY", "1")
 
     with pytest.raises(RuntimeError, match="JWT_SECRET"):
         validate_production_config()
@@ -24,6 +25,7 @@ def test_production_rejects_default_jwt_secret(monkeypatch):
     monkeypatch.setenv("ENV", "production")
     monkeypatch.setenv("JWT_SECRET", DEFAULT_JWT_SECRET)
     monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+    monkeypatch.setenv("ALLOW_MISSING_SENTRY", "1")
 
     with pytest.raises(RuntimeError, match="JWT_SECRET"):
         validate_production_config()
@@ -33,6 +35,7 @@ def test_production_rejects_weak_admin_password(monkeypatch):
     monkeypatch.setenv("ENV", "production")
     monkeypatch.setenv("JWT_SECRET", "unique-production-secret-value")
     monkeypatch.setenv("ADMIN_PASSWORD", "admin123")
+    monkeypatch.setenv("ALLOW_MISSING_SENTRY", "1")
 
     with pytest.raises(RuntimeError, match="ADMIN_PASSWORD"):
         validate_production_config()
@@ -42,6 +45,7 @@ def test_production_rejects_missing_admin_password(monkeypatch):
     monkeypatch.setenv("ENV", "production")
     monkeypatch.setenv("JWT_SECRET", "unique-production-secret-value")
     monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
+    monkeypatch.setenv("ALLOW_MISSING_SENTRY", "1")
 
     with pytest.raises(RuntimeError, match="ADMIN_PASSWORD"):
         validate_production_config()
@@ -65,14 +69,51 @@ def test_production_accepts_secure_config(monkeypatch):
     monkeypatch.setenv("ENV", "production")
     monkeypatch.setenv("JWT_SECRET", "unique-production-secret-value")
     monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+    monkeypatch.setenv("SENTRY_DSN", "https://examplePublicKey@o0.ingest.sentry.io/0")
+    monkeypatch.setenv("UVICORN_WORKERS", "1")
 
     validate_production_config()
+
+
+def test_production_rejects_missing_sentry_dsn(monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", "unique-production-secret-value")
+    monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+    monkeypatch.delenv("SENTRY_DSN", raising=False)
+    monkeypatch.delenv("ALLOW_MISSING_SENTRY", raising=False)
+
+    with pytest.raises(RuntimeError, match="SENTRY_DSN"):
+        validate_production_config()
+
+
+def test_production_allows_missing_sentry_with_bypass(monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", "unique-production-secret-value")
+    monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+    monkeypatch.delenv("SENTRY_DSN", raising=False)
+    monkeypatch.setenv("ALLOW_MISSING_SENTRY", "1")
+
+    validate_production_config()
+
+
+def test_production_rejects_missing_redis_with_multi_worker(monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", "unique-production-secret-value")
+    monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+    monkeypatch.setenv("SENTRY_DSN", "https://examplePublicKey@o0.ingest.sentry.io/0")
+    monkeypatch.setenv("UVICORN_WORKERS", "2")
+    monkeypatch.delenv("REDIS_URL", raising=False)
+    monkeypatch.delenv("ALLOW_MISSING_REDIS", raising=False)
+
+    with pytest.raises(RuntimeError, match="REDIS_URL"):
+        validate_production_config()
 
 
 def test_app_lifespan_fails_in_production_with_default_secret(monkeypatch, test_engine):
     monkeypatch.setenv("ENV", "production")
     monkeypatch.setenv("JWT_SECRET", DEFAULT_JWT_SECRET)
     monkeypatch.setenv("ADMIN_PASSWORD", "strong-production-password")
+    monkeypatch.setenv("ALLOW_MISSING_SENTRY", "1")
 
     from sqlmodel import Session
 
@@ -184,10 +225,18 @@ def test_healthz_ok_when_database_reachable(monkeypatch, test_engine):
         with Session(test_engine) as session:
             yield session
 
-    # healthz uses module-level engine; point DATABASE_URL is already test DB in CI.
+    # healthz/readyz use module-level engine; DATABASE_URL is already test DB in CI.
     app.dependency_overrides[get_db] = override_get_db
     try:
         with TestClient(app) as client:
+            live = client.get("/livez")
+            assert live.status_code == 200
+            assert live.json()["status"] == "ok"
+
+            ready = client.get("/readyz")
+            assert ready.status_code in (200, 503)
+            assert "status" in ready.json()
+
             response = client.get("/healthz")
             assert response.status_code in (200, 503)
             assert "status" in response.json()

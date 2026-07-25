@@ -74,6 +74,9 @@ jobs:
           name: coverage-xml
           path: coverage.xml
 
+      - name: pip-audit (lockfile)
+        run: pip-audit -r requirements.lock --progress-spinner off
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -103,6 +106,28 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
 
+      - name: npm audit (production)
+        run: npm audit --omit=dev --audit-level=high
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: "8.24.3"
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Gitleaks
+        run: gitleaks detect --source . --verbose --redact
+
   docker:
     runs-on: ubuntu-latest
     permissions:
@@ -128,13 +153,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build image
+      - name: Build image (local)
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          tags: |
-            ${{ steps.meta.outputs.image }}:${{ github.sha }}
-            ${{ steps.meta.outputs.image }}:main
+          load: true
+          tags: pyerp-api:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: pyerp-api:ci
+          format: table
+          exit-code: "1"
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Push image to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker tag pyerp-api:ci "${{ steps.meta.outputs.image }}:${{ github.sha }}"
+          docker tag pyerp-api:ci "${{ steps.meta.outputs.image }}:main"
+          docker push "${{ steps.meta.outputs.image }}:${{ github.sha }}"
+          docker push "${{ steps.meta.outputs.image }}:main"

@@ -133,16 +133,26 @@ def create_app(*, init_database: bool = True, validate_config: bool = True) -> F
     def root():
         return {"status": "ERP online e pronto para receber requisições"}
 
-    @application.get("/healthz")
-    def healthz(response: Response):
-        """Liveness/readiness: process up + database reachable."""
+    @application.get("/livez")
+    def livez():
+        """Liveness: process is up (no dependency checks)."""
+        return {"status": "ok"}
+
+    @application.get("/readyz")
+    def readyz(response: Response):
+        """Readiness: database reachable."""
         try:
             with Session(engine) as session:
                 session.execute(text("SELECT 1"))
-            return {"status": "ok"}
+            return {"status": "ok", "database": "ok"}
         except Exception:
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
             return {"status": "degraded", "database": "unreachable"}
+
+    @application.get("/healthz")
+    def healthz(response: Response):
+        """Compatibility alias for readiness (prefer /livez and /readyz)."""
+        return readyz(response)
 
     return application
 

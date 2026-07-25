@@ -10,27 +10,16 @@ DATABASE_URL = os.getenv(
 engine = create_engine(
     DATABASE_URL,
     echo=os.getenv("SQL_ECHO", "false").lower() == "true",
+    pool_pre_ping=True,
+    pool_size=int(os.getenv("DB_POOL_SIZE", "5")),
+    max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "10")),
 )
 
 
 def init_db() -> None:
-    from sqlalchemy.exc import ProgrammingError
-
-    from database.migrate import upgrade_head
+    """Seed only. Migrations run via entrypoint / Railway pre-deploy / alembic CLI."""
     from database.seed import seed_admin_user
 
-    run_migrations = os.getenv("RUN_MIGRATIONS", "1").lower() in ("1", "true", "yes")
-    if run_migrations:
-        try:
-            upgrade_head()
-        except ProgrammingError as exc:
-            if exc.orig and getattr(exc.orig, "pgcode", None) == "42P07":
-                raise RuntimeError(
-                    "Conflito de schema: o banco já tem tabelas, mas o Alembic não foi "
-                    "aplicado (falta alembic_version). Para ambiente de desenvolvimento, "
-                    "recrie o banco com: docker compose down -v && docker compose up -d"
-                ) from exc
-            raise
     with Session(engine) as session:
         seed_admin_user(session)
 

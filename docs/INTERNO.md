@@ -255,7 +255,8 @@ Alembic é a fonte de verdade. A cadeia atual tem oito revisões:
 7. `f6a7b8c9d0e1` — códigos e endereços principais de fornecedores
 8. `g7b8c9d0e1f2` — material/fornecedor principal de produtos e remoção definitiva do domínio histórico de marcas (**head atual**)
 
-Na subida (`init_db()`): `alembic upgrade head` + seed do admin/org demo.
+Na subida: migrações via entrypoint (`RUN_MIGRATIONS=1`) ou pre-deploy no Railway;
+`init_db()` só faz seed do admin/org demo.
 
 Não há migrações SQL legadas no repositório.
 

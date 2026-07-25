@@ -45,6 +45,28 @@ def validate_production_config() -> None:
     if admin_password in WEAK_ADMIN_PASSWORDS or len(admin_password) < 12:
         raise RuntimeError("ADMIN_PASSWORD must be set to a strong password when ENV=production.")
 
+    allow_missing_sentry = os.getenv("ALLOW_MISSING_SENTRY", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if not os.getenv("SENTRY_DSN", "").strip() and not allow_missing_sentry:
+        raise RuntimeError(
+            "SENTRY_DSN must be set when ENV=production (or set ALLOW_MISSING_SENTRY=1 to bypass)."
+        )
+
+    workers = int(os.getenv("UVICORN_WORKERS", "1") or "1")
+    allow_missing_redis = os.getenv("ALLOW_MISSING_REDIS", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if workers > 1 and not os.getenv("REDIS_URL", "").strip() and not allow_missing_redis:
+        raise RuntimeError(
+            "REDIS_URL must be set when UVICORN_WORKERS>1 in production "
+            "(shared login rate limit), or set ALLOW_MISSING_REDIS=1 to bypass."
+        )
+
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)

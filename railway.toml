@@ -1,0 +1,13 @@
+# Preferências locais de build no Railway (API).
+# Deploy CI ainda usa `railway up` a partir do Dockerfile na raiz.
+# Imagens imutáveis também são publicadas no GHCR; para migrar o source
+# do serviço para a imagem, veja docs/DEPLOY.md (seção GHCR).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/healthz"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"

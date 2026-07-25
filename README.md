@@ -55,29 +55,34 @@ Ajuste os valores conforme necessário. Em desenvolvimento, os defaults do `.env
 ### 3. Instalar dependências
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.lock -r requirements-dev.txt
 ```
+
+(Para só runtime: `pip install -r requirements.lock`. Ranges soltos: `requirements.txt`.)
 
 ### 4. Rodar migrações e seed
 
-As migrações Alembic rodam automaticamente no startup da API (`init_db`). O usuário admin e a organização demo (PyERP Demo Ltda → Matriz → Loja Centro) são criados se ainda não existirem.
+Com Docker Compose da API (`make up-app`), o entrypoint roda `alembic upgrade head`
+quando `RUN_MIGRATIONS=1`. O seed do admin/org demo roda no lifespan.
 
-Para rodar migrações manualmente:
+Local sem container:
 
 ```bash
-alembic upgrade head
+make migrate   # ou: alembic upgrade head
+uvicorn main:app --reload
 ```
 
 ### 5. Iniciar a API
 
 ```bash
 uvicorn main:app --reload
+# ou: make up-app
 ```
 
 - API: http://localhost:8000
 - Documentação interativa (Swagger): http://localhost:8000/docs
-- Health check: http://localhost:8000/
-
+- Liveness: http://localhost:8000/livez
+- Readiness: http://localhost:8000/readyz (`/healthz` é alias)
 ## Testes
 
 Com o Docker rodando (`docker compose up -d`):

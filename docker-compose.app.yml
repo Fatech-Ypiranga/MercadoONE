@@ -1,22 +1,25 @@
-version: "3.8"
-
 # Paridade local com Railway: API + Postgres (sem pgAdmin).
-# Uso: docker compose -f docker-compose.app.yml up --build
+# Uso: docker compose -f docker-compose.app.yml --env-file .env up --build
+# Secrets sensíveis: copie .env.example → .env (não commitado).
 
 services:
   postgres_db:
     image: postgres:16-alpine
     container_name: erp_postgres_app
     environment:
-      POSTGRES_USER: erp_user
-      POSTGRES_PASSWORD: erp_password
-      POSTGRES_DB: erp_vendas
+      POSTGRES_USER: ${POSTGRES_USER:-erp_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-erp_password}
+      POSTGRES_DB: ${POSTGRES_DB:-erp_vendas}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_app_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U erp_user -d erp_vendas"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-erp_user} -d ${POSTGRES_DB:-erp_vendas}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -29,30 +32,30 @@ services:
       dockerfile: Dockerfile
     container_name: erp_api
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     environment:
       PORT: "8000"
-      ENV: development
-      DATABASE_URL: postgresql://erp_user:erp_password@postgres_db:5432/erp_vendas
-      JWT_SECRET: local-dev-jwt-secret-change-me
-      ADMIN_EMAIL: admin@pyerp.local
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: CHANGE_ME_STRONG_PASSWORD
-      ADMIN_CPF: "00000000000"
-      ADMIN_FULL_NAME: Administrador
-      CORS_ORIGINS: http://localhost:3000
-      LOGIN_RATE_LIMIT: "10"
-      LOGIN_RATE_WINDOW_SECONDS: "60"
-      RUN_MIGRATIONS: "1"
-      UVICORN_WORKERS: "1"
-      TRUSTED_PROXY_HOSTS: "127.0.0.1,::1"
+      ENV: ${ENV:-development}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://erp_user:erp_password@postgres_db:5432/erp_vendas}
+      JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-change-me}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@pyerp.local}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-CHANGE_ME_STRONG_PASSWORD}
+      ADMIN_CPF: ${ADMIN_CPF:-00000000000}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-Administrador}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-10}
+      LOGIN_RATE_WINDOW_SECONDS: ${LOGIN_RATE_WINDOW_SECONDS:-60}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-1}
+      TRUSTED_PROXY_HOSTS: ${TRUSTED_PROXY_HOSTS:-127.0.0.1,::1}
     healthcheck:
       test:
         [
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/livez')",
         ]
       interval: 10s
       timeout: 5s
