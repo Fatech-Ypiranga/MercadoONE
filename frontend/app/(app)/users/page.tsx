@@ -27,19 +27,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-can";
+import { listBranches } from "@/lib/api/org-api";
+import { listStores } from "@/lib/api/stores-api";
 import {
   createUser,
   deleteUser,
   generateUserPdvPin,
-  listBranches,
-  listOrgStores,
   listUsers,
   regenerateUserPdvId,
   resetUserPassword,
   updateUser,
   type UserProfile,
   type UserResponse,
-} from "@/lib/api/org-api";
+} from "@/lib/api/users-api";
 import { errorMessage } from "@/lib/format";
 
 const PROFILES: UserProfile[] = [
@@ -125,7 +125,7 @@ export default function UsersPage() {
   });
   const stores = useQuery({
     queryKey: ["stores"],
-    queryFn: listOrgStores,
+    queryFn: listStores,
     enabled: canWrite,
   });
 

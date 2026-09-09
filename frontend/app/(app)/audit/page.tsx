@@ -13,20 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { apiFetch, unwrapPageItems } from "@/lib/api/client";
+import { listAuditLog } from "@/lib/api/audit-api";
 import { errorMessage, formatDateTime } from "@/lib/format";
-import type { components } from "@/lib/api/schema";
-
-type AuditLogResponse = components["schemas"]["AuditLogResponse"];
-
-function listAuditLog() {
-  return unwrapPageItems<AuditLogResponse>(
-    apiFetch("/audit-log/", {
-      method: "get",
-      query: { limit: 50, offset: 0 },
-    }),
-  );
-}
 
 export default function AuditPage() {
   const list = useQuery({ queryKey: ["audit-log"], queryFn: listAuditLog });
