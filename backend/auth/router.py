@@ -5,10 +5,8 @@ from sqlmodel import Session
 from auth.service import AuthService
 from database.connection import get_db
 from middleware.security import resolve_client_ip
-from organization.repository import BranchRepository, CompanyRepository, StoreRepository
 from shared.identity.dependencies import get_current_user, require_permission
-from users.models import MeBranchInfo, MeCompanyInfo, MeResponse, MeStoreInfo, User
-from users.service import to_user_response
+from users.models import MeResponse, User
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -93,41 +91,7 @@ def pdv_authorize(
 
 @router.get("/me", response_model=MeResponse, summary="Obter usuário autenticado")
 def me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    company = CompanyRepository.find_by_id(db, current_user.company_id)
-    branch = None
-    store = None
-    if current_user.default_branch_id:
-        branch = BranchRepository.find_by_id_for_company(
-            db, current_user.default_branch_id, current_user.company_id
-        )
-    if current_user.default_store_id:
-        store = StoreRepository.find_by_id_for_company(
-            db, current_user.default_store_id, current_user.company_id
-        )
-
-    data = MeResponse.model_validate(to_user_response(current_user))
-    if company:
-        data.company = MeCompanyInfo(
-            id=company.id,
-            legal_name=company.legal_name,
-            trade_name=company.trade_name,
-            document=company.document,
-            has_branches=company.has_branches,
-        )
-    if branch:
-        data.default_branch = MeBranchInfo(
-            id=branch.id,
-            name=branch.name,
-            code=branch.code,
-        )
-    if store:
-        data.default_store = MeStoreInfo(
-            id=store.id,
-            name=store.name,
-            code=store.code,
-            branch_id=store.branch_id,
-        )
-    return data
+    return AuthService(db).build_me_response(current_user)
 
 
 @router.post(

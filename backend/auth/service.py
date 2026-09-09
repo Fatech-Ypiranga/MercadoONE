@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from jose import JWTError
 from sqlmodel import Session
 
-from organization.repository import CompanyRepository
+from organization.repository import BranchRepository, CompanyRepository, StoreRepository
 from shared.audit import AuditService
 from shared.exceptions import UnauthorizedException, ValidationError
 from shared.identity.pdv_credentials import PDV_PIN_LENGTH, is_supervisor_plus
@@ -17,7 +17,7 @@ from shared.identity.security import (
     verify_password,
     verify_pdv_pin,
 )
-from users.models import User
+from users.models import MeBranchInfo, MeCompanyInfo, MeResponse, MeStoreInfo, User
 from users.repository import UserRepository
 from utils.cnpj import normalize_cnpj
 from utils.enums import AuditAction
@@ -116,6 +116,48 @@ class AuthService:
             raise UnauthorizedException(f"Authorization does not include {required_action}.")
 
         return int(payload["sub"])
+
+    def build_me_response(self, current_user: User) -> MeResponse:
+        # Local import: users.service imports bump_token_version from this
+        # module at import time, so importing it back at module level here
+        # would create a circular import.
+        from users.service import to_user_response
+
+        company = CompanyRepository.find_by_id(self.db, current_user.company_id)
+        branch = None
+        store = None
+        if current_user.default_branch_id:
+            branch = BranchRepository.find_by_id_for_company(
+                self.db, current_user.default_branch_id, current_user.company_id
+            )
+        if current_user.default_store_id:
+            store = StoreRepository.find_by_id_for_company(
+                self.db, current_user.default_store_id, current_user.company_id
+            )
+
+        data = MeResponse.model_validate(to_user_response(current_user))
+        if company:
+            data.company = MeCompanyInfo(
+                id=company.id,
+                legal_name=company.legal_name,
+                trade_name=company.trade_name,
+                document=company.document,
+                has_branches=company.has_branches,
+            )
+        if branch:
+            data.default_branch = MeBranchInfo(
+                id=branch.id,
+                name=branch.name,
+                code=branch.code,
+            )
+        if store:
+            data.default_store = MeStoreInfo(
+                id=store.id,
+                name=store.name,
+                code=store.code,
+                branch_id=store.branch_id,
+            )
+        return data
 
     def change_password(
         self,
