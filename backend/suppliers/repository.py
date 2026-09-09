@@ -8,6 +8,12 @@ from suppliers.models import Supplier
 
 
 class SupplierRepository:
+    # Optional business fields that a client may explicitly clear via update().
+    # Note: this update() has no current callers (suppliers/service.py mutates
+    # suppliers inline instead), fixed here for defense-in-depth/consistency
+    # with the live CustomerRepository/CategoryRepository behavior.
+    _NULLABLE_FIELDS = {"trade_name", "state_registration", "email", "phone"}
+
     @staticmethod
     def find_all(
         db: Session,
@@ -64,7 +70,7 @@ class SupplierRepository:
         if not supplier:
             return None
         for field_name, field_value in fields.items():
-            if field_value is not None:
+            if field_value is not None or field_name in SupplierRepository._NULLABLE_FIELDS:
                 setattr(supplier, field_name, field_value)
         db.add(supplier)
         db.flush()

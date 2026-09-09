@@ -8,6 +8,12 @@ from stock.models import StockMovement
 
 
 class ProductRepository:
+    # Optional business fields that a client may explicitly clear via update().
+    # Note: this update() has no current callers (products/service.py mutates
+    # products inline instead), fixed here for defense-in-depth/consistency
+    # with the live CustomerRepository/CategoryRepository behavior.
+    _NULLABLE_FIELDS = {"barcode", "description", "min_stock"}
+
     @staticmethod
     def find_all(
         db: Session,
@@ -106,7 +112,7 @@ class ProductRepository:
             return None
 
         for field_name, field_value in fields.items():
-            if field_value is not None:
+            if field_value is not None or field_name in ProductRepository._NULLABLE_FIELDS:
                 setattr(product, field_name, field_value)
 
         db.add(product)

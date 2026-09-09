@@ -4,6 +4,9 @@ from customers.models import Customer
 
 
 class CustomerRepository:
+    # Optional business fields that a client may explicitly clear via update().
+    _NULLABLE_FIELDS = {"trade_name", "email", "phone", "state_registration"}
+
     @staticmethod
     def find_all(db: Session, company_id: int) -> list[Customer]:
         stmt = select(Customer).where(Customer.company_id == company_id).order_by(Customer.name)
@@ -32,7 +35,7 @@ class CustomerRepository:
             return None
 
         for field_name, field_value in fields.items():
-            if field_value is not None:
+            if field_value is not None or field_name in CustomerRepository._NULLABLE_FIELDS:
                 setattr(customer, field_name, field_value)
 
         db.add(customer)
