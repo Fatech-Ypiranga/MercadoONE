@@ -4,7 +4,12 @@ from sqlmodel import Session, select
 from categories.models import Category, CategoryCreate, CategoryUpdate
 from categories.repository import _UNSET, CategoryRepository
 from shared.audit import AuditService
-from shared.exceptions import ConflictException, ResourceNotFoundException, ValidationError
+from shared.exceptions import (
+    BusinessRuleException,
+    ConflictException,
+    ResourceNotFoundException,
+    ValidationError,
+)
 from utils.enums import AuditAction
 
 
@@ -62,21 +67,30 @@ class CategoryService:
         if category_in.parent_id is not None:
             self._validate_parent(category_in.parent_id, company_id)
 
-        category = Category.model_validate({**category_in.model_dump(), "company_id": company_id})
-        category.created_by = actor_id
-        category.updated_by = actor_id
-        CategoryRepository.create(self.db, category)
+        try:
+            category = Category.model_validate(
+                {**category_in.model_dump(), "company_id": company_id}
+            )
+            category.created_by = actor_id
+            category.updated_by = actor_id
+            CategoryRepository.create(self.db, category)
 
-        AuditService(self.db).log(
-            user_id=actor_id,
-            company_id=company_id,
-            action=AuditAction.CREATE,
-            entity_type="category",
-            entity_id=category.id,
-        )
-        self.db.commit()
-        self.db.refresh(category)
-        return category
+            AuditService(self.db).log(
+                user_id=actor_id,
+                company_id=company_id,
+                action=AuditAction.CREATE,
+                entity_type="category",
+                entity_id=category.id,
+            )
+            self.db.commit()
+            self.db.refresh(category)
+            return category
+        except (ConflictException, ResourceNotFoundException, ValidationError):
+            self.db.rollback()
+            raise
+        except Exception as exc:
+            self.db.rollback()
+            raise BusinessRuleException(f"Error creating category: {exc}") from exc
 
     def update(
         self,
@@ -106,26 +120,33 @@ class CategoryService:
                         "Não é possível definir um pai para uma categoria que já possui subcategorias."
                     )
 
-        category = CategoryRepository.update(
-            self.db,
-            category_id,
-            company_id,
-            **update_data,
-        )
-        if not category:
-            raise ResourceNotFoundException(f"Category {category_id} was not found.")
+        try:
+            category = CategoryRepository.update(
+                self.db,
+                category_id,
+                company_id,
+                **update_data,
+            )
+            if not category:
+                raise ResourceNotFoundException(f"Category {category_id} was not found.")
 
-        category.updated_by = actor_id
-        AuditService(self.db).log(
-            user_id=actor_id,
-            company_id=company_id,
-            action=AuditAction.UPDATE,
-            entity_type="category",
-            entity_id=category_id,
-        )
-        self.db.commit()
-        self.db.refresh(category)
-        return category
+            category.updated_by = actor_id
+            AuditService(self.db).log(
+                user_id=actor_id,
+                company_id=company_id,
+                action=AuditAction.UPDATE,
+                entity_type="category",
+                entity_id=category_id,
+            )
+            self.db.commit()
+            self.db.refresh(category)
+            return category
+        except (ConflictException, ResourceNotFoundException, ValidationError):
+            self.db.rollback()
+            raise
+        except Exception as exc:
+            self.db.rollback()
+            raise BusinessRuleException(f"Error updating category: {exc}") from exc
 
     def delete(self, category_id: int, *, company_id: int, actor_id: int) -> None:
         if CategoryRepository.count_products(self.db, category_id, company_id) > 0:
@@ -136,15 +157,22 @@ class CategoryService:
                 "Categoria possui subcategorias vinculadas. Remova as subcategorias antes."
             )
 
-        deleted = CategoryRepository.delete(self.db, category_id, company_id)
-        if not deleted:
-            raise ResourceNotFoundException(f"Category {category_id} was not found.")
+        try:
+            deleted = CategoryRepository.delete(self.db, category_id, company_id)
+            if not deleted:
+                raise ResourceNotFoundException(f"Category {category_id} was not found.")
 
-        AuditService(self.db).log(
-            user_id=actor_id,
-            company_id=company_id,
-            action=AuditAction.DELETE,
-            entity_type="category",
-            entity_id=category_id,
-        )
-        self.db.commit()
+            AuditService(self.db).log(
+                user_id=actor_id,
+                company_id=company_id,
+                action=AuditAction.DELETE,
+                entity_type="category",
+                entity_id=category_id,
+            )
+            self.db.commit()
+        except (ConflictException, ResourceNotFoundException, ValidationError):
+            self.db.rollback()
+            raise
+        except Exception as exc:
+            self.db.rollback()
+            raise BusinessRuleException(f"Error deleting category: {exc}") from exc
