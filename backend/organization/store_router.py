@@ -62,7 +62,7 @@ def create_store(
     current_user: User = Depends(require_permission("stores:write")),
 ):
     company_id = company_id_of(current_user)
-    return OrgService(db).create_store(store_in, company_id=company_id)
+    return OrgService(db).create_store(store_in, company_id=company_id, actor_id=current_user.id)
 
 
 @router.put("/{store_id}", response_model=StoreResponse, summary="Atualizar loja")
@@ -73,7 +73,9 @@ def update_store(
     current_user: User = Depends(require_permission("stores:write")),
 ):
     company_id = company_id_of(current_user)
-    return OrgService(db).update_store(store_id, store_in, company_id=company_id)
+    return OrgService(db).update_store(
+        store_id, store_in, company_id=company_id, actor_id=current_user.id
+    )
 
 
 @router.delete(
@@ -87,4 +89,4 @@ def delete_store(
     current_user: User = Depends(require_permission("stores:write")),
 ):
     company_id = company_id_of(current_user)
-    OrgService(db).delete_store(store_id, company_id=company_id)
+    OrgService(db).delete_store(store_id, company_id=company_id, actor_id=current_user.id)

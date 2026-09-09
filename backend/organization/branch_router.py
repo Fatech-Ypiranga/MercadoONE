@@ -45,7 +45,7 @@ def create_branch(
     current_user: User = Depends(require_permission("branches:write")),
 ):
     company_id = company_id_of(current_user)
-    return OrgService(db).create_branch(branch_in, company_id=company_id)
+    return OrgService(db).create_branch(branch_in, company_id=company_id, actor_id=current_user.id)
 
 
 @router.put("/{branch_id}", response_model=BranchResponse, summary="Atualizar filial")
@@ -56,7 +56,9 @@ def update_branch(
     current_user: User = Depends(require_permission("branches:write")),
 ):
     company_id = company_id_of(current_user)
-    return OrgService(db).update_branch(branch_id, branch_in, company_id=company_id)
+    return OrgService(db).update_branch(
+        branch_id, branch_in, company_id=company_id, actor_id=current_user.id
+    )
 
 
 @router.delete(
@@ -70,4 +72,4 @@ def delete_branch(
     current_user: User = Depends(require_permission("branches:write")),
 ):
     company_id = company_id_of(current_user)
-    OrgService(db).delete_branch(branch_id, company_id=company_id)
+    OrgService(db).delete_branch(branch_id, company_id=company_id, actor_id=current_user.id)

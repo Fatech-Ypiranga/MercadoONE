@@ -14,10 +14,12 @@ from organization.models import (
     StoreUpdate,
 )
 from organization.repository import BranchRepository, CompanyRepository, StoreRepository
-from shared.exceptions import ResourceNotFoundException, ValidationError
+from shared.audit import AuditService
+from shared.exceptions import BusinessRuleException, ResourceNotFoundException, ValidationError
 from shared.identity.pdv_credentials import is_supervisor_plus
 from users.models import User
-from utils.cnpj import is_valid_cnpj, normalize_cnpj
+from utils.cnpj import require_valid_cnpj
+from utils.enums import AuditAction
 
 
 class OrgService:
@@ -41,22 +43,35 @@ class OrgService:
         update_data = company_in.model_dump(exclude_unset=True)
 
         if "document" in update_data:
-            document = normalize_cnpj(update_data["document"])
-            if not is_valid_cnpj(document):
-                raise ValidationError("Invalid CNPJ.")
+            document = require_valid_cnpj(update_data["document"], entity="Company document")
             existing = CompanyRepository.find_by_document(self.db, document)
             if existing and existing.id != company_id:
                 raise ValidationError("A company with this CNPJ already exists.")
             update_data["document"] = document
 
-        for field_name, field_value in update_data.items():
-            setattr(company, field_name, field_value)
-        company.updated_at = datetime.now(timezone.utc)
-        company.updated_by = actor_id
-        self.db.add(company)
-        self.db.commit()
-        self.db.refresh(company)
-        return company
+        try:
+            for field_name, field_value in update_data.items():
+                setattr(company, field_name, field_value)
+            company.updated_at = datetime.now(timezone.utc)
+            company.updated_by = actor_id
+            self.db.add(company)
+
+            AuditService(self.db).log(
+                user_id=actor_id,
+                company_id=company_id,
+                action=AuditAction.UPDATE,
+                entity_type="company",
+                entity_id=company.id,
+            )
+            self.db.commit()
+            self.db.refresh(company)
+            return company
+        except (ResourceNotFoundException, ValidationError):
+            self.db.rollback()
+            raise
+        except Exception as exc:
+            self.db.rollback()
+            raise BusinessRuleException(f"Error updating company: {exc}") from exc
 
     def list_branches(self, company_id: int) -> list[Branch]:
         return BranchRepository.find_all_for_company(self.db, company_id)
@@ -67,18 +82,35 @@ class OrgService:
             raise ResourceNotFoundException(f"Branch with ID {branch_id} was not found.")
         return branch
 
-    def create_branch(self, branch_in: BranchCreate, *, company_id: int) -> Branch:
+    def create_branch(self, branch_in: BranchCreate, *, company_id: int, actor_id: int) -> Branch:
         existing = BranchRepository.find_by_code(self.db, company_id, branch_in.code)
         if existing:
             raise ValidationError(f"Branch code '{branch_in.code}' already exists.")
 
-        branch = Branch.model_validate({**branch_in.model_dump(), "company_id": company_id})
-        BranchRepository.create(self.db, branch)
-        self.db.commit()
-        self.db.refresh(branch)
-        return branch
+        try:
+            branch = Branch.model_validate({**branch_in.model_dump(), "company_id": company_id})
+            BranchRepository.create(self.db, branch)
 
-    def update_branch(self, branch_id: int, branch_in: BranchUpdate, *, company_id: int) -> Branch:
+            AuditService(self.db).log(
+                user_id=actor_id,
+                company_id=company_id,
+                action=AuditAction.CREATE,
+                entity_type="branch",
+                entity_id=branch.id,
+            )
+            self.db.commit()
+            self.db.refresh(branch)
+            return branch
+        except (ResourceNotFoundException, ValidationError):
+            self.db.rollback()
+            raise
+        except Exception as exc:
+            self.db.rollback()
+            raise BusinessRuleException(f"Error creating branch: {exc}") from exc
+
+    def update_branch(
+        self, branch_id: int, branch_in: BranchUpdate, *, company_id: int, actor_id: int
+    ) -> Branch:
         branch = self.get_branch(branch_id, company_id)
         update_data = branch_in.model_dump(exclude_unset=True)
 
@@ -87,18 +119,48 @@ class OrgService:
             if existing and existing.id != branch_id:
                 raise ValidationError(f"Branch code '{update_data['code']}' already exists.")
 
-        for field_name, field_value in update_data.items():
-            setattr(branch, field_name, field_value)
-        branch.updated_at = datetime.now(timezone.utc)
-        BranchRepository.update(self.db, branch)
-        self.db.commit()
-        self.db.refresh(branch)
-        return branch
+        try:
+            for field_name, field_value in update_data.items():
+                setattr(branch, field_name, field_value)
+            branch.updated_at = datetime.now(timezone.utc)
+            BranchRepository.update(self.db, branch)
 
-    def delete_branch(self, branch_id: int, *, company_id: int) -> None:
+            AuditService(self.db).log(
+                user_id=actor_id,
+                company_id=company_id,
+                action=AuditAction.UPDATE,
+                entity_type="branch",
+                entity_id=branch.id,
+            )
+            self.db.commit()
+            self.db.refresh(branch)
+            return branch
+        except (ResourceNotFoundException, ValidationError):
+            self.db.rollback()
+            raise
+        except Exception as exc:
+            self.db.rollback()
+            raise BusinessRuleException(f"Error updating branch: {exc}") from exc
+
+    def delete_branch(self, branch_id: int, *, company_id: int, actor_id: int) -> None:
         branch = self.get_branch(branch_id, company_id)
-        BranchRepository.delete(self.db, branch)
-        self.db.commit()
+        try:
+            BranchRepository.delete(self.db, branch)
+
+            AuditService(self.db).log(
+                user_id=actor_id,
+                company_id=company_id,
+                action=AuditAction.DELETE,
+                entity_type="branch",
+                entity_id=branch_id,
+            )
+            self.db.commit()
+        except (ResourceNotFoundException, ValidationError):
+            self.db.rollback()
+            raise
+        except Exception as exc:
+            self.db.rollback()
+            raise BusinessRuleException(f"Error deleting branch: {exc}") from exc
 
     def list_stores(self, company_id: int) -> list[Store]:
         return StoreRepository.find_all_for_company(self.db, company_id)
@@ -128,7 +190,7 @@ class OrgService:
             user_id=actor.id,
         )
 
-    def create_store(self, store_in: StoreCreate, *, company_id: int) -> Store:
+    def create_store(self, store_in: StoreCreate, *, company_id: int, actor_id: int) -> Store:
         branch = BranchRepository.find_by_id_for_company(self.db, store_in.branch_id, company_id)
         if not branch:
             raise ValidationError("branch_id does not belong to this company.")
@@ -137,13 +199,30 @@ class OrgService:
         if existing:
             raise ValidationError(f"Store code '{store_in.code}' already exists.")
 
-        store = Store.model_validate({**store_in.model_dump(), "company_id": company_id})
-        StoreRepository.create(self.db, store)
-        self.db.commit()
-        self.db.refresh(store)
-        return store
+        try:
+            store = Store.model_validate({**store_in.model_dump(), "company_id": company_id})
+            StoreRepository.create(self.db, store)
 
-    def update_store(self, store_id: int, store_in: StoreUpdate, *, company_id: int) -> Store:
+            AuditService(self.db).log(
+                user_id=actor_id,
+                company_id=company_id,
+                action=AuditAction.CREATE,
+                entity_type="store",
+                entity_id=store.id,
+            )
+            self.db.commit()
+            self.db.refresh(store)
+            return store
+        except (ResourceNotFoundException, ValidationError):
+            self.db.rollback()
+            raise
+        except Exception as exc:
+            self.db.rollback()
+            raise BusinessRuleException(f"Error creating store: {exc}") from exc
+
+    def update_store(
+        self, store_id: int, store_in: StoreUpdate, *, company_id: int, actor_id: int
+    ) -> Store:
         store = self.get_store(store_id, company_id)
         update_data = store_in.model_dump(exclude_unset=True)
 
@@ -159,15 +238,45 @@ class OrgService:
             if existing and existing.id != store_id:
                 raise ValidationError(f"Store code '{update_data['code']}' already exists.")
 
-        for field_name, field_value in update_data.items():
-            setattr(store, field_name, field_value)
-        store.updated_at = datetime.now(timezone.utc)
-        StoreRepository.update(self.db, store)
-        self.db.commit()
-        self.db.refresh(store)
-        return store
+        try:
+            for field_name, field_value in update_data.items():
+                setattr(store, field_name, field_value)
+            store.updated_at = datetime.now(timezone.utc)
+            StoreRepository.update(self.db, store)
 
-    def delete_store(self, store_id: int, *, company_id: int) -> None:
+            AuditService(self.db).log(
+                user_id=actor_id,
+                company_id=company_id,
+                action=AuditAction.UPDATE,
+                entity_type="store",
+                entity_id=store.id,
+            )
+            self.db.commit()
+            self.db.refresh(store)
+            return store
+        except (ResourceNotFoundException, ValidationError):
+            self.db.rollback()
+            raise
+        except Exception as exc:
+            self.db.rollback()
+            raise BusinessRuleException(f"Error updating store: {exc}") from exc
+
+    def delete_store(self, store_id: int, *, company_id: int, actor_id: int) -> None:
         store = self.get_store(store_id, company_id)
-        StoreRepository.delete(self.db, store)
-        self.db.commit()
+        try:
+            StoreRepository.delete(self.db, store)
+
+            AuditService(self.db).log(
+                user_id=actor_id,
+                company_id=company_id,
+                action=AuditAction.DELETE,
+                entity_type="store",
+                entity_id=store_id,
+            )
+            self.db.commit()
+        except (ResourceNotFoundException, ValidationError):
+            self.db.rollback()
+            raise
+        except Exception as exc:
+            self.db.rollback()
+            raise BusinessRuleException(f"Error deleting store: {exc}") from exc
