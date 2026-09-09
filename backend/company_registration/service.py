@@ -25,8 +25,8 @@ from shared.identity.pdv_credentials import ensure_pdv_id
 from shared.identity.security import hash_password
 from users.models import User
 from users.repository import UserRepository
-from utils.cnpj import is_valid_cnpj, normalize_cnpj
-from utils.cpf import is_valid_cpf, normalize_cpf
+from utils.cnpj import require_valid_cnpj
+from utils.cpf import require_valid_cpf
 from utils.enums import UserProfile
 
 MAX_SELF_SERVICE_STORES = 15
@@ -62,13 +62,8 @@ class CompanyRegistrationService:
         self.db = db
 
     def create_request(self, payload: CompanyRegistrationCreate) -> CompanyRegistrationRequest:
-        document = normalize_cnpj(payload.document)
-        if not is_valid_cnpj(document):
-            raise ValidationError("Invalid CNPJ.")
-
-        admin_cpf = normalize_cpf(payload.admin_cpf)
-        if not is_valid_cpf(admin_cpf):
-            raise ValidationError("Invalid admin CPF.")
+        document = require_valid_cnpj(payload.document, entity="Company document")
+        admin_cpf = require_valid_cpf(payload.admin_cpf, entity="Admin CPF")
 
         admin_email = payload.admin_email.strip().lower()
         if "@" not in admin_email:

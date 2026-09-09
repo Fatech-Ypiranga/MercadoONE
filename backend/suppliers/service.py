@@ -22,7 +22,7 @@ from suppliers.models import (
     SupplierUpdate,
 )
 from suppliers.repository import SupplierRepository
-from utils.cnpj import is_valid_cnpj, normalize_cnpj
+from utils.cnpj import normalize_cnpj, require_valid_cnpj
 from utils.enums import AuditAction
 
 
@@ -245,10 +245,7 @@ class SupplierService:
 
     @staticmethod
     def _normalize_document(document: str) -> str:
-        normalized = normalize_cnpj(document)
-        if not is_valid_cnpj(normalized):
-            raise ValidationError("Supplier document must be a valid CNPJ.")
-        return normalized
+        return require_valid_cnpj(document, entity="Supplier document")
 
     def _allocate_code(self, company_id: int, address: SupplierAddressCreate) -> str:
         state = address.state

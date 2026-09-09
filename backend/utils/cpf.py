@@ -1,3 +1,6 @@
+from shared.exceptions import ValidationError
+
+
 def normalize_cpf(value: str) -> str:
     return "".join(character for character in value if character.isdigit())
 
@@ -27,3 +30,11 @@ def build_cpf(sequence: int) -> str:
 def _calculate_check_digit(digits: list[int], weights: list[int]) -> int:
     remainder = sum(digit * weight for digit, weight in zip(digits, weights)) % 11
     return 0 if remainder < 2 else 11 - remainder
+
+
+def require_valid_cpf(document: str, *, entity: str = "document") -> str:
+    """Normalize and validate a CPF, raising ValidationError if invalid."""
+    normalized = normalize_cpf(document)
+    if not is_valid_cpf(normalized):
+        raise ValidationError(f"{entity} must be a valid CPF.")
+    return normalized
