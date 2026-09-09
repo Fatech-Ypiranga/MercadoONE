@@ -36,7 +36,7 @@ def test_stock_exit_decreases_balance(client, stocked_product):
     assert Decimal(str(balance.json()["current_balance"])) == Decimal("15")
 
 
-def test_stock_exit_without_balance_returns_400(client, product):
+def test_stock_exit_without_balance_returns_409(client, product):
     response = client.post(
         "/stock/move",
         json={
@@ -46,7 +46,20 @@ def test_stock_exit_without_balance_returns_400(client, product):
             "reason": "ajuste",
         },
     )
-    assert response.status_code == 400
+    assert response.status_code == 409
+
+
+def test_stock_move_unknown_product_returns_404(client):
+    response = client.post(
+        "/stock/move",
+        json={
+            "product_id": 999999,
+            "quantity": "1",
+            "type": "E",
+            "reason": "compra",
+        },
+    )
+    assert response.status_code == 404
 
 
 def test_stock_extract_lists_movements(client, stocked_product):

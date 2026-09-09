@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 
 from products.repository import ProductRepository
 from shared.audit import AuditService
+from shared.exceptions import InsufficientStockException, ResourceNotFoundException
 from stock.models import MovementType, StockMovement, StockMovementCreate
 from stock.repository import StockRepository
 from utils.enums import AuditAction
@@ -20,15 +21,19 @@ class StockMovementService:
         company_id: int,
         store_id: int,
         actor_id: int | None = None,
-    ) -> StockMovement | None:
+    ) -> StockMovement:
         product = ProductRepository.lock_for_update(self.db, movement_in.product_id, company_id)
         if not product:
-            return None
+            raise ResourceNotFoundException(
+                f"Product with ID {movement_in.product_id} was not found."
+            )
 
         if movement_in.type == MovementType.SAIDA:
             current_balance = self.get_current_balance(movement_in.product_id, store_id)
             if current_balance < movement_in.quantity:
-                return None
+                raise InsufficientStockException(
+                    "Insufficient stock for this movement."
+                )
 
         try:
             payload = movement_in.model_dump(exclude={"store_id"})

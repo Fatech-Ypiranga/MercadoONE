@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
 from database.connection import get_db
@@ -26,20 +26,12 @@ def move_stock(
 ):
     company_id = company_id_of(current_user)
     store_id = resolve_store_id(db, current_user, movement_in.store_id)
-    db_movement = StockMovementService(db).create_movement(
+    return StockMovementService(db).create_movement(
         movement_in,
         company_id=company_id,
         store_id=store_id,
         actor_id=current_user.id,
     )
-
-    if not db_movement:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Operação inválida. Verifique o ID do produto ou a quantidade.",
-        )
-
-    return db_movement
 
 
 @router.get("/product/{product_id}/balance", summary="Obter o saldo atual de um produto")
