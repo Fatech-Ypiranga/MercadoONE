@@ -4,13 +4,13 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
 from database.connection import get_db
-from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
-from models.product import ProductCreate, ProductDetailResponse, ProductResponse, ProductUpdate
-from models.user import User
-from services.exceptions import ResourceNotFoundException
-from services.product_service import ProductService
+from products.models import ProductCreate, ProductDetailResponse, ProductResponse, ProductUpdate
+from products.service import ProductService
+from shared.exceptions import ResourceNotFoundException
 from shared.identity.dependencies import require_permission
 from shared.identity.scope import company_id_of
+from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
+from users.models import User
 
 router = APIRouter(prefix="/products", tags=["Produtos"])
 

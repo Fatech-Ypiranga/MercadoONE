@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
 from database.seed import SEED_COMPANY_DOCUMENT
-from models.user import User
 from tests.conftest import page_items
+from users.models import User
 from utils.cpf import build_cpf
 
 
@@ -222,8 +222,8 @@ def test_operador_cannot_receive_pdv_pin(client: TestClient):
 
 
 def test_store_pdv_pin_returns_argon2id_hash_for_sync(client: TestClient, db_session):
-    from models.user import User
     from shared.identity.security import verify_pdv_pin
+    from users.models import User
 
     me = client.get("/auth/me").json()
     admin = db_session.get(User, me["id"])
@@ -248,8 +248,8 @@ def test_store_pdv_pin_returns_argon2id_hash_for_sync(client: TestClient, db_ses
 
 
 def test_store_pdv_pin_requires_existing_pin(client: TestClient, db_session):
-    from models.user import User
     from tests.conftest import login, page_items
+    from users.models import User
 
     create = client.post(
         "/users/",

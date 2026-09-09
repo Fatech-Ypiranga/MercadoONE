@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from xml.etree import ElementTree as ET
 
-from services.exceptions import ValidationError
+from shared.exceptions import ValidationError
 
 NFE_NS = "http://www.portalfiscal.inf.br/nfe"
 NS = {"nfe": NFE_NS}

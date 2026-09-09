@@ -5,10 +5,10 @@ from sqlmodel import Session
 from auth.service import AuthService
 from database.connection import get_db
 from middleware.security import resolve_client_ip
-from models.user import MeBranchInfo, MeCompanyInfo, MeResponse, MeStoreInfo, User
 from organization.repository import BranchRepository, CompanyRepository, StoreRepository
-from services.user_service import to_user_response
 from shared.identity.dependencies import get_current_user, require_permission
+from users.models import MeBranchInfo, MeCompanyInfo, MeResponse, MeStoreInfo, User
+from users.service import to_user_response
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 

@@ -2,10 +2,10 @@ from decimal import Decimal
 
 from sqlmodel import Session, select
 
-from models.stock_movement import MovementType, StockMovement, StockMovementCreate
-from repositories.product_repository import ProductRepository
-from repositories.stock_repository import StockRepository
+from products.repository import ProductRepository
 from shared.audit import AuditService
+from stock.models import MovementType, StockMovement, StockMovementCreate
+from stock.repository import StockRepository
 from utils.enums import AuditAction
 
 

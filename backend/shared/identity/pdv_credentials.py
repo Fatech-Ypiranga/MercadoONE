@@ -6,7 +6,7 @@ import secrets
 
 from sqlmodel import Session, select
 
-from models.user import User
+from users.models import User
 from utils.enums import UserProfile
 
 PDV_ID_LENGTH = 6

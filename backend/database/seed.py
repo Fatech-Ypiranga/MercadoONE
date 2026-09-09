@@ -3,16 +3,16 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session
 
-from models.user import User
 from organization.models import Branch, Company, Store
 from organization.repository import (
     BranchRepository,
     CompanyRepository,
     StoreRepository,
 )
-from repositories.user_repository import UserRepository
-from services.pdv_credentials import ensure_pdv_id
+from shared.identity.pdv_credentials import ensure_pdv_id
 from shared.identity.security import hash_password, verify_password
+from users.models import User
+from users.repository import UserRepository
 from utils.enums import UserProfile
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@pyerp.local")

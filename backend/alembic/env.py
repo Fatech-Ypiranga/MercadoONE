@@ -4,7 +4,18 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
-import models  # noqa: F401
+# Imported for their side effect of registering tables on SQLModel.metadata.
+import categories.models  # noqa: F401
+import company_registration.models  # noqa: F401
+import customers.models  # noqa: F401
+import organization.models  # noqa: F401
+import products.models  # noqa: F401
+import purchases.models  # noqa: F401
+import sales.models  # noqa: F401
+import shared.audit  # noqa: F401
+import stock.models  # noqa: F401
+import suppliers.models  # noqa: F401
+import users.models  # noqa: F401
 from alembic import context
 
 config = context.config

@@ -3,9 +3,9 @@ from decimal import Decimal
 from sqlalchemy import and_, case
 from sqlmodel import Session, func, select
 
-from models.product import Product
-from models.sale import Sale, SaleItem, SaleStatus
-from models.stock_movement import MovementType, StockMovement
+from products.models import Product
+from sales.models import Sale, SaleItem, SaleStatus
+from stock.models import MovementType, StockMovement
 
 
 class ReportService:

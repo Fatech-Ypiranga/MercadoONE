@@ -9,8 +9,8 @@ from sqlmodel import Session, select
 
 from categories.models import Category
 from database.seed import ensure_demo_organization
-from models.product import Product, ProductFiscal, UnitOfMeasure
-from services.product_service import ProductService
+from products.models import Product, ProductFiscal, UnitOfMeasure
+from products.service import ProductService
 from suppliers.models import Supplier, SupplierAddress
 
 # Products matching barcodes in tests/fixtures/nfe/ci_sample_01.xml

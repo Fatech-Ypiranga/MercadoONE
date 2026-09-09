@@ -5,17 +5,17 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlmodel import Session
 
 from database.connection import get_db
-from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
-from models.purchase import (
+from purchases.models import (
     NfeUploadPreviewResponse,
     PurchaseConfirmRequest,
     PurchaseOrderDetailResponse,
     PurchaseOrderResponse,
 )
-from models.user import User
-from services.purchase_service import PurchaseService
+from purchases.service import PurchaseService
 from shared.identity.dependencies import require_permission
 from shared.identity.scope import company_id_of, resolve_store_id
+from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
+from users.models import User
 from utils.enums import PurchaseStatus
 
 router = APIRouter(prefix="/purchases", tags=["Compras"])

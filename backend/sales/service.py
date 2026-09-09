@@ -5,23 +5,23 @@ from sqlmodel import Session
 
 from auth.service import AuthService
 from customers.repository import CustomerRepository
-from models.sale import Sale, SaleStatus
-from models.stock_movement import MovementReason, MovementType, StockMovement
-from models.user import User
-from repositories.movement_repository import MovementRepository
-from repositories.product_repository import ProductRepository
-from repositories.sale_repository import SaleRepository
-from repositories.stock_repository import StockRepository
-from repositories.user_repository import UserRepository
-from services.exceptions import (
+from products.repository import ProductRepository
+from sales.models import Sale, SaleStatus
+from sales.repository import SaleRepository
+from shared.audit import AuditService
+from shared.exceptions import (
     BusinessRuleException,
     InsufficientStockException,
     ResourceNotFoundException,
     UnauthorizedException,
     ValidationError,
 )
-from shared.audit import AuditService
 from shared.identity.permissions import has_permission
+from stock.models import MovementReason, MovementType, StockMovement
+from stock.movement_repository import MovementRepository
+from stock.repository import StockRepository
+from users.models import User
+from users.repository import UserRepository
 from utils.enums import AuditAction
 
 

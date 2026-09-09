@@ -1,7 +1,7 @@
 import httpx
 
 from cep.models import CepResponse
-from services.exceptions import ExternalServiceException, ResourceNotFoundException, ValidationError
+from shared.exceptions import ExternalServiceException, ResourceNotFoundException, ValidationError
 
 VIACEP_URL = "https://viacep.com.br/ws/{cep}/json/"
 TIMEOUT = 5.0

@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from categories.repository import CategoryRepository
-from models.product import (
+from products.models import (
     Product,
     ProductCreate,
     ProductFiscal,
@@ -14,14 +14,14 @@ from models.product import (
     ProductMaterialSequence,
     ProductUpdate,
 )
-from repositories.product_repository import ProductRepository
-from services.exceptions import (
+from products.repository import ProductRepository
+from shared.audit import AuditService
+from shared.exceptions import (
     BusinessRuleException,
     ConflictException,
     ResourceNotFoundException,
     ValidationError,
 )
-from shared.audit import AuditService
 from suppliers.repository import SupplierRepository
 from utils.enums import AuditAction
 

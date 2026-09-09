@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from models.product import Product
+from products.models import Product
 
 
 def _supplier_payload(document: str = "11.222.333/0001-81") -> dict:

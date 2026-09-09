@@ -2,8 +2,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from models.product import Product
-from models.purchase import PurchaseOrder, SupplierProductMapping
+from products.models import Product
+from purchases.models import PurchaseOrder, SupplierProductMapping
 from suppliers.models import Supplier
 
 

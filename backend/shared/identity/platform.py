@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import Header
 
-from services.exceptions import UnauthorizedException
+from shared.exceptions import UnauthorizedException
 
 
 def get_platform_api_key() -> str | None:

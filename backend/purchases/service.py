@@ -4,8 +4,10 @@ from decimal import Decimal
 from pydantic import ValidationError as PydanticValidationError
 from sqlmodel import Session
 
-from models.product import Product, ProductCreate, ProductFiscalCreate, UnitOfMeasure
-from models.purchase import (
+from products.models import Product, ProductCreate, ProductFiscalCreate, UnitOfMeasure
+from products.repository import ProductRepository
+from products.service import ProductService
+from purchases.models import (
     NfeInvoicePreview,
     NfeItemPreview,
     NfeSupplierAddressPreview,
@@ -20,21 +22,19 @@ from models.purchase import (
     PurchaseOrderResponse,
     SupplierProductMapping,
 )
-from models.stock_movement import MovementReason, MovementType, StockMovement
-from repositories.movement_repository import MovementRepository
-from repositories.product_repository import ProductRepository
-from repositories.purchase_repository import PurchaseRepository, SupplierMappingRepository
-from repositories.stock_repository import StockRepository
-from services.exceptions import (
+from purchases.nfe_parser import ParsedNfeItem, calculate_entry_unit_cost, parse_nfe_xml
+from purchases.repository import PurchaseRepository, SupplierMappingRepository
+from shared.audit import AuditService
+from shared.exceptions import (
     BusinessRuleException,
     ConflictException,
     InsufficientStockException,
     ResourceNotFoundException,
     ValidationError,
 )
-from services.nfe_parser import ParsedNfeItem, calculate_entry_unit_cost, parse_nfe_xml
-from services.product_service import ProductService
-from shared.audit import AuditService
+from stock.models import MovementReason, MovementType, StockMovement
+from stock.movement_repository import MovementRepository
+from stock.repository import StockRepository
 from suppliers.models import Supplier, SupplierAddressCreate, SupplierCreate
 from suppliers.repository import SupplierRepository
 from suppliers.service import SupplierService

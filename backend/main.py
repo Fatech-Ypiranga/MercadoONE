@@ -59,16 +59,14 @@ from database.connection import engine, init_db
 from exception_handlers import register_exception_handlers
 from middleware import LoginRateLimitMiddleware, SecurityHeadersMiddleware
 from organization import branch_router, company_router, store_router
+from products import router as product_router
+from purchases import router as purchase_router
 from reports import router as report_router
-from routers import (
-    product_router,
-    purchase_router,
-    sale_router,
-    stock_movement_router,
-    user_router,
-)
+from sales import router as sale_router
 from shared.identity.security import validate_production_config
+from stock import router as stock_movement_router
 from suppliers import router as supplier_router
+from users import router as user_router
 
 DEFAULT_CORS_ORIGINS = "http://localhost:3000"
 

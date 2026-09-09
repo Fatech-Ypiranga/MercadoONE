@@ -11,8 +11,8 @@ from customers.models import (
     CustomerUpdate,
 )
 from customers.repository import CustomerRepository
-from services.exceptions import ResourceNotFoundException, ValidationError
 from shared.audit import AuditService
+from shared.exceptions import ResourceNotFoundException, ValidationError
 from utils.cnpj import is_valid_cnpj, normalize_cnpj
 from utils.cpf import is_valid_cpf, normalize_cpf
 from utils.enums import AuditAction, CustomerType

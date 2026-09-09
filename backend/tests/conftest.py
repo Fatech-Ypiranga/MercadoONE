@@ -16,13 +16,13 @@ from database.connection import get_db
 from database.migrate import upgrade_head
 from database.seed import SEED_COMPANY_DOCUMENT, ensure_demo_organization, seed_admin_user
 from main import create_app
-from models.user import User
 from organization.models import Branch, Company, Store
 from organization.repository import BranchRepository, CompanyRepository, StoreRepository
-from repositories.user_repository import UserRepository
-from services.pdv_credentials import ensure_pdv_id
+from shared.identity.pdv_credentials import ensure_pdv_id
 from shared.identity.security import hash_password
 from tests.catalog_seed import seed_purchase_test_catalog
+from users.models import User
+from users.repository import UserRepository
 from utils.cpf import build_cpf
 from utils.enums import UserProfile
 

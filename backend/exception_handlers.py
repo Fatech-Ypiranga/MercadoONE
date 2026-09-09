@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from services.exceptions import (
+from shared.exceptions import (
     BusinessRuleException,
     ConflictException,
     ExternalServiceException,

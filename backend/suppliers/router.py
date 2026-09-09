@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
 from database.connection import get_db
-from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
-from models.user import User
 from shared.identity.dependencies import require_permission
 from shared.identity.scope import company_id_of
+from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
 from suppliers.models import SupplierCreate, SupplierResponse, SupplierUpdate
 from suppliers.service import SupplierService
+from users.models import User
 
 router = APIRouter(prefix="/suppliers", tags=["Fornecedores"])
 

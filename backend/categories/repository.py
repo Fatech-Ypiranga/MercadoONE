@@ -2,7 +2,7 @@ from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
 from categories.models import Category
-from models.product import Product
+from products.models import Product
 
 _UNSET = object()
 

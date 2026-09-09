@@ -14,17 +14,17 @@ from company_registration.models import (
     CompanyRegistrationStatus,
 )
 from company_registration.repository import CompanyRegistrationRepository
-from models.user import User
 from organization.models import Branch, Company, Store
 from organization.repository import (
     BranchRepository,
     CompanyRepository,
     StoreRepository,
 )
-from repositories.user_repository import UserRepository
-from services.exceptions import ConflictException, ResourceNotFoundException, ValidationError
-from services.pdv_credentials import ensure_pdv_id
+from shared.exceptions import ConflictException, ResourceNotFoundException, ValidationError
+from shared.identity.pdv_credentials import ensure_pdv_id
 from shared.identity.security import hash_password
+from users.models import User
+from users.repository import UserRepository
 from utils.cnpj import is_valid_cnpj, normalize_cnpj
 from utils.cpf import is_valid_cpf, normalize_cpf
 from utils.enums import UserProfile

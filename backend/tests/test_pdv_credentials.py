@@ -2,7 +2,7 @@ import secrets
 
 from organization.models import Company
 from organization.repository import CompanyRepository
-from services.pdv_credentials import generate_pdv_id, is_weak_pdv_id
+from shared.identity.pdv_credentials import generate_pdv_id, is_weak_pdv_id
 from shared.identity.security import hash_password, hash_pdv_pin, verify_pdv_pin
 
 

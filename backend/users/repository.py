@@ -3,14 +3,14 @@ from sqlmodel import Session, select
 
 from categories.models import Category
 from customers.models import Customer, CustomerAddress
-from models.product import Product
-from models.purchase import PurchaseOrder
-from models.sale import Sale
-from models.stock_movement import StockMovement
-from models.user import User
 from organization.models import Company
+from products.models import Product
+from purchases.models import PurchaseOrder
+from sales.models import Sale
 from shared.audit import AuditLog
+from stock.models import StockMovement
 from suppliers.models import Supplier
+from users.models import User
 from utils.enums import UserProfile
 
 

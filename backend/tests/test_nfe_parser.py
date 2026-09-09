@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from services.exceptions import ValidationError
-from services.nfe_parser import calculate_entry_unit_cost, parse_nfe_xml
+from purchases.nfe_parser import calculate_entry_unit_cost, parse_nfe_xml
+from shared.exceptions import ValidationError
 
 
 def _nfe_xml(*, address: str = "", n_item: str = "1", quantity: str = "2.000") -> str:

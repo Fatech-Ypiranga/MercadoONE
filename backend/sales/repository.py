@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from models.sale import Sale, SaleItem
+from sales.models import Sale, SaleItem
 
 
 class SaleRepository:

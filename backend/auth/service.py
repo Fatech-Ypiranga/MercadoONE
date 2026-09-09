@@ -3,12 +3,10 @@ from datetime import datetime, timezone
 from jose import JWTError
 from sqlmodel import Session
 
-from models.user import User
 from organization.repository import CompanyRepository
-from repositories.user_repository import UserRepository
-from services.exceptions import UnauthorizedException, ValidationError
-from services.pdv_credentials import PDV_PIN_LENGTH, is_supervisor_plus
 from shared.audit import AuditService
+from shared.exceptions import UnauthorizedException, ValidationError
+from shared.identity.pdv_credentials import PDV_PIN_LENGTH, is_supervisor_plus
 from shared.identity.permissions import has_permission
 from shared.identity.security import (
     PDV_AUTHORIZATION_TYP,
@@ -19,6 +17,8 @@ from shared.identity.security import (
     verify_password,
     verify_pdv_pin,
 )
+from users.models import User
+from users.repository import UserRepository
 from utils.cnpj import normalize_cnpj
 from utils.enums import AuditAction
 

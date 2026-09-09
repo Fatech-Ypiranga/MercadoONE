@@ -13,8 +13,8 @@ from company_registration.service import (
     to_registration_response,
 )
 from database.connection import get_db
-from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
 from shared.identity.platform import require_platform_api_key
+from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
 
 router = APIRouter(prefix="/company-registrations", tags=["Cadastro de empresas"])
 

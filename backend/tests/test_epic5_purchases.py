@@ -3,10 +3,10 @@ import re
 from fastapi.testclient import TestClient
 from sqlmodel import Session, func, select
 
-from models.product import Product
-from models.purchase import PurchaseOrder, SupplierProductMapping
-from models.stock_movement import StockMovement
+from products.models import Product
+from purchases.models import PurchaseOrder, SupplierProductMapping
 from shared.audit import AuditLog
+from stock.models import StockMovement
 from suppliers.models import Supplier, SupplierAddress, SupplierMunicipality, SupplierSequence
 
 VALID_DOCUMENT = "11222333000181"

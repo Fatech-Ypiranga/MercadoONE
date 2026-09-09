@@ -4,13 +4,13 @@ from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import func, text
 from sqlmodel import Session, select
 
-from services.exceptions import (
+from shared.audit import AuditService
+from shared.exceptions import (
     BusinessRuleException,
     ConflictException,
     ResourceNotFoundException,
     ValidationError,
 )
-from shared.audit import AuditService
 from suppliers.models import (
     BRAZILIAN_STATE_IBGE_CODES,
     Supplier,

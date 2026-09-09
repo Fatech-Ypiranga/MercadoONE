@@ -5,7 +5,7 @@ from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from models.product import Product
+    from products.models import Product
 
 
 class CategoryBase(SQLModel):
@@ -51,7 +51,7 @@ class Category(CategoryBase, table=True):
     products: List["Product"] = Relationship(back_populates="category")
 
 
-from models.product import ProductResponse
+from products.models import ProductResponse
 
 
 class CategoryDetailResponse(CategoryResponse):

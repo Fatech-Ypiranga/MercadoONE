@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
 from database.connection import get_db
-from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
-from models.user import User
 from organization.models import StoreCreate, StorePdvPinResponse, StoreResponse, StoreUpdate
 from organization.service import OrgService
 from shared.identity.dependencies import require_permission
 from shared.identity.scope import company_id_of
+from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
+from users.models import User
 
 router = APIRouter(prefix="/stores", tags=["Lojas"])
 

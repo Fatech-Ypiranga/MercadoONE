@@ -1,10 +1,10 @@
 from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
-from models.product import Product, ProductFiscal
-from models.purchase import PurchaseItem, SupplierProductMapping
-from models.sale import SaleItem
-from models.stock_movement import StockMovement
+from products.models import Product, ProductFiscal
+from purchases.models import PurchaseItem, SupplierProductMapping
+from sales.models import SaleItem
+from stock.models import StockMovement
 
 
 class ProductRepository:

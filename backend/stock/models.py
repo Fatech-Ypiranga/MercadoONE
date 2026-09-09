@@ -7,7 +7,7 @@ from sqlmodel import Field, Relationship, SQLModel
 from utils.enums import MovementReason, MovementType, enum_column
 
 if TYPE_CHECKING:
-    from .product import Product
+    from products.models import Product
 
 
 class StockMovementBase(SQLModel):

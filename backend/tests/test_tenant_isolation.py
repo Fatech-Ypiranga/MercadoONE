@@ -6,20 +6,20 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from categories.models import Category
-from models.product import Product
-from models.user import User
 from organization.models import Branch, Company, Store
 from organization.repository import (
     BranchRepository,
     CompanyRepository,
     StoreRepository,
 )
-from repositories.user_repository import UserRepository
-from services.pdv_credentials import ensure_pdv_id
-from services.product_service import ProductService
+from products.models import Product
+from products.service import ProductService
+from shared.identity.pdv_credentials import ensure_pdv_id
 from shared.identity.security import hash_password
 from suppliers.models import Supplier
 from tests.conftest import make_client, page_items
+from users.models import User
+from users.repository import UserRepository
 from utils.cpf import build_cpf
 from utils.enums import UserProfile
 

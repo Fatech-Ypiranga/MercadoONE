@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from sqlmodel import Session, func, select
 
-from models.stock_movement import MovementType, StockMovement
+from stock.models import MovementType, StockMovement
 
 
 class StockRepository:

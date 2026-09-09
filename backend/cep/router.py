@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends
 
 from cep.models import CepResponse
 from cep.service import CepService
-from models.user import User
 from shared.identity.dependencies import get_current_user
+from users.models import User
 
 router = APIRouter(prefix="/cep", tags=["CEP"])
 

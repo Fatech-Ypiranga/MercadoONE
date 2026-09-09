@@ -3,7 +3,7 @@ from decimal import Decimal
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from models.product import Product
+from products.models import Product
 
 
 def test_create_product_with_fiscal(client: TestClient, category: dict, supplier: dict):

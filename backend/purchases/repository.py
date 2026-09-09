@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from models.purchase import PurchaseItem, PurchaseOrder, SupplierProductMapping
+from purchases.models import PurchaseItem, PurchaseOrder, SupplierProductMapping
 from utils.enums import PurchaseStatus
 
 

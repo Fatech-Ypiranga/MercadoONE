@@ -15,7 +15,7 @@ ignore = ["E501"]
 "**/__init__.py" = ["F401"]
 "main.py" = ["E402"]
 "categories/models.py" = ["E402"]
-"models/product.py" = ["E402"]
+"products/models.py" = ["E402"]
 "alembic/versions/*" = ["I001"]
 
 [tool.ruff.format]

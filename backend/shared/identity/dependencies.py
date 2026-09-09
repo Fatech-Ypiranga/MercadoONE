@@ -6,11 +6,11 @@ from jose import JWTError
 from sqlmodel import Session
 
 from database.connection import get_db
-from models.user import User
-from repositories.user_repository import UserRepository
-from services.exceptions import ForbiddenException, UnauthorizedException
+from shared.exceptions import ForbiddenException, UnauthorizedException
 from shared.identity.permissions import has_permission
 from shared.identity.security import decode_and_require_access_token
+from users.models import User
+from users.repository import UserRepository
 
 security = HTTPBearer(auto_error=False)
 

@@ -3,8 +3,8 @@ from sqlmodel import Session, select
 
 from categories.models import Category, CategoryCreate, CategoryUpdate
 from categories.repository import _UNSET, CategoryRepository
-from services.exceptions import ConflictException, ResourceNotFoundException, ValidationError
 from shared.audit import AuditService
+from shared.exceptions import ConflictException, ResourceNotFoundException, ValidationError
 from utils.enums import AuditAction
 
 

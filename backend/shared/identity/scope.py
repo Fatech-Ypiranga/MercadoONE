@@ -1,8 +1,8 @@
 from sqlmodel import Session
 
-from models.user import User
 from organization.repository import StoreRepository
-from services.exceptions import ForbiddenException, ValidationError
+from shared.exceptions import ForbiddenException, ValidationError
+from users.models import User
 
 
 def company_id_of(user: User) -> int:

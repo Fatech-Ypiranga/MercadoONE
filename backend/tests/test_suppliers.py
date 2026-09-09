@@ -5,11 +5,11 @@ from decimal import Decimal
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from models.purchase import PurchaseOrder
-from models.user import User
 from organization.models import Store
+from purchases.models import PurchaseOrder
 from suppliers.models import Supplier
 from tests.conftest import page_items
+from users.models import User
 from utils.enums import PurchaseStatus
 
 VALID_CNPJ_FORMATTED = "11.222.333/0001-81"

@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from database.connection import get_db
-from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page
-from models.user import User
 from shared.audit import AuditLogResponse, AuditService
 from shared.identity.dependencies import require_permission
 from shared.identity.scope import company_id_of
+from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page
+from users.models import User
 
 router = APIRouter(prefix="/audit-log", tags=["Auditoria"])
 

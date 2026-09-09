@@ -6,12 +6,12 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from database.connection import get_db
-from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
-from models.sale import SaleDetailResponse
-from models.user import User
-from services.sale_service import SaleService
+from sales.models import SaleDetailResponse
+from sales.service import SaleService
 from shared.identity.dependencies import require_permission
 from shared.identity.scope import company_id_of, resolve_store_id
+from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
+from users.models import User
 
 router = APIRouter(prefix="/sales", tags=["Vendas"])
 

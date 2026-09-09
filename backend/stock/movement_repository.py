@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 
-from models.stock_movement import StockMovement
+from stock.models import StockMovement
 
 
 class MovementRepository:
