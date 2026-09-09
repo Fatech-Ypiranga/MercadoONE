@@ -10,7 +10,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-test-db.sql:/docker-entrypoint-initdb.d/02-init-test-db.sql
+      - ./backend/scripts/init-test-db.sql:/docker-entrypoint-initdb.d/02-init-test-db.sql
     healthcheck:
       test:
         [

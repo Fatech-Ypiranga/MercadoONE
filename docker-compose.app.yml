@@ -1,6 +1,6 @@
 # Paridade local com Railway: API + Postgres (sem pgAdmin).
-# Uso: docker compose -f docker-compose.app.yml --env-file .env up --build
-# Secrets sensíveis: copie .env.example → .env (não commitado).
+# Uso: docker compose -f docker-compose.app.yml --env-file backend/.env up --build
+# Secrets sensíveis: copie backend/.env.example → backend/.env (não commitado).
 
 services:
   postgres_db:

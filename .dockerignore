@@ -13,7 +13,7 @@ __pycache__
 .env.*
 !.env.example
 docs
-tests
+backend/tests
 frontend
 cli
 postgres_data

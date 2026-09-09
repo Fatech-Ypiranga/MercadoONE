@@ -1,0 +1,22 @@
+[project]
+name = "pyerp"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["."]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+"main.py" = ["E402"]
+"categories/models.py" = ["E402"]
+"models/product.py" = ["E402"]
+"alembic/versions/*" = ["I001"]
+
+[tool.ruff.format]
+quote-style = "double"

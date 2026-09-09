@@ -16,7 +16,7 @@ PyERP é uma API REST (FastAPI) para operações de varejo alimentar brasileiro.
 | Geração/cadastro de dados fictícios + XML de compra | repo externo **pyerp-data-sim** |
 | Simulação de PDV / caixa físico | repo externo **pyerp-pdv** |
 
-Contrato para integradores: [`INTEGRACOES.md`](INTEGRACOES.md) · OpenAPI: [`openapi.json`](openapi.json) (`python scripts/export_openapi.py`).
+Contrato para integradores: [`INTEGRACOES.md`](INTEGRACOES.md) · OpenAPI: [`openapi.json`](openapi.json) (`python backend/scripts/export_openapi.py`).
 
 ### Stack
 
@@ -292,7 +292,7 @@ Se o banco já tem tabelas mas falta `alembic_version`, a API levanta erro orien
 **114 testes** de integração com PostgreSQL real via `TestClient`.
 
 ```
-tests/
+backend/tests/
 ├── conftest.py              # DB, clientes por perfil (6 perfis), fixtures pytest
 ├── catalog_seed.py          # Seed mínimo para compras/XML
 ├── test_auth.py             # Login, JWT, troca de senha

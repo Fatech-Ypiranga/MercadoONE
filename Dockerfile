@@ -13,11 +13,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.lock requirements.txt ./
+COPY backend/requirements.lock backend/requirements.txt ./
 RUN pip install --upgrade pip \
     && pip install -r requirements.lock
 
-COPY . .
+COPY backend/ .
 
 RUN chmod +x /app/scripts/docker-entrypoint.sh /app/scripts/migrate-only.sh \
     && useradd --create-home --uid 10001 appuser \

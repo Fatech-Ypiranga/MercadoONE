@@ -8,7 +8,7 @@ A API deste repositório é o contrato; apps externos falam **só** por HTTP.
 | Spec ao vivo | `GET http://localhost:8000/openapi.json` |
 | Snapshot versionado | [`docs/openapi.json`](openapi.json) |
 | Cópia do front (Tipos) | `frontend/openapi.json` → `npm run generate:api` |
-| Regenerar snapshot | `python scripts/export_openapi.py` |
+| Regenerar snapshot | `python backend/scripts/export_openapi.py` |
 | Swagger | http://localhost:8000/docs |
 
 **Regra de ouro:** o **catálogo de produtos vive no ERP**. Nenhum app externo mantém bank paralelo de SKUs. Ordem obrigatória:
@@ -339,6 +339,6 @@ Aceite mínimo do ecossistema: produto criado pelo Data Sim aparece em `GET /pro
 - [ ] Data Sim: **cadastra produto no ERP antes** de XML/venda
 - [ ] Opcional: XML de compra usa SKU/EAN já cadastrado e o preview encontra o produto
 - [ ] PDV: trata `409` de estoque e `403` de cancelamento
-- [ ] Spec regenerada com `python scripts/export_openapi.py` quando a API mudar
+- [ ] Spec regenerada com `python backend/scripts/export_openapi.py` quando a API mudar
 
 *Épicos de cadastros e contratos de integração · julho/2026*
