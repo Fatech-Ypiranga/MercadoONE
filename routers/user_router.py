@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
-from auth.dependencies import require_permission
-from auth.scope import company_id_of
 from database.connection import get_db
 from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
 from models.user import (
@@ -14,6 +12,8 @@ from models.user import (
     UserUpdate,
 )
 from services.user_service import UserService, to_user_response
+from shared.identity.dependencies import require_permission
+from shared.identity.scope import company_id_of
 from utils.enums import UserProfile
 
 router = APIRouter(prefix="/users", tags=["Usuários"])

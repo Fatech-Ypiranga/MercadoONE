@@ -49,28 +49,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlmodel import Session
 
-from auth.security import validate_production_config
+from audit_log import router as audit_router
+from auth import router as auth_router
+from cep import router as cep_router
+from company_registration import router as company_registration_router
 from database.connection import engine, init_db
 from exception_handlers import register_exception_handlers
 from middleware import LoginRateLimitMiddleware, SecurityHeadersMiddleware
+from organization import branch_router, company_router, store_router
+from reports import router as report_router
 from routers import (
-    audit_router,
-    auth_router,
-    branch_router,
     category_router,
-    cep_router,
-    company_registration_router,
-    company_router,
     customer_router,
     product_router,
     purchase_router,
-    report_router,
     sale_router,
     stock_movement_router,
-    store_router,
     supplier_router,
     user_router,
 )
+from shared.identity.security import validate_production_config
 
 DEFAULT_CORS_ORIGINS = "http://localhost:3000"
 

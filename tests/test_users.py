@@ -222,8 +222,8 @@ def test_operador_cannot_receive_pdv_pin(client: TestClient):
 
 
 def test_store_pdv_pin_returns_argon2id_hash_for_sync(client: TestClient, db_session):
-    from auth.security import verify_pdv_pin
     from models.user import User
+    from shared.identity.security import verify_pdv_pin
 
     me = client.get("/auth/me").json()
     admin = db_session.get(User, me["id"])

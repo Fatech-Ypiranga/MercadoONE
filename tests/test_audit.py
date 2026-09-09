@@ -47,7 +47,7 @@ def test_audit_log_filters_by_user_id(
 ):
     from jose import jwt
 
-    from auth.security import JWT_ALGORITHM, JWT_SECRET
+    from shared.identity.security import JWT_ALGORITHM, JWT_SECRET
 
     payload = jwt.decode(admin_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     admin_id = int(payload["sub"])

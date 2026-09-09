@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
-from auth.dependencies import require_permission
-from auth.scope import company_id_of
 from database.connection import get_db
-from models.company import BranchCreate, BranchResponse, BranchUpdate
 from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
 from models.user import User
-from services.org_service import OrgService
+from organization.models import BranchCreate, BranchResponse, BranchUpdate
+from organization.service import OrgService
+from shared.identity.dependencies import require_permission
+from shared.identity.scope import company_id_of
 
 router = APIRouter(prefix="/branches", tags=["Filiais"])
 

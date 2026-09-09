@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
-from auth.dependencies import require_permission
-from auth.scope import company_id_of
 from database.connection import get_db
-from models.company import CompanyResponse, CompanyUpdate
 from models.user import User
-from services.org_service import OrgService
+from organization.models import CompanyResponse, CompanyUpdate
+from organization.service import OrgService
+from shared.identity.dependencies import require_permission
+from shared.identity.scope import company_id_of
 
 router = APIRouter(prefix="/companies", tags=["Empresas"])
 

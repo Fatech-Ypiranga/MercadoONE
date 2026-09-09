@@ -1,8 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from auth.security import DEFAULT_JWT_SECRET, validate_production_config
 from main import create_app, get_cors_origins
+from shared.identity.security import DEFAULT_JWT_SECRET, validate_production_config
 
 
 def test_development_allows_default_jwt_secret(monkeypatch):

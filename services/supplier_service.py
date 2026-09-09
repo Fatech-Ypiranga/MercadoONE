@@ -15,13 +15,13 @@ from models.supplier import (
     SupplierUpdate,
 )
 from repositories.supplier_repository import SupplierRepository
-from services.audit_service import AuditService
 from services.exceptions import (
     BusinessRuleException,
     ConflictException,
     ResourceNotFoundException,
     ValidationError,
 )
+from shared.audit import AuditService
 from utils.cnpj import is_valid_cnpj, normalize_cnpj
 from utils.enums import AuditAction
 

@@ -92,7 +92,7 @@ def test_colaborador_can_list_products(colaborador_client: TestClient):
 def test_sale_user_id_from_token(client: TestClient, stocked_product: dict, admin_token: str):
     from jose import jwt
 
-    from auth.security import JWT_ALGORITHM, JWT_SECRET
+    from shared.identity.security import JWT_ALGORITHM, JWT_SECRET
 
     payload = jwt.decode(admin_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     admin_id = int(payload["sub"])

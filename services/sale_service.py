@@ -1,10 +1,9 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy.orm import selectinload
-from sqlmodel import Session, select
+from sqlmodel import Session
 
-from auth.permissions import has_permission
+from auth.service import AuthService
 from models.sale import Sale, SaleStatus
 from models.stock_movement import MovementReason, MovementType, StockMovement
 from models.user import User
@@ -14,8 +13,6 @@ from repositories.product_repository import ProductRepository
 from repositories.sale_repository import SaleRepository
 from repositories.stock_repository import StockRepository
 from repositories.user_repository import UserRepository
-from services.audit_service import AuditService
-from services.auth_service import AuthService
 from services.exceptions import (
     BusinessRuleException,
     InsufficientStockException,
@@ -23,6 +20,8 @@ from services.exceptions import (
     UnauthorizedException,
     ValidationError,
 )
+from shared.audit import AuditService
+from shared.identity.permissions import has_permission
 from utils.enums import AuditAction
 
 
@@ -245,12 +244,7 @@ class SaleService:
             raise BusinessRuleException(f"Sale cancellation failed: {e}")
 
     def get_by_id(self, sale_id: int, company_id: int) -> Sale | None:
-        stmt = (
-            select(Sale)
-            .where(Sale.id == sale_id, Sale.company_id == company_id)
-            .options(selectinload(Sale.items))
-        )
-        return self.db.exec(stmt).first()
+        return SaleRepository.find_by_id(self.db, sale_id, company_id)
 
     def list_sales(
         self,
@@ -262,25 +256,15 @@ class SaleService:
         date_to: datetime | None = None,
         store_id: int | None = None,
     ) -> list[Sale]:
-        stmt = (
-            select(Sale)
-            .where(Sale.company_id == company_id)
-            .order_by(Sale.sale_date.desc())
-            .options(selectinload(Sale.items))
+        return SaleRepository.find_filtered(
+            self.db,
+            company_id,
+            customer_id=customer_id,
+            status=status,
+            date_from=date_from,
+            date_to=date_to,
+            store_id=store_id,
         )
-
-        if customer_id is not None:
-            stmt = stmt.where(Sale.customer_id == customer_id)
-        if status is not None:
-            stmt = stmt.where(Sale.status == status)
-        if date_from is not None:
-            stmt = stmt.where(Sale.sale_date >= date_from)
-        if date_to is not None:
-            stmt = stmt.where(Sale.sale_date <= date_to)
-        if store_id is not None:
-            stmt = stmt.where(Sale.store_id == store_id)
-
-        return list(self.db.exec(stmt).all())
 
     def _ensure_discount_authorized(
         self, *, actor: User, supervisor_authorization: str | None

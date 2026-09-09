@@ -5,10 +5,10 @@ from decimal import Decimal
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from models.company import Store
 from models.purchase import PurchaseOrder
 from models.supplier import Supplier
 from models.user import User
+from organization.models import Store
 from tests.conftest import page_items
 from utils.enums import PurchaseStatus
 

@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
-from auth.dependencies import require_permission
-from auth.scope import company_id_of
 from database.connection import get_db
 from models.user import User
-from services.report_service import ReportService
+from reports.service import ReportService
+from shared.identity.dependencies import require_permission
+from shared.identity.scope import company_id_of
 
 router = APIRouter(prefix="/reports", tags=["Relatórios"])
 

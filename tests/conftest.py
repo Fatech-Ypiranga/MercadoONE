@@ -12,16 +12,16 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlmodel import Session, create_engine
 
-from auth.security import hash_password
 from database.connection import get_db
 from database.migrate import upgrade_head
 from database.seed import SEED_COMPANY_DOCUMENT, ensure_demo_organization, seed_admin_user
 from main import create_app
-from models.company import Branch, Company, Store
 from models.user import User
-from repositories.company_repository import BranchRepository, CompanyRepository, StoreRepository
+from organization.models import Branch, Company, Store
+from organization.repository import BranchRepository, CompanyRepository, StoreRepository
 from repositories.user_repository import UserRepository
 from services.pdv_credentials import ensure_pdv_id
+from shared.identity.security import hash_password
 from tests.catalog_seed import seed_purchase_test_catalog
 from utils.cpf import build_cpf
 from utils.enums import UserProfile

@@ -1,20 +1,20 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
-from auth.platform import require_platform_api_key
-from database.connection import get_db
-from models.company_registration import (
+from company_registration.models import (
     CompanyRegistrationApprove,
     CompanyRegistrationApproveResponse,
     CompanyRegistrationCreate,
     CompanyRegistrationReject,
     CompanyRegistrationResponse,
 )
-from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
-from services.company_registration_service import (
+from company_registration.service import (
     CompanyRegistrationService,
     to_registration_response,
 )
+from database.connection import get_db
+from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
+from shared.identity.platform import require_platform_api_key
 
 router = APIRouter(prefix="/company-registrations", tags=["Cadastro de empresas"])
 

@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 
-from models.company_registration import CompanyRegistrationRequest
+from company_registration.models import CompanyRegistrationRequest
 
 
 class CompanyRegistrationRepository:

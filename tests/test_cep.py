@@ -55,7 +55,7 @@ def test_cep_requires_auth():
 
 def test_cep_valid_returns_mapped_fields(client: TestClient):
     """Valid 8-digit CEP → 200 with all mapped fields including ibge_code."""
-    with patch("services.cep_service.httpx.AsyncClient") as mock_cls:
+    with patch("cep.service.httpx.AsyncClient") as mock_cls:
         mock_instance = AsyncMock()
         mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_instance)
         mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -75,7 +75,7 @@ def test_cep_valid_returns_mapped_fields(client: TestClient):
 
 def test_cep_with_mask_is_normalized(client: TestClient):
     """CEP passed as 01310-100 (with dash) must be normalized before lookup."""
-    with patch("services.cep_service.httpx.AsyncClient") as mock_cls:
+    with patch("cep.service.httpx.AsyncClient") as mock_cls:
         mock_instance = AsyncMock()
         mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_instance)
         mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -110,7 +110,7 @@ def test_cep_non_digits_only_returns_422(client: TestClient):
 
 def test_cep_not_found_returns_404(client: TestClient):
     """ViaCEP returns {erro: true} → 404 with descriptive message."""
-    with patch("services.cep_service.httpx.AsyncClient") as mock_cls:
+    with patch("cep.service.httpx.AsyncClient") as mock_cls:
         mock_instance = AsyncMock()
         mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_instance)
         mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -131,7 +131,7 @@ def test_cep_timeout_returns_502_or_503(client: TestClient):
     """Timeout when calling ViaCEP → 502 or 503, not 500."""
     import httpx as real_httpx
 
-    with patch("services.cep_service.httpx.AsyncClient") as mock_cls:
+    with patch("cep.service.httpx.AsyncClient") as mock_cls:
         mock_instance = AsyncMock()
         mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_instance)
         mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -150,7 +150,7 @@ def test_cep_network_error_returns_502_or_503(client: TestClient):
     """General network failure → 502 or 503, not 500."""
     import httpx as real_httpx
 
-    with patch("services.cep_service.httpx.AsyncClient") as mock_cls:
+    with patch("cep.service.httpx.AsyncClient") as mock_cls:
         mock_instance = AsyncMock()
         mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_instance)
         mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)

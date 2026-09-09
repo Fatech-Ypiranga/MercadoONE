@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from models.stock_movement import MovementType, StockMovement, StockMovementCreate
 from repositories.product_repository import ProductRepository
 from repositories.stock_repository import StockRepository
-from services.audit_service import AuditService
+from shared.audit import AuditService
 from utils.enums import AuditAction
 
 

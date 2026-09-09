@@ -16,13 +16,13 @@ from models.product import (
 from repositories.category_repository import CategoryRepository
 from repositories.product_repository import ProductRepository
 from repositories.supplier_repository import SupplierRepository
-from services.audit_service import AuditService
 from services.exceptions import (
     BusinessRuleException,
     ConflictException,
     ResourceNotFoundException,
     ValidationError,
 )
+from shared.audit import AuditService
 from utils.enums import AuditAction
 
 

@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 
-from models.company import Branch, Company, Store
+from organization.models import Branch, Company, Store
 
 
 class CompanyRepository:

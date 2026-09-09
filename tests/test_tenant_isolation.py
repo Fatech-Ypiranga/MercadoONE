@@ -5,13 +5,12 @@ from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from auth.security import hash_password
 from models.category import Category
-from models.company import Branch, Company, Store
 from models.product import Product
 from models.supplier import Supplier
 from models.user import User
-from repositories.company_repository import (
+from organization.models import Branch, Company, Store
+from organization.repository import (
     BranchRepository,
     CompanyRepository,
     StoreRepository,
@@ -19,6 +18,7 @@ from repositories.company_repository import (
 from repositories.user_repository import UserRepository
 from services.pdv_credentials import ensure_pdv_id
 from services.product_service import ProductService
+from shared.identity.security import hash_password
 from tests.conftest import make_client, page_items
 from utils.cpf import build_cpf
 from utils.enums import UserProfile
@@ -206,7 +206,7 @@ def test_stock_balance_is_per_store(client: TestClient, product: dict, test_engi
 def test_jwt_contains_company_id(client: TestClient, admin_token: str):
     from jose import jwt
 
-    from auth.security import JWT_ALGORITHM, JWT_SECRET
+    from shared.identity.security import JWT_ALGORITHM, JWT_SECRET
 
     payload = jwt.decode(admin_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     assert "company_id" in payload

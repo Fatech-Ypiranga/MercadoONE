@@ -3,14 +3,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
-from auth.dependencies import require_permission
-from auth.scope import company_id_of
 from database.connection import get_db
 from models.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
 from models.product import ProductCreate, ProductDetailResponse, ProductResponse, ProductUpdate
 from models.user import User
 from services.exceptions import ResourceNotFoundException
 from services.product_service import ProductService
+from shared.identity.dependencies import require_permission
+from shared.identity.scope import company_id_of
 
 router = APIRouter(prefix="/products", tags=["Produtos"])
 

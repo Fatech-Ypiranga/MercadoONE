@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session
 
-from models.company import (
+from models.user import User
+from organization.models import (
     Branch,
     BranchCreate,
     BranchUpdate,
@@ -13,8 +14,7 @@ from models.company import (
     StorePdvPinResponse,
     StoreUpdate,
 )
-from models.user import User
-from repositories.company_repository import BranchRepository, CompanyRepository, StoreRepository
+from organization.repository import BranchRepository, CompanyRepository, StoreRepository
 from services.exceptions import ResourceNotFoundException, ValidationError
 from services.pdv_credentials import is_supervisor_plus
 from utils.cnpj import is_valid_cnpj, normalize_cnpj

@@ -1,7 +1,7 @@
 from sqlmodel import Session
 
 from models.user import User
-from repositories.store_repository import StoreRepository
+from organization.repository import StoreRepository
 from services.exceptions import ForbiddenException, ValidationError
 
 

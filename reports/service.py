@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import case
+from sqlalchemy import and_, case
 from sqlmodel import Session, func, select
 
 from models.product import Product
@@ -55,41 +55,44 @@ class ReportService:
         min_threshold: int = 5,
         store_id: int | None = None,
     ) -> list[dict]:
-        stmt = select(Product.id, Product.name, Product.min_stock).where(
-            Product.company_id == company_id
+        # Balance computed via a single aggregated LEFT JOIN instead of one query
+        # per product (was O(n) roundtrips for n products in the company).
+        join_conditions = [
+            StockMovement.product_id == Product.id,
+            StockMovement.company_id == company_id,
+        ]
+        if store_id is not None:
+            join_conditions.append(StockMovement.store_id == store_id)
+
+        signed_quantity = case(
+            (StockMovement.type == MovementType.ENTRADA, StockMovement.quantity),
+            else_=-StockMovement.quantity,
         )
-        products = db.exec(stmt).all()
-        fallback = Decimal(min_threshold)
-
-        critical_products = []
-        for product_id, product_name, product_min_stock in products:
-            balance_stmt = select(
-                func.coalesce(
-                    func.sum(
-                        case(
-                            (StockMovement.type == MovementType.ENTRADA, StockMovement.quantity),
-                            else_=-StockMovement.quantity,
-                        )
-                    ),
-                    0,
-                )
-            ).where(
-                StockMovement.product_id == product_id,
-                StockMovement.company_id == company_id,
+        stmt = (
+            select(
+                Product.id,
+                Product.name,
+                Product.min_stock,
+                func.coalesce(func.sum(signed_quantity), 0).label("current_stock"),
             )
-            if store_id is not None:
-                balance_stmt = balance_stmt.where(StockMovement.store_id == store_id)
+            .select_from(Product)
+            .outerjoin(StockMovement, and_(*join_conditions))
+            .where(Product.company_id == company_id)
+            .group_by(Product.id, Product.name, Product.min_stock)
+        )
 
-            current_stock = Decimal(db.exec(balance_stmt).one() or 0)
+        fallback = Decimal(min_threshold)
+        critical_products = []
+        for product_id, product_name, product_min_stock, current_stock in db.exec(stmt).all():
             effective_min = (
                 Decimal(product_min_stock) if product_min_stock is not None else fallback
             )
-            if current_stock < effective_min:
+            if Decimal(current_stock) < effective_min:
                 critical_products.append(
                     {
                         "id": product_id,
                         "name": product_name,
-                        "current_stock": current_stock,
+                        "current_stock": Decimal(current_stock),
                         "min_stock": effective_min,
                     }
                 )

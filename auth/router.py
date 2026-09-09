@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
-from auth.dependencies import get_current_user, require_permission
+from auth.service import AuthService
 from database.connection import get_db
 from middleware.security import resolve_client_ip
 from models.user import MeBranchInfo, MeCompanyInfo, MeResponse, MeStoreInfo, User
-from repositories.company_repository import BranchRepository, CompanyRepository, StoreRepository
-from services.auth_service import AuthService
+from organization.repository import BranchRepository, CompanyRepository, StoreRepository
 from services.user_service import to_user_response
+from shared.identity.dependencies import get_current_user, require_permission
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 

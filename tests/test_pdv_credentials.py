@@ -1,9 +1,9 @@
 import secrets
 
-from auth.security import hash_password, hash_pdv_pin, verify_pdv_pin
-from models.company import Company
-from repositories.company_repository import CompanyRepository
+from organization.models import Company
+from organization.repository import CompanyRepository
 from services.pdv_credentials import generate_pdv_id, is_weak_pdv_id
+from shared.identity.security import hash_password, hash_pdv_pin, verify_pdv_pin
 
 
 def test_weak_pdv_ids_are_rejected():

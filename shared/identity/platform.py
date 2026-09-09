@@ -1,10 +1,15 @@
+import os
 import secrets
 from typing import Annotated
 
 from fastapi import Header
 
-from services.company_registration_service import get_platform_api_key
 from services.exceptions import UnauthorizedException
+
+
+def get_platform_api_key() -> str | None:
+    value = os.getenv("PLATFORM_API_KEY", "").strip()
+    return value or None
 
 
 def require_platform_api_key(

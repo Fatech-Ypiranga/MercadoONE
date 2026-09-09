@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from models.sale import Sale, SaleItem
@@ -7,15 +8,12 @@ from models.sale import Sale, SaleItem
 
 class SaleRepository:
     @staticmethod
-    def find_all(db: Session, company_id: int, *, store_id: int | None = None) -> list[Sale]:
-        stmt = select(Sale).where(Sale.company_id == company_id).order_by(Sale.sale_date.desc())
-        if store_id is not None:
-            stmt = stmt.where(Sale.store_id == store_id)
-        return list(db.exec(stmt).all())
-
-    @staticmethod
     def find_by_id(db: Session, sale_id: int, company_id: int) -> Sale | None:
-        stmt = select(Sale).where(Sale.id == sale_id, Sale.company_id == company_id)
+        stmt = (
+            select(Sale)
+            .where(Sale.id == sale_id, Sale.company_id == company_id)
+            .options(selectinload(Sale.items))
+        )
         return db.exec(stmt).first()
 
     @staticmethod
@@ -76,7 +74,12 @@ class SaleRepository:
         date_to: datetime | None = None,
         store_id: int | None = None,
     ) -> list[Sale]:
-        stmt = select(Sale).where(Sale.company_id == company_id).order_by(Sale.sale_date.desc())
+        stmt = (
+            select(Sale)
+            .where(Sale.company_id == company_id)
+            .order_by(Sale.sale_date.desc())
+            .options(selectinload(Sale.items))
+        )
 
         if customer_id is not None:
             stmt = stmt.where(Sale.customer_id == customer_id)

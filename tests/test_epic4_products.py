@@ -207,7 +207,9 @@ def test_brand_domain_is_absent_from_routes_permissions_navigation_and_openapi(
     assert "brand" not in openapi_text
 
     root = Path(__file__).resolve().parents[1]
-    assert '"brands"' not in (root / "auth" / "permissions.py").read_text(encoding="utf-8")
+    assert '"brands"' not in (
+        root / "shared" / "identity" / "permissions.py"
+    ).read_text(encoding="utf-8")
     assert "brands:" not in (root / "frontend" / "lib" / "permissions.ts").read_text(
         encoding="utf-8"
     )

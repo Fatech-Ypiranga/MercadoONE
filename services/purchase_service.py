@@ -27,7 +27,6 @@ from repositories.product_repository import ProductRepository
 from repositories.purchase_repository import PurchaseRepository, SupplierMappingRepository
 from repositories.stock_repository import StockRepository
 from repositories.supplier_repository import SupplierRepository
-from services.audit_service import AuditService
 from services.exceptions import (
     BusinessRuleException,
     ConflictException,
@@ -38,6 +37,7 @@ from services.exceptions import (
 from services.nfe_parser import ParsedNfeItem, calculate_entry_unit_cost, parse_nfe_xml
 from services.product_service import ProductService
 from services.supplier_service import SupplierService
+from shared.audit import AuditService
 from utils.cnpj import normalize_cnpj
 from utils.enums import AuditAction, PurchaseStatus
 

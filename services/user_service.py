@@ -2,12 +2,10 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session
 
-from auth.security import hash_password, hash_pdv_pin
+from auth.service import bump_token_version
 from models.user import User, UserCreate, UserPdvPinResponse, UserResponse, UserUpdate
-from repositories.company_repository import BranchRepository, StoreRepository
+from organization.repository import BranchRepository, StoreRepository
 from repositories.user_repository import UserRepository
-from services.audit_service import AuditService
-from services.auth_service import bump_token_version
 from services.exceptions import ConflictException, ResourceNotFoundException, ValidationError
 from services.pdv_credentials import (
     PDV_PIN_LENGTH,
@@ -17,6 +15,8 @@ from services.pdv_credentials import (
     is_pdv_eligible,
     is_supervisor_plus,
 )
+from shared.audit import AuditService
+from shared.identity.security import hash_password, hash_pdv_pin
 from utils.cpf import is_valid_cpf, normalize_cpf
 from utils.enums import AuditAction, UserProfile
 

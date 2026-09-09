@@ -1,13 +1,10 @@
-import os
 import re
 import secrets
 from datetime import datetime, timezone
 
 from sqlmodel import Session
 
-from auth.security import hash_password
-from models.company import Branch, Company, Store
-from models.company_registration import (
+from company_registration.models import (
     CompanyRegistrationApprove,
     CompanyRegistrationApproveResponse,
     CompanyRegistrationCreate,
@@ -16,9 +13,10 @@ from models.company_registration import (
     CompanyRegistrationResponse,
     CompanyRegistrationStatus,
 )
+from company_registration.repository import CompanyRegistrationRepository
 from models.user import User
-from repositories.company_registration_repository import CompanyRegistrationRepository
-from repositories.company_repository import (
+from organization.models import Branch, Company, Store
+from organization.repository import (
     BranchRepository,
     CompanyRepository,
     StoreRepository,
@@ -26,6 +24,7 @@ from repositories.company_repository import (
 from repositories.user_repository import UserRepository
 from services.exceptions import ConflictException, ResourceNotFoundException, ValidationError
 from services.pdv_credentials import ensure_pdv_id
+from shared.identity.security import hash_password
 from utils.cnpj import is_valid_cnpj, normalize_cnpj
 from utils.cpf import is_valid_cpf, normalize_cpf
 from utils.enums import UserProfile
@@ -241,8 +240,3 @@ class CompanyRegistrationService:
         if not cleaned:
             cleaned = "admin"
         return cleaned[:50]
-
-
-def get_platform_api_key() -> str | None:
-    value = os.getenv("PLATFORM_API_KEY", "").strip()
-    return value or None
