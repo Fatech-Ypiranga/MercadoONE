@@ -71,7 +71,7 @@ Estes 8 itens concentram o maior risco real encontrado. Todo o resto do document
 | ID | Item | Severidade | Evidência |
 |----|------|------------|-----------|
 | DB-01 | `sales` sem índice composto `(company_id, sale_date, status)` nem em `customer_id` — hot path de listagem. **✅ Resolvido (`ffd9066`)** | MÉDIO | `backend/sales/models.py`, `backend/sales/repository.py:77-93` |
-| DB-02 | Nenhuma FK tem `ondelete` explícito — proteção contra exclusão com dependências depende 100% de checagem manual no service | MÉDIO | `backend/categories/service.py:151-158`, `backend/products/service.py:268-276` |
+| DB-02 | Nenhuma FK tem `ondelete` explícito — proteção contra exclusão com dependências depende 100% de checagem manual no service. **✅ Resolvido (`09c9bd0`)** — investigação revelou que o achado era mais grave do que a hipótese original: `delete_branch`/`delete_store` não tinham checagem alguma (diferente de categories/products/suppliers/users, que já checavam), então excluir uma filial/loja com dependências vazava SQL cru numa resposta 400. Adicionado `count_dependencies` + 409 nos dois, mais um handler genérico `IntegrityError` → 409 como backstop para qualquer caminho futuro que esqueça a checagem | MÉDIO | `backend/organization/service.py` (antes das correções), `backend/categories/service.py:151-158`, `backend/products/service.py:268-276` (já corretos) |
 | DB-03 | `purchase_orders.entry_date`/`status` sem índice (só unique parcial em `invoice_key`) — mesmo padrão do DB-01, achado pela revisão de performance. **✅ Resolvido (`ffd9066`)** | MÉDIO | `backend/purchases/models.py` |
 | DB-04 | `StockMovement` tem índices single-column em `product_id`/`company_id`/`store_id`/`created_at`, mas o cálculo de saldo filtra por `(product_id, store_id, type)` — Postgres só usa um índice por vez aqui. Roda a cada venda/compra/cancelamento. **✅ Resolvido (`ffd9066`)** | MÉDIO | `backend/stock/repository.py` (`get_current_stock`) |
 | DB-05 | Trilha de auditoria, transações multi-etapa, multi-tenancy e migrations (downgrades simétricos, exceto uma irreversível e documentada por ser dado sensível) — confirmado correto | BAIXO / OK | `backend/shared/audit.py:19-42`, `backend/alembic/versions/k1f2a3b4c5d6_*.py:19-26` |
@@ -155,7 +155,7 @@ Pesquisa externa (fontes citadas nos achados), não é auditoria de código — 
 **Concluído em 2026-09-16** (commits `48ebd32`, `4a549e3`, `58259d8`, `b51849b`, `ffd9066`, `a478793`, `35f0025`): todos os 8 itens do sumário executivo (CRÍTICO + ALTO), mais SEC-01 e NFE-01. Ver status por item nas tabelas acima.
 
 **Pendente:**
-1. Itens MÉDIO ainda não atacados: DB-02 (ondelete em FKs), SEC-04, PERF-05, UX-03/04/05/06. (DEAD-02/03/04 resolvidos em `b5740e7`; SEC-03 resolvido em `09582e9`)
+1. Itens MÉDIO ainda não atacados: SEC-04, PERF-05, UX-03/04/05/06. (DEAD-02/03/04 resolvidos em `b5740e7`; SEC-03 resolvido em `09582e9`; DB-02 resolvido em `09c9bd0`)
 2. Revisar os itens PONTO A VALIDAR (seções 1 e 2) — confirmar quais são exceções arquiteturais conscientes.
 3. Escolher o próximo item para virar `feat/<nome-descritivo>`, retomando o protocolo completo (compreensão → decomposição → desenho da solução → revisão crítica) antes de implementar.
 

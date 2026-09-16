@@ -15,7 +15,12 @@ from organization.models import (
 )
 from organization.repository import BranchRepository, CompanyRepository, StoreRepository
 from shared.audit import AuditService
-from shared.exceptions import BusinessRuleException, ResourceNotFoundException, ValidationError
+from shared.exceptions import (
+    BusinessRuleException,
+    ConflictException,
+    ResourceNotFoundException,
+    ValidationError,
+)
 from shared.identity.pdv_credentials import is_supervisor_plus
 from users.models import User
 from utils.cnpj import require_valid_cnpj
@@ -144,6 +149,10 @@ class OrgService:
 
     def delete_branch(self, branch_id: int, *, company_id: int, actor_id: int) -> None:
         branch = self.get_branch(branch_id, company_id)
+        if BranchRepository.count_dependencies(self.db, branch_id) > 0:
+            raise ConflictException(
+                "Filial possui lojas ou usuários vinculados; remova-os antes de excluir."
+            )
         try:
             BranchRepository.delete(self.db, branch)
 
@@ -155,7 +164,7 @@ class OrgService:
                 entity_id=branch_id,
             )
             self.db.commit()
-        except (ResourceNotFoundException, ValidationError):
+        except (ResourceNotFoundException, ValidationError, ConflictException):
             self.db.rollback()
             raise
         except Exception as exc:
@@ -263,6 +272,11 @@ class OrgService:
 
     def delete_store(self, store_id: int, *, company_id: int, actor_id: int) -> None:
         store = self.get_store(store_id, company_id)
+        if StoreRepository.count_dependencies(self.db, store_id) > 0:
+            raise ConflictException(
+                "Loja possui vendas, compras, movimentações de estoque ou usuários "
+                "vinculados; remova-os antes de excluir."
+            )
         try:
             StoreRepository.delete(self.db, store)
 
@@ -274,7 +288,7 @@ class OrgService:
                 entity_id=store_id,
             )
             self.db.commit()
-        except (ResourceNotFoundException, ValidationError):
+        except (ResourceNotFoundException, ValidationError, ConflictException):
             self.db.rollback()
             raise
         except Exception as exc:
