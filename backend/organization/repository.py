@@ -103,10 +103,14 @@ class StoreRepository:
             select(func.count()).select_from(Sale).where(Sale.store_id == store_id)
         ).one()
         purchases = db.exec(
-            select(func.count()).select_from(PurchaseOrder).where(PurchaseOrder.store_id == store_id)
+            select(func.count())
+            .select_from(PurchaseOrder)
+            .where(PurchaseOrder.store_id == store_id)
         ).one()
         movements = db.exec(
-            select(func.count()).select_from(StockMovement).where(StockMovement.store_id == store_id)
+            select(func.count())
+            .select_from(StockMovement)
+            .where(StockMovement.store_id == store_id)
         ).one()
         users = db.exec(
             select(func.count()).select_from(User).where(User.default_store_id == store_id)

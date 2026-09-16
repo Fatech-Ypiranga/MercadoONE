@@ -13,9 +13,7 @@ class SupplierRepository:
         """Batch lookup keyed by id, for callers that would otherwise fetch one-by-one."""
         if not ids:
             return {}
-        stmt = select(Supplier).where(
-            Supplier.id.in_(set(ids)), Supplier.company_id == company_id
-        )
+        stmt = select(Supplier).where(Supplier.id.in_(set(ids)), Supplier.company_id == company_id)
         return {supplier.id: supplier for supplier in db.exec(stmt).all()}
 
     @staticmethod

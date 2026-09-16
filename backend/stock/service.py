@@ -31,9 +31,7 @@ class StockMovementService:
         if movement_in.type == MovementType.SAIDA:
             current_balance = self.get_current_balance(movement_in.product_id, store_id)
             if current_balance < movement_in.quantity:
-                raise InsufficientStockException(
-                    "Insufficient stock for this movement."
-                )
+                raise InsufficientStockException("Insufficient stock for this movement.")
 
         try:
             payload = movement_in.model_dump(exclude={"store_id"})
