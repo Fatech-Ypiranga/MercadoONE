@@ -1,6 +1,11 @@
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from organization.models import Branch, Company, Store
+from purchases.models import PurchaseOrder
+from sales.models import Sale
+from stock.models import StockMovement
+from users.models import User
 
 
 class CompanyRepository:
@@ -49,6 +54,16 @@ class BranchRepository:
         return branch
 
     @staticmethod
+    def count_dependencies(db: Session, branch_id: int) -> int:
+        stores = db.exec(
+            select(func.count()).select_from(Store).where(Store.branch_id == branch_id)
+        ).one()
+        users = db.exec(
+            select(func.count()).select_from(User).where(User.default_branch_id == branch_id)
+        ).one()
+        return int(stores) + int(users)
+
+    @staticmethod
     def delete(db: Session, branch: Branch) -> None:
         db.delete(branch)
         db.flush()
@@ -81,6 +96,22 @@ class StoreRepository:
         db.add(store)
         db.flush()
         return store
+
+    @staticmethod
+    def count_dependencies(db: Session, store_id: int) -> int:
+        sales = db.exec(
+            select(func.count()).select_from(Sale).where(Sale.store_id == store_id)
+        ).one()
+        purchases = db.exec(
+            select(func.count()).select_from(PurchaseOrder).where(PurchaseOrder.store_id == store_id)
+        ).one()
+        movements = db.exec(
+            select(func.count()).select_from(StockMovement).where(StockMovement.store_id == store_id)
+        ).one()
+        users = db.exec(
+            select(func.count()).select_from(User).where(User.default_store_id == store_id)
+        ).one()
+        return int(sales) + int(purchases) + int(movements) + int(users)
 
     @staticmethod
     def delete(db: Session, store: Store) -> None:

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 
 from shared.exceptions import (
     BusinessRuleException,
@@ -45,3 +46,15 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ExternalServiceException)
     async def external_service_handler(_request: Request, exc: ExternalServiceException):
         return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
+
+    @app.exception_handler(IntegrityError)
+    async def integrity_error_handler(_request: Request, _exc: IntegrityError):
+        # Last-resort backstop: every known delete/write path already checks
+        # dependencies before mutating (see docs/ROADMAP.md DB-02). This only
+        # fires if a future code path forgets that check — without it, the
+        # raw FK-violation SQL/params would otherwise leak into the response
+        # (SQLAlchemy's exception message embeds the failed statement).
+        return JSONResponse(
+            status_code=409,
+            content={"detail": "This operation conflicts with existing related data."},
+        )
