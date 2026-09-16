@@ -14,7 +14,7 @@ from customers.service import CustomerService
 from database.connection import get_db
 from shared.identity.dependencies import require_permission
 from shared.identity.scope import company_id_of
-from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
+from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page
 from users.models import User
 
 router = APIRouter(prefix="/customers", tags=["Clientes"])
@@ -28,7 +28,8 @@ def list_customers(
     current_user: User = Depends(require_permission("customers:read")),
 ):
     company_id = company_id_of(current_user)
-    return paginate(CustomerService(db).list_customers(company_id), offset=offset, limit=limit)
+    customers, total = CustomerService(db).list_customers(company_id, offset=offset, limit=limit)
+    return Page(items=customers, total=total, offset=offset, limit=limit)
 
 
 @router.get(

@@ -28,8 +28,12 @@ class CustomerService:
             return require_valid_cpf(document, entity="Customer document")
         return require_valid_cnpj(document, entity="Customer document")
 
-    def list_customers(self, company_id: int) -> list[Customer]:
-        return CustomerRepository.find_all(self.db, company_id)
+    def list_customers(
+        self, company_id: int, *, offset: int = 0, limit: int | None = None
+    ) -> tuple[list[Customer], int]:
+        customers = CustomerRepository.find_all(self.db, company_id, offset=offset, limit=limit)
+        total = CustomerRepository.count_all(self.db, company_id)
+        return customers, total
 
     def get_by_id(self, customer_id: int, company_id: int) -> Customer:
         stmt = (

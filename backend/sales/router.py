@@ -10,7 +10,7 @@ from sales.models import SaleDetailResponse
 from sales.service import SaleService
 from shared.identity.dependencies import require_permission
 from shared.identity.scope import company_id_of, resolve_store_id
-from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
+from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page
 from users.models import User
 
 router = APIRouter(prefix="/sales", tags=["Vendas"])
@@ -52,15 +52,17 @@ def list_sales(
     current_user: User = Depends(require_permission("sales:read")),
 ):
     company_id = company_id_of(current_user)
-    sales = SaleService(db).list_sales(
+    sales, total = SaleService(db).list_sales(
         company_id,
         customer_id=customer_id,
         status=status,
         date_from=date_from,
         date_to=date_to,
         store_id=store_id,
+        offset=offset,
+        limit=limit,
     )
-    return paginate(sales, offset=offset, limit=limit)
+    return Page(items=sales, total=total, offset=offset, limit=limit)
 
 
 @router.get("/{sale_id}", response_model=SaleDetailResponse, summary="Buscar venda por ID")

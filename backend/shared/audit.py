@@ -13,6 +13,7 @@ from sqlalchemy import Column, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Session, SQLModel, select
 
+from shared.dates import inclusive_end_of_day
 from utils.enums import AuditAction, enum_column
 
 
@@ -68,7 +69,7 @@ class AuditRepository:
         if date_from is not None:
             stmt = stmt.where(AuditLog.created_at >= date_from)
         if date_to is not None:
-            stmt = stmt.where(AuditLog.created_at <= date_to)
+            stmt = stmt.where(AuditLog.created_at <= inclusive_end_of_day(date_to))
         return stmt
 
     @staticmethod

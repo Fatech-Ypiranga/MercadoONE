@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from customers.models import Customer
@@ -8,9 +9,21 @@ class CustomerRepository:
     _NULLABLE_FIELDS = {"trade_name", "email", "phone", "state_registration"}
 
     @staticmethod
-    def find_all(db: Session, company_id: int) -> list[Customer]:
-        stmt = select(Customer).where(Customer.company_id == company_id).order_by(Customer.name)
+    def find_all(
+        db: Session, company_id: int, *, offset: int = 0, limit: int | None = None
+    ) -> list[Customer]:
+        stmt = (
+            select(Customer).where(Customer.company_id == company_id).order_by(Customer.name)
+        )
+        stmt = stmt.offset(offset)
+        if limit is not None:
+            stmt = stmt.limit(limit)
         return list(db.exec(stmt).all())
+
+    @staticmethod
+    def count_all(db: Session, company_id: int) -> int:
+        stmt = select(func.count()).select_from(Customer).where(Customer.company_id == company_id)
+        return int(db.exec(stmt).one() or 0)
 
     @staticmethod
     def find_by_id(db: Session, customer_id: int, company_id: int) -> Customer | None:

@@ -255,8 +255,21 @@ class SaleService:
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         store_id: int | None = None,
-    ) -> list[Sale]:
-        return SaleRepository.find_filtered(
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> tuple[list[Sale], int]:
+        sales = SaleRepository.find_filtered(
+            self.db,
+            company_id,
+            customer_id=customer_id,
+            status=status,
+            date_from=date_from,
+            date_to=date_to,
+            store_id=store_id,
+            offset=offset,
+            limit=limit,
+        )
+        total = SaleRepository.count_filtered(
             self.db,
             company_id,
             customer_id=customer_id,
@@ -265,6 +278,7 @@ class SaleService:
             date_to=date_to,
             store_id=store_id,
         )
+        return sales, total
 
     def _ensure_discount_authorized(
         self, *, actor: User, supervisor_authorization: str | None

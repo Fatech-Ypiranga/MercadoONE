@@ -1,9 +1,11 @@
 from datetime import datetime
 
+from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from sales.models import Sale, SaleItem
+from shared.dates import inclusive_end_of_day
 
 
 class SaleRepository:
@@ -64,6 +66,29 @@ class SaleRepository:
         return list(db.exec(stmt).all())
 
     @staticmethod
+    def _filtered_stmt(
+        company_id: int,
+        *,
+        customer_id: int | None = None,
+        status: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        store_id: int | None = None,
+    ):
+        stmt = select(Sale).where(Sale.company_id == company_id)
+        if customer_id is not None:
+            stmt = stmt.where(Sale.customer_id == customer_id)
+        if status is not None:
+            stmt = stmt.where(Sale.status == status)
+        if date_from is not None:
+            stmt = stmt.where(Sale.sale_date >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(Sale.sale_date <= inclusive_end_of_day(date_to))
+        if store_id is not None:
+            stmt = stmt.where(Sale.store_id == store_id)
+        return stmt
+
+    @staticmethod
     def find_filtered(
         db: Session,
         company_id: int,
@@ -73,26 +98,46 @@ class SaleRepository:
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         store_id: int | None = None,
+        offset: int = 0,
+        limit: int | None = None,
     ) -> list[Sale]:
         stmt = (
-            select(Sale)
-            .where(Sale.company_id == company_id)
+            SaleRepository._filtered_stmt(
+                company_id,
+                customer_id=customer_id,
+                status=status,
+                date_from=date_from,
+                date_to=date_to,
+                store_id=store_id,
+            )
             .order_by(Sale.sale_date.desc())
             .options(selectinload(Sale.items))
         )
-
-        if customer_id is not None:
-            stmt = stmt.where(Sale.customer_id == customer_id)
-        if status is not None:
-            stmt = stmt.where(Sale.status == status)
-        if date_from is not None:
-            stmt = stmt.where(Sale.sale_date >= date_from)
-        if date_to is not None:
-            stmt = stmt.where(Sale.sale_date <= date_to)
-        if store_id is not None:
-            stmt = stmt.where(Sale.store_id == store_id)
-
+        stmt = stmt.offset(offset)
+        if limit is not None:
+            stmt = stmt.limit(limit)
         return list(db.exec(stmt).all())
+
+    @staticmethod
+    def count_filtered(
+        db: Session,
+        company_id: int,
+        *,
+        customer_id: int | None = None,
+        status: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        store_id: int | None = None,
+    ) -> int:
+        filtered = SaleRepository._filtered_stmt(
+            company_id,
+            customer_id=customer_id,
+            status=status,
+            date_from=date_from,
+            date_to=date_to,
+            store_id=store_id,
+        ).subquery()
+        return int(db.exec(select(func.count()).select_from(filtered)).one() or 0)
 
     @staticmethod
     def update_status(
