@@ -8,12 +8,6 @@ from stock.models import StockMovement
 
 
 class ProductRepository:
-    # Optional business fields that a client may explicitly clear via update().
-    # Note: this update() has no current callers (products/service.py mutates
-    # products inline instead), fixed here for defense-in-depth/consistency
-    # with the live CustomerRepository/CategoryRepository behavior.
-    _NULLABLE_FIELDS = {"barcode", "description", "min_stock"}
-
     @staticmethod
     def find_by_ids(db: Session, ids: list[int], company_id: int) -> dict[int, Product]:
         """Batch lookup keyed by id, for callers that would otherwise fetch one-by-one."""
@@ -75,15 +69,6 @@ class ProductRepository:
         return db.exec(stmt).first()
 
     @staticmethod
-    def find_by_category(db: Session, category_id: int, company_id: int) -> list[Product]:
-        stmt = (
-            select(Product)
-            .where(Product.category_id == category_id, Product.company_id == company_id)
-            .order_by(Product.name)
-        )
-        return list(db.exec(stmt).all())
-
-    @staticmethod
     def find_by_barcode(
         db: Session, barcode: str, company_id: int, active_only: bool = True
     ) -> Product | None:
@@ -109,20 +94,6 @@ class ProductRepository:
 
     @staticmethod
     def create(db: Session, product: Product) -> Product:
-        db.add(product)
-        db.flush()
-        return product
-
-    @staticmethod
-    def update(db: Session, product_id: int, company_id: int, **fields) -> Product | None:
-        product = ProductRepository.find_by_id(db, product_id, company_id)
-        if not product:
-            return None
-
-        for field_name, field_value in fields.items():
-            if field_value is not None or field_name in ProductRepository._NULLABLE_FIELDS:
-                setattr(product, field_name, field_value)
-
         db.add(product)
         db.flush()
         return product

@@ -6,7 +6,7 @@ export type CompanyInfo = components["schemas"]["MeCompanyInfo"];
 
 const STORE_KEY = "pyerp_active_store_id";
 
-export function getActiveStoreId(): number | null {
+function getActiveStoreId(): number | null {
   if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem(STORE_KEY);
   if (!raw) return null;

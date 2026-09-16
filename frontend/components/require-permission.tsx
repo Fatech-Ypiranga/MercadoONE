@@ -11,7 +11,7 @@ type RequirePermissionProps = {
   children: React.ReactNode;
 };
 
-export function ForbiddenState({
+function ForbiddenState({
   title = "Acesso negado",
   description = "Seu perfil não tem permissão para esta área.",
 }: {

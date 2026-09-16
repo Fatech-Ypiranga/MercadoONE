@@ -8,12 +8,6 @@ from suppliers.models import Supplier
 
 
 class SupplierRepository:
-    # Optional business fields that a client may explicitly clear via update().
-    # Note: this update() has no current callers (suppliers/service.py mutates
-    # suppliers inline instead), fixed here for defense-in-depth/consistency
-    # with the live CustomerRepository/CategoryRepository behavior.
-    _NULLABLE_FIELDS = {"trade_name", "state_registration", "email", "phone"}
-
     @staticmethod
     def find_by_ids(db: Session, ids: list[int], company_id: int) -> dict[int, Supplier]:
         """Batch lookup keyed by id, for callers that would otherwise fetch one-by-one."""
@@ -70,18 +64,6 @@ class SupplierRepository:
 
     @staticmethod
     def create(db: Session, supplier: Supplier) -> Supplier:
-        db.add(supplier)
-        db.flush()
-        return supplier
-
-    @staticmethod
-    def update(db: Session, supplier_id: int, company_id: int, **fields) -> Supplier | None:
-        supplier = SupplierRepository.find_by_id(db, supplier_id, company_id)
-        if not supplier:
-            return None
-        for field_name, field_value in fields.items():
-            if field_value is not None or field_name in SupplierRepository._NULLABLE_FIELDS:
-                setattr(supplier, field_name, field_value)
         db.add(supplier)
         db.flush()
         return supplier

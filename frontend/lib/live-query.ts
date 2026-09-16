@@ -1,5 +1,5 @@
 /** Polling do mockup para espelhar dados gravados por Data Sim / PDV. */
-export const LIVE_REFETCH_INTERVAL_MS = 20_000;
+const LIVE_REFETCH_INTERVAL_MS = 20_000;
 
 /** Opções TanStack Query para listagens/consultas “ao vivo”. */
 export const liveQueryOptions = {
