@@ -11,6 +11,24 @@ def test_development_allows_default_jwt_secret(monkeypatch):
     validate_production_config()
 
 
+def test_missing_env_var_is_treated_as_production(monkeypatch):
+    # A deploy that forgets to set ENV must fail safe, not silently behave
+    # like local development with a hardcoded JWT secret (see docs/ROADMAP.md SEC-02).
+    monkeypatch.delenv("ENV", raising=False)
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+
+    with pytest.raises(RuntimeError, match="JWT_SECRET"):
+        validate_production_config()
+
+
+def test_unrecognized_env_value_is_treated_as_production(monkeypatch):
+    monkeypatch.setenv("ENV", "staging")
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+
+    with pytest.raises(RuntimeError, match="JWT_SECRET"):
+        validate_production_config()
+
+
 def test_production_rejects_missing_jwt_secret(monkeypatch):
     monkeypatch.setenv("ENV", "production")
     monkeypatch.delenv("JWT_SECRET", raising=False)

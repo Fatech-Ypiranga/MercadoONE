@@ -31,10 +31,25 @@ ACCESS_TOKEN_TYP = "access"
 PDV_AUTHORIZATION_TYP = "pdv_authorization"
 
 
+NON_PRODUCTION_ENVS = frozenset({"development", "test", "local"})
+
+
+def is_production_env() -> bool:
+    """Treat unset or unrecognized ENV values as production, not development.
+
+    A deploy that forgets to set ENV must fail safe (strict config checks,
+    hidden API docs) rather than silently behave like a developer's laptop
+    with a hardcoded JWT secret and no admin-password strength check.
+    """
+    env = os.getenv("ENV")
+    if env is None:
+        return True
+    return env.strip().lower() not in NON_PRODUCTION_ENVS
+
+
 def validate_production_config() -> None:
     """Fail fast when production is misconfigured."""
-    env = os.getenv("ENV", "development").lower()
-    if env != "production":
+    if not is_production_env():
         return
 
     secret = os.getenv("JWT_SECRET", DEFAULT_JWT_SECRET)

@@ -63,7 +63,7 @@ from products import router as product_router
 from purchases import router as purchase_router
 from reports import router as report_router
 from sales import router as sale_router
-from shared.identity.security import validate_production_config
+from shared.identity.security import is_production_env, validate_production_config
 from stock import router as stock_movement_router
 from suppliers import router as supplier_router
 from users import router as user_router
@@ -77,7 +77,7 @@ def get_cors_origins() -> list[str]:
 
 
 def _is_production() -> bool:
-    return os.getenv("ENV", "development").lower() == "production"
+    return is_production_env()
 
 
 def create_app(*, init_database: bool = True, validate_config: bool = True) -> FastAPI:

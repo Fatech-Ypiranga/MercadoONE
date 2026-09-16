@@ -10,7 +10,7 @@ from organization.repository import (
     StoreRepository,
 )
 from shared.identity.pdv_credentials import ensure_pdv_id
-from shared.identity.security import hash_password, verify_password
+from shared.identity.security import hash_password, is_production_env, verify_password
 from users.models import User
 from users.repository import UserRepository
 from utils.enums import UserProfile
@@ -98,7 +98,7 @@ def seed_admin_user(db: Session) -> None:
     if existing:
         # Dev/local: keep admin password aligned with ADMIN_PASSWORD in `.env`.
         # Production never auto-overwrites an existing hash.
-        if os.getenv("ENV", "development").lower() != "production":
+        if not is_production_env():
             if not verify_password(admin_password, existing.password_hash):
                 existing.password_hash = hash_password(admin_password)
                 existing.updated_at = datetime.now(timezone.utc)
