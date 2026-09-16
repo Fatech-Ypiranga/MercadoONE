@@ -1,0 +1,10 @@
+title = "MercadoONE gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake NF-e access_key fixtures used in backend tests, not real secrets"
+regexes = [
+  '''EPIC\d+-[A-Z0-9-]+''',
+]
