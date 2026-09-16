@@ -15,16 +15,18 @@ Auditoria completa do repositório (arquitetura, segurança, banco de dados, ló
 
 Estes 8 itens concentram o maior risco real encontrado. Todo o resto do documento é o detalhamento e o contexto por trás deles, mais os itens de menor severidade.
 
-| ID | Item | Severidade | Área |
-|----|------|------------|------|
-| PERF-01 | Paginação de `sales`, `purchases` e `customers` é feita em memória — busca **todas** as linhas do banco antes de cortar a página | CRÍTICO | Performance |
-| PERF-02 | `list_purchases`/`get_purchase_detail` fazem N+1 queries (1 busca de fornecedor/produto por linha) | CRÍTICO | Performance |
-| CONC-01 | `confirm_purchase` recalcula o custo médio ponderado do produto sem travar a linha (`lock_for_update`) — duas confirmações de compra concorrentes corrompem `cost_price` silenciosamente (lost update) | CRÍTICO | Concorrência |
-| BUG-01 | **Confirmado**: `confirm_purchase_from_xml` é código morto (nenhuma rota o usa). O único caminho real, `POST /purchases/confirm` → `confirm_purchase`, aceita `unit_cost`/`total_cost` do cliente sem nenhuma validação server-side (só `quantity` tem `gt=0`). O frontend oficial sempre envia o valor correto (`entry_unit_cost` do XML, não editável na UI), mas isso é uma garantia só do cliente — a API em si confia cegamente no payload. Qualquer chamada direta (script, Postman, bug futuro no front, uso indevido da permissão `purchases:write`) corrompe `cost_price` silenciosamente | CRÍTICO | Lógica de negócio |
-| SEC-02 | Gate de produção só dispara se `ENV=production` for setado explicitamente; deploy sem `ENV` definido roda silenciosamente com JWT secret padrão | ALTO | Segurança |
-| BUG-02 | Filtros `date_to` em vendas/compras tratam a data como meia-noite (`<=`), excluindo praticamente todo o dia informado | ALTO | Lógica de negócio |
-| UX-01 | Erros de rede crus (ex.: "Failed to fetch") aparecem sem tradução em todas as páginas exceto login | ALTO | Frontend/UX |
-| UX-02 | Nenhum formulário CRUD usa validação client-side (react-hook-form+zod), apesar do padrão já existir no login | ALTO | Frontend/UX |
+**Atualização 2026-09-16:** 7 dos 8 itens abaixo já foram corrigidos e commitados (branch `refactor/vertical-slice-architecture`). Só falta UX-02.
+
+| ID | Item | Severidade | Área | Status |
+|----|------|------------|------|--------|
+| PERF-01 | Paginação de `sales`, `purchases` e `customers` é feita em memória — busca **todas** as linhas do banco antes de cortar a página | CRÍTICO | Performance | ✅ Resolvido (`4a549e3`) |
+| PERF-02 | `list_purchases`/`get_purchase_detail` fazem N+1 queries (1 busca de fornecedor/produto por linha) | CRÍTICO | Performance | ✅ Resolvido (`48ebd32`) |
+| CONC-01 | `confirm_purchase` recalcula o custo médio ponderado do produto sem travar a linha (`lock_for_update`) — duas confirmações de compra concorrentes corrompem `cost_price` silenciosamente (lost update) | CRÍTICO | Concorrência | ✅ Resolvido (`48ebd32`) |
+| BUG-01 | **Confirmado**: `confirm_purchase_from_xml` é código morto (nenhuma rota o usa). O único caminho real, `POST /purchases/confirm` → `confirm_purchase`, aceita `unit_cost`/`total_cost` do cliente sem nenhuma validação server-side (só `quantity` tem `gt=0`). O frontend oficial sempre envia o valor correto (`entry_unit_cost` do XML, não editável na UI), mas isso é uma garantia só do cliente — a API em si confia cegamente no payload. Qualquer chamada direta (script, Postman, bug futuro no front, uso indevido da permissão `purchases:write`) corrompe `cost_price` silenciosamente | CRÍTICO | Lógica de negócio | ✅ Resolvido (`48ebd32`) |
+| SEC-02 | Gate de produção só dispara se `ENV=production` for setado explicitamente; deploy sem `ENV` definido roda silenciosamente com JWT secret padrão | ALTO | Segurança | ✅ Resolvido (`58259d8`) |
+| BUG-02 | Filtros `date_to` em vendas/compras tratam a data como meia-noite (`<=`), excluindo praticamente todo o dia informado | ALTO | Lógica de negócio | ✅ Resolvido (`4a549e3`) |
+| UX-01 | Erros de rede crus (ex.: "Failed to fetch") aparecem sem tradução em todas as páginas exceto login | ALTO | Frontend/UX | ✅ Resolvido (`b51849b`) |
+| UX-02 | Nenhum formulário CRUD usa validação client-side (react-hook-form+zod), apesar do padrão já existir no login | ALTO | Frontend/UX | ⬜ Pendente |
 
 ---
 
@@ -57,7 +59,7 @@ Estes 8 itens concentram o maior risco real encontrado. Todo o resto do document
 
 | ID | Item | Severidade | Evidência |
 |----|------|------------|-----------|
-| SEC-01 | Upload de NFe (`POST /purchases/upload-xml`) lê o arquivo inteiro em memória sem limite de tamanho nem validação de `content_type`; parsing sem hardening contra expansão de entidades (DoS). Confirmado por dois agentes independentes (segurança e NFe) | MÉDIO | `backend/purchases/router.py:29-36`, `backend/purchases/nfe_parser.py:8,133` |
+| SEC-01 | Upload de NFe (`POST /purchases/upload-xml`) lê o arquivo inteiro em memória sem limite de tamanho nem validação de `content_type`; parsing sem hardening contra expansão de entidades (DoS). Confirmado por dois agentes independentes (segurança e NFe). **✅ Resolvido (`48ebd32`, `a478793`)**: limite de 5MB, exige extensão `.xml`, bloqueia DOCTYPE | MÉDIO | `backend/purchases/router.py:29-36`, `backend/purchases/nfe_parser.py:8,133` |
 | SEC-02 | Ver sumário executivo | ALTO | `backend/shared/identity/security.py:13,27,34-46,36` |
 | SEC-03 | Testes de isolamento de tenant cobrem só leitura (GET/list). Não há teste de PUT/DELETE/PATCH cross-tenant; `update`/`delete` de `ProductService`/`CustomerService`/`UserService` não foram auditados diretamente quanto a filtro por `company_id` | MÉDIO | `backend/tests/test_tenant_isolation.py` |
 | SEC-04 | Rate limiting real, mas cobre só 5 endpoints; fallback em memória não compartilha estado entre workers (mitigado parcialmente pelo gate de produção) | MÉDIO | `backend/middleware/security.py:27-33,140-160` |
@@ -68,17 +70,17 @@ Estes 8 itens concentram o maior risco real encontrado. Todo o resto do document
 
 | ID | Item | Severidade | Evidência |
 |----|------|------------|-----------|
-| DB-01 | `sales` sem índice composto `(company_id, sale_date, status)` nem em `customer_id` — hot path de listagem | MÉDIO | `backend/sales/models.py`, `backend/sales/repository.py:77-93` |
+| DB-01 | `sales` sem índice composto `(company_id, sale_date, status)` nem em `customer_id` — hot path de listagem. **✅ Resolvido (`ffd9066`)** | MÉDIO | `backend/sales/models.py`, `backend/sales/repository.py:77-93` |
 | DB-02 | Nenhuma FK tem `ondelete` explícito — proteção contra exclusão com dependências depende 100% de checagem manual no service | MÉDIO | `backend/categories/service.py:151-158`, `backend/products/service.py:268-276` |
-| DB-03 | `purchase_orders.entry_date`/`status` sem índice (só unique parcial em `invoice_key`) — mesmo padrão do DB-01, achado pela revisão de performance | MÉDIO | `backend/purchases/models.py` |
-| DB-04 | `StockMovement` tem índices single-column em `product_id`/`company_id`/`store_id`/`created_at`, mas o cálculo de saldo filtra por `(product_id, store_id, type)` — Postgres só usa um índice por vez aqui. Roda a cada venda/compra/cancelamento | MÉDIO | `backend/stock/repository.py` (`get_current_stock`) |
+| DB-03 | `purchase_orders.entry_date`/`status` sem índice (só unique parcial em `invoice_key`) — mesmo padrão do DB-01, achado pela revisão de performance. **✅ Resolvido (`ffd9066`)** | MÉDIO | `backend/purchases/models.py` |
+| DB-04 | `StockMovement` tem índices single-column em `product_id`/`company_id`/`store_id`/`created_at`, mas o cálculo de saldo filtra por `(product_id, store_id, type)` — Postgres só usa um índice por vez aqui. Roda a cada venda/compra/cancelamento. **✅ Resolvido (`ffd9066`)** | MÉDIO | `backend/stock/repository.py` (`get_current_stock`) |
 | DB-05 | Trilha de auditoria, transações multi-etapa, multi-tenancy e migrations (downgrades simétricos, exceto uma irreversível e documentada por ser dado sensível) — confirmado correto | BAIXO / OK | `backend/shared/audit.py:19-42`, `backend/alembic/versions/k1f2a3b4c5d6_*.py:19-26` |
 
 ## 6. NFe e Processamento em Lote
 
 | ID | Item | Severidade | Evidência |
 |----|------|------------|-----------|
-| NFE-01 | Sem limite de itens por NFe — XML com milhares de `<det>` processado de forma síncrona no request (mesma raiz do SEC-01) | MÉDIO | `backend/purchases/nfe_parser.py` |
+| NFE-01 | Sem limite de itens por NFe — XML com milhares de `<det>` processado de forma síncrona no request (mesma raiz do SEC-01). **✅ Resolvido (`a478793`)**: limite de 500 itens | MÉDIO | `backend/purchases/nfe_parser.py` |
 | NFE-02 | Falha em item no meio do lote é tratada corretamente como tudo-ou-nada, mas sem teste dedicado para esse cenário específico | BAIXO (comportamento correto, gap de teste) | `backend/purchases/service.py:81-186` |
 | NFE-03 | Idempotência de import (chave de acesso única por `company_id`) e ausência de dependência externa — confirmado correto | BAIXO / OK | `backend/purchases/models.py:82-90` |
 
@@ -86,8 +88,8 @@ Estes 8 itens concentram o maior risco real encontrado. Todo o resto do document
 
 | ID | Item | Severidade | Evidência |
 |----|------|------------|-----------|
-| BUG-01 | Ver sumário executivo — `unit_cost`/`total_cost` sem validação server-side em `confirm_purchase`; `confirm_purchase_from_xml` confirmado como código morto (sem rota) | CRÍTICO | `backend/purchases/models.py:172,176`, `backend/purchases/service.py:81-186,188-256,590-599`, `backend/purchases/router.py:39-54` |
-| BUG-02 | Ver sumário executivo — `date_to` tratado como meia-noite exclui o dia inteiro | ALTO | `backend/sales/repository.py:88-91`, `backend/purchases/repository.py:31-34` |
+| BUG-01 | Ver sumário executivo — `unit_cost`/`total_cost` sem validação server-side em `confirm_purchase`; `confirm_purchase_from_xml` confirmado como código morto (sem rota). **✅ Resolvido (`48ebd32`)** | CRÍTICO | `backend/purchases/models.py:172,176`, `backend/purchases/service.py:81-186,188-256,590-599`, `backend/purchases/router.py:39-54` |
+| BUG-02 | Ver sumário executivo — `date_to` tratado como meia-noite exclui o dia inteiro. **✅ Resolvido (`4a549e3`)**: `shared/dates.py::inclusive_end_of_day` aplicado em sales/purchases/audit_log | ALTO | `backend/sales/repository.py:88-91`, `backend/purchases/repository.py:31-34` |
 | BUG-03 | Custo médio ponderado (fórmula, ordem flush-antes-de-ler-estoque, fallback para estoque zero/negativo) — verificado correto | BAIXO / OK | `backend/purchases/service.py:576-601` |
 | BUG-04 | Overselling/duplicidade em vendas — itens agregados por produto antes da checagem de estoque, produtos travados em ordem determinística — verificado correto, é proteção intencional | BAIXO / OK | `backend/sales/service.py:32-173` |
 | BUG-05 | Máquina de estados de cancelamento (compra e venda) — bloqueia duplo cancelamento/confirmação, revalida estoque antes de reverter — verificado correto | BAIXO / OK | `backend/purchases/service.py:306-374`, `backend/sales/service.py:175-244` |
@@ -97,16 +99,16 @@ Estes 8 itens concentram o maior risco real encontrado. Todo o resto do document
 
 | ID | Item | Severidade | Evidência |
 |----|------|------------|-----------|
-| CONC-01 | Ver sumário executivo — `confirm_purchase` não trava o produto antes de recalcular `cost_price` | CRÍTICO | `backend/purchases/service.py:153-158,412,476,576-601` |
-| CONC-02 | Mesma causa raiz do CONC-01: leitura de `current_stock` via `SUM()` sem lock pode interlear entre confirmações concorrentes do mesmo produto, compondo a inconsistência | MÉDIO (mesma correção resolve) | `backend/purchases/service.py` |
+| CONC-01 | Ver sumário executivo — `confirm_purchase` não trava o produto antes de recalcular `cost_price`. **✅ Resolvido (`48ebd32`)**: `_resolve_product` agora usa `lock_for_update` | CRÍTICO | `backend/purchases/service.py:153-158,412,476,576-601` |
+| CONC-02 | Mesma causa raiz do CONC-01: leitura de `current_stock` via `SUM()` sem lock pode interlear entre confirmações concorrentes do mesmo produto, compondo a inconsistência. **✅ Resolvido (`48ebd32`)**, mesma correção do CONC-01 | MÉDIO (mesma correção resolve) | `backend/purchases/service.py` |
 | CONC-03 | Alocação de código de material/fornecedor (`pg_advisory_xact_lock` + `with_for_update`), débito de estoque em vendas/cancelamentos (produtos travados em ordem ordenada, evita deadlock), e unicidade de `invoice_key` via constraint — tudo verificado correto e consistente | BAIXO / OK | `backend/products/service.py:317-336`, `backend/suppliers/service.py:250-316`, `backend/sales/service.py:82-97,201-224`, `backend/purchases/service.py:319-330` |
 
 ## 9. Performance
 
 | ID | Item | Severidade | Evidência |
 |----|------|------------|-----------|
-| PERF-01 | Ver sumário executivo — paginação em memória em sales/purchases/customers | CRÍTICO | `backend/shared/pagination.py:20-24` (`paginate()` fatia lista Python, sem `LIMIT`/`OFFSET` SQL), usado por `sales/service.py`, `purchases/service.py`, `customers/service.py` |
-| PERF-02 | Ver sumário executivo — N+1 em `list_purchases` (fornecedor por linha) e `get_purchase_detail` (produto por item) | CRÍTICO | `backend/purchases/service.py:279,290-299` |
+| PERF-01 | Ver sumário executivo — paginação em memória em sales/purchases/customers. **✅ Resolvido (`4a549e3`, `48ebd32`)**: `LIMIT`/`OFFSET` + `COUNT` real, mesmo padrão do `audit_log` | CRÍTICO | `backend/shared/pagination.py:20-24` (`paginate()` fatia lista Python, sem `LIMIT`/`OFFSET` SQL), usado por `sales/service.py`, `purchases/service.py`, `customers/service.py` |
+| PERF-02 | Ver sumário executivo — N+1 em `list_purchases` (fornecedor por linha) e `get_purchase_detail` (produto por item). **✅ Resolvido (`48ebd32`)**: `SupplierRepository.find_by_ids`/`ProductRepository.find_by_ids` em lote | CRÍTICO | `backend/purchases/service.py:279,290-299` |
 | PERF-03 | `reports/service.py` já agrega via SQL (`func.sum`/`func.avg`), sem loop Python — modelo a ser replicado nos itens acima | BAIXO / OK | `backend/reports/service.py:58-59` |
 | PERF-04 | `audit_log` já faz paginação SQL real (`.offset().limit()` + `COUNT(*)`) — é o padrão correto já existente no projeto, só precisa ser replicado em sales/purchases/customers | BAIXO / OK (template a seguir) | `backend/shared/audit.py` |
 | PERF-05 | Upload/parsing de NFe roda de forma síncrona no event loop (não é crítico hoje pelo tamanho típico do XML, mas não escala se volume/tamanho crescer) | MÉDIO | `backend/purchases/router.py:29`, `backend/purchases/nfe_parser.py` |
@@ -115,7 +117,7 @@ Estes 8 itens concentram o maior risco real encontrado. Todo o resto do document
 
 | ID | Item | Severidade | Evidência |
 |----|------|------------|-----------|
-| UX-01 | Ver sumário executivo — erros de rede crus fora do login | ALTO | `frontend/lib/format.ts:33-36` (`errorMessage`), contraste com `login-form.tsx:56-58` |
+| UX-01 | Ver sumário executivo — erros de rede crus fora do login. **✅ Resolvido (`b51849b`)** | ALTO | `frontend/lib/format.ts:33-36` (`errorMessage`), contraste com `login-form.tsx:56-58` |
 | UX-02 | Ver sumário executivo — nenhuma página CRUD usa react-hook-form+zod, só `useState` com validação mínima (botão desabilitado) | ALTO | grep `useForm|zodResolver` em `app/` retorna zero; `login-form.tsx:81-83,95-97,109-111` tem o padrão correto |
 | UX-03 | Confirmação de exclusão usa `window.confirm()` nativo em vez do `AlertDialog` do próprio design system — funciona, mas é inconsistente visualmente e não localizável/estilizável | MÉDIO | `categories/page.tsx:160`, mesmo padrão em customers/suppliers/users/products/purchases |
 | UX-04 | Sem toast/notificação — erros só aparecem como `<Alert>` inline, que pode passar despercebido em formulários longos e scrollados | MÉDIO | `components/ui-states.tsx:7-14` |
@@ -127,7 +129,7 @@ Estes 8 itens concentram o maior risco real encontrado. Todo o resto do document
 
 | ID | Item | Severidade | Evidência |
 |----|------|------------|-----------|
-| DEAD-01 | **Confirmado**: `confirm_purchase_from_xml` não é exposto por nenhuma rota (`router.py` só liga `/confirm` a `confirm_purchase`) — é código morto. Ver BUG-01 para o impacto disso (a validação "seria segura" nunca roda no servidor) | FATO | `backend/purchases/service.py:188`, `backend/purchases/router.py:39-54` |
+| DEAD-01 | **Confirmado**: `confirm_purchase_from_xml` não é exposto por nenhuma rota (`router.py` só liga `/confirm` a `confirm_purchase`) — é código morto. Ver BUG-01 para o impacto disso (a validação "seria segura" nunca roda no servidor). **✅ Resolvido (`48ebd32`)**: função removida | FATO | `backend/purchases/service.py:188`, `backend/purchases/router.py:39-54` |
 | DEAD-02 | `SupplierRepository.update` e `ProductRepository.update` sem chamadores — o próprio código já documenta isso em comentário ("sem callers atuais, service muta inline") | MÉDIO (parece API viva mas é inalcançável/não testado) | `backend/suppliers/repository.py:8-14`, `backend/products/repository.py:8-14` |
 | DEAD-03 | `ProductRepository.find_by_category` sem chamadores nem testes | BAIXO | `backend/products/repository.py:70` |
 | DEAD-04 | Pequenos exports não utilizados fora do próprio arquivo no frontend (`LIVE_REFETCH_INTERVAL_MS`, `NAV_SECTIONS`, `getActiveStoreId`, `ForbiddenState`) | BAIXO | `frontend/lib/live-query.ts:2`, `lib/nav.ts:35`, `lib/scope.ts:9`, `components/require-permission.tsx:14` |
@@ -150,10 +152,13 @@ Pesquisa externa (fontes citadas nos achados), não é auditoria de código — 
 
 ## Próximos passos
 
-1. **Validar com urgência o DEAD-01/BUG-01**: confirmar se `confirm_purchase_from_xml` é de fato chamado pelo frontend (talvez por um nome de rota diferente do grep usado) ou se é código morto — isso determina se BUG-01 é ALTO ou CRÍTICO na prática.
-2. Revisar os itens PONTO A VALIDAR (seções 1 e 2) — confirmar quais são exceções arquiteturais conscientes.
-3. Escolher um item do sumário executivo para virar a primeira `feat/<nome-descritivo>`.
-4. Para o item escolhido, retomar o protocolo completo (compreensão → decomposição → desenho da solução → revisão crítica) antes de implementar.
+**Concluído em 2026-09-16** (commits `48ebd32`, `4a549e3`, `58259d8`, `b51849b`, `ffd9066`, `a478793`): todos os itens CRÍTICO, mais SEC-02, BUG-02, UX-01, SEC-01 e NFE-01. Ver status por item nas tabelas acima.
+
+**Pendente:**
+1. UX-02 (validação client-side nos formulários CRUD) — único item ALTO do sumário executivo ainda em aberto.
+2. Itens MÉDIO ainda não atacados: DB-02 (ondelete em FKs), SEC-03/SEC-04, PERF-05, DEAD-02/03/04, UX-03/04/05/06.
+3. Revisar os itens PONTO A VALIDAR (seções 1 e 2) — confirmar quais são exceções arquiteturais conscientes.
+4. Escolher o próximo item para virar `feat/<nome-descritivo>`, retomando o protocolo completo (compreensão → decomposição → desenho da solução → revisão crítica) antes de implementar.
 
 ## Dimensões cobertas nesta auditoria
 
