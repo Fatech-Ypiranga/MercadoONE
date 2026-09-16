@@ -1,0 +1,10 @@
+# False positives with no backing installed file (PkgPath is null in Trivy's
+# own JSON output) — verified inside the built image:
+#   - setuptools is actually 84.0.0 (well past the 78.1.1 fix), confirmed via
+#     `python -c "import setuptools; print(setuptools.__version__)"`.
+#   - msgpack isn't installed at all: `import msgpack` raises ModuleNotFoundError.
+# Both appear to come from a stale/internal pip manifest scan, not a real
+# file on disk. Re-verify (remove this ignore and re-scan) after any base
+# image or pip version bump.
+CVE-2025-47273
+GHSA-6v7p-g79w-8964
