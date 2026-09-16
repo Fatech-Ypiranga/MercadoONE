@@ -301,9 +301,7 @@ def test_company_isolation_customers_and_products_cross_tenant(
         client_b.app.dependency_overrides.clear()
 
 
-def test_write_isolation_cross_tenant(
-    client: TestClient, test_engine, db_session, product: dict
-):
+def test_write_isolation_cross_tenant(client: TestClient, test_engine, db_session, product: dict):
     """PUT/DELETE must 404 across tenants, not just GET/list (docs/ROADMAP.md SEC-03).
 
     Read isolation was already covered elsewhere in this file; nothing here
@@ -340,7 +338,9 @@ def test_write_isolation_cross_tenant(
         company_document="11222333000181",
     )
     try:
-        assert client_b.put(f"/products/{product['id']}", json={"name": "Hacked"}).status_code == 404
+        assert (
+            client_b.put(f"/products/{product['id']}", json={"name": "Hacked"}).status_code == 404
+        )
         assert client_b.delete(f"/products/{product['id']}").status_code == 404
 
         assert client_b.put(f"/customers/{customer_id}", json={"name": "Hacked"}).status_code == 404

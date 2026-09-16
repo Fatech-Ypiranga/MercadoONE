@@ -12,9 +12,7 @@ class CustomerRepository:
     def find_all(
         db: Session, company_id: int, *, offset: int = 0, limit: int | None = None
     ) -> list[Customer]:
-        stmt = (
-            select(Customer).where(Customer.company_id == company_id).order_by(Customer.name)
-        )
+        stmt = select(Customer).where(Customer.company_id == company_id).order_by(Customer.name)
         stmt = stmt.offset(offset)
         if limit is not None:
             stmt = stmt.limit(limit)
