@@ -12,13 +12,19 @@ from purchases.models import (
     PurchaseOrderResponse,
 )
 from purchases.service import PurchaseService
+from shared.exceptions import ValidationError
 from shared.identity.dependencies import require_permission
 from shared.identity.scope import company_id_of, resolve_store_id
-from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, paginate
+from shared.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page
 from users.models import User
 from utils.enums import PurchaseStatus
 
 router = APIRouter(prefix="/purchases", tags=["Compras"])
+
+# A real NF-e XML is a few hundred KB at most; this caps memory use and
+# in-request processing time against an oversized/malicious upload
+# (docs/ROADMAP.md SEC-01/NFE-01).
+MAX_XML_UPLOAD_BYTES = 5 * 1024 * 1024
 
 
 @router.post(
@@ -32,7 +38,14 @@ async def upload_purchase_xml(
     current_user: User = Depends(require_permission("purchases:write")),
 ):
     company_id = company_id_of(current_user)
-    content = await file.read()
+    if file.filename and not file.filename.lower().endswith(".xml"):
+        raise ValidationError("Only .xml files are accepted for NF-e import.")
+
+    content = await file.read(MAX_XML_UPLOAD_BYTES + 1)
+    if len(content) > MAX_XML_UPLOAD_BYTES:
+        raise ValidationError(
+            f"XML file exceeds the maximum upload size of {MAX_XML_UPLOAD_BYTES} bytes."
+        )
     return PurchaseService(db).preview_xml_upload(content, company_id=company_id)
 
 
@@ -67,15 +80,17 @@ def list_purchases(
     current_user: User = Depends(require_permission("purchases:read")),
 ):
     company_id = company_id_of(current_user)
-    purchases = PurchaseService(db).list_purchases(
+    purchases, total = PurchaseService(db).list_purchases(
         company_id,
         supplier_id=supplier_id,
         status=status_filter,
         date_from=date_from,
         date_to=date_to,
         store_id=store_id,
+        offset=offset,
+        limit=limit,
     )
-    return paginate(purchases, offset=offset, limit=limit)
+    return Page(items=purchases, total=total, offset=offset, limit=limit)
 
 
 @router.get(

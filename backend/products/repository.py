@@ -15,6 +15,14 @@ class ProductRepository:
     _NULLABLE_FIELDS = {"barcode", "description", "min_stock"}
 
     @staticmethod
+    def find_by_ids(db: Session, ids: list[int], company_id: int) -> dict[int, Product]:
+        """Batch lookup keyed by id, for callers that would otherwise fetch one-by-one."""
+        if not ids:
+            return {}
+        stmt = select(Product).where(Product.id.in_(set(ids)), Product.company_id == company_id)
+        return {product.id: product for product in db.exec(stmt).all()}
+
+    @staticmethod
     def find_all(
         db: Session,
         company_id: int,

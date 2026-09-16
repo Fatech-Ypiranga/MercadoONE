@@ -15,6 +15,16 @@ class SupplierRepository:
     _NULLABLE_FIELDS = {"trade_name", "state_registration", "email", "phone"}
 
     @staticmethod
+    def find_by_ids(db: Session, ids: list[int], company_id: int) -> dict[int, Supplier]:
+        """Batch lookup keyed by id, for callers that would otherwise fetch one-by-one."""
+        if not ids:
+            return {}
+        stmt = select(Supplier).where(
+            Supplier.id.in_(set(ids)), Supplier.company_id == company_id
+        )
+        return {supplier.id: supplier for supplier in db.exec(stmt).all()}
+
+    @staticmethod
     def find_all(
         db: Session,
         company_id: int,

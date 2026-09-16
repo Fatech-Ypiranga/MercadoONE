@@ -35,7 +35,7 @@ from shared.exceptions import (
 from stock.models import MovementReason, MovementType, StockMovement
 from stock.movement_repository import MovementRepository
 from stock.repository import StockRepository
-from suppliers.models import Supplier, SupplierAddressCreate, SupplierCreate
+from suppliers.models import Supplier, SupplierCreate
 from suppliers.repository import SupplierRepository
 from suppliers.service import SupplierService
 from utils.cnpj import normalize_cnpj
@@ -126,6 +126,13 @@ class PurchaseService:
                     company_id=company_id,
                 )
 
+                # total_cost is recomputed from quantity/unit_cost rather than trusting the
+                # client-supplied value directly, since this endpoint's payload is not
+                # guaranteed to originate from the XML-derived preview (see docs/ROADMAP.md BUG-01).
+                item_total_cost = (confirm_item.quantity * confirm_item.unit_cost).quantize(
+                    Decimal("0.01")
+                )
+
                 PurchaseRepository.add_item(
                     self.db,
                     PurchaseItem(
@@ -137,7 +144,7 @@ class PurchaseService:
                         discount=confirm_item.discount,
                         ipi_amount=confirm_item.ipi_amount,
                         icms_st_amount=confirm_item.icms_st_amount,
-                        total_cost=confirm_item.total_cost,
+                        total_cost=item_total_cost,
                     ),
                 )
 
@@ -156,7 +163,7 @@ class PurchaseService:
                     entry_unit_cost=confirm_item.unit_cost,
                     store_id=store_id,
                 )
-                total_amount += confirm_item.total_cost
+                total_amount += item_total_cost
 
             purchase.total_amount = total_amount
             purchase.updated_at = datetime.now(timezone.utc)
@@ -185,76 +192,6 @@ class PurchaseService:
             self.db.rollback()
             raise BusinessRuleException(f"Error confirming purchase: {exc}") from exc
 
-    def confirm_purchase_from_xml(
-        self,
-        xml_content: str | bytes,
-        item_resolutions: list[PurchaseConfirmItemInput],
-        *,
-        actor_id: int,
-        company_id: int,
-        store_id: int,
-        xml_path: str | None = None,
-    ) -> PurchaseOrderDetailResponse:
-        parsed = parse_nfe_xml(xml_content)
-        preview = self.preview_xml_upload(xml_content, company_id=company_id)
-        preview_by_code = {item.supplier_product_code: item for item in preview.items}
-
-        if len(item_resolutions) != len(parsed.items):
-            raise ValidationError("Item resolutions must match the number of XML lines.")
-
-        merged_items: list[PurchaseConfirmItemInput] = []
-        for resolution in item_resolutions:
-            if resolution.supplier_product_code not in preview_by_code:
-                raise ValidationError(
-                    f"Unknown supplier product code: {resolution.supplier_product_code}"
-                )
-            preview_item = preview_by_code[resolution.supplier_product_code]
-            merged_items.append(
-                PurchaseConfirmItemInput(
-                    supplier_product_code=resolution.supplier_product_code,
-                    quantity=preview_item.quantity,
-                    unit_cost=preview_item.entry_unit_cost,
-                    discount=preview_item.discount,
-                    ipi_amount=preview_item.ipi_amount,
-                    icms_st_amount=preview_item.icms_st_amount,
-                    total_cost=preview_item.total_cost,
-                    product_id=resolution.product_id,
-                    create_product=resolution.create_product,
-                )
-            )
-
-        supplier = SupplierRepository.find_by_document(
-            self.db, normalize_cnpj(parsed.supplier.document), company_id
-        )
-        supplier_address = None
-        if supplier is None:
-            try:
-                supplier_address = SupplierAddressCreate.model_validate(
-                    vars(parsed.supplier.address)
-                )
-            except PydanticValidationError as exc:
-                raise ValidationError(
-                    "A complete valid supplier address is required to confirm this NF-e."
-                ) from exc
-        payload = PurchaseConfirmRequest(
-            access_key=parsed.invoice.access_key,
-            invoice_number=parsed.invoice.invoice_number,
-            invoice_series=parsed.invoice.invoice_series,
-            issue_date=parsed.invoice.issue_date,
-            supplier_id=supplier.id if supplier else None,
-            create_supplier=supplier is None,
-            supplier_name=parsed.supplier.name,
-            supplier_trade_name=parsed.supplier.trade_name,
-            supplier_document=parsed.supplier.document,
-            supplier_state_registration=parsed.supplier.state_registration,
-            supplier_address=supplier_address,
-            items=merged_items,
-            xml_path=xml_path,
-        )
-        return self.confirm_purchase(
-            payload, actor_id=actor_id, company_id=company_id, store_id=store_id
-        )
-
     def list_purchases(
         self,
         company_id: int,
@@ -264,7 +201,9 @@ class PurchaseService:
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         store_id: int | None = None,
-    ) -> list[PurchaseOrderResponse]:
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> tuple[list[PurchaseOrderResponse], int]:
         purchases = PurchaseRepository.find_all(
             self.db,
             company_id,
@@ -273,14 +212,29 @@ class PurchaseService:
             date_from=date_from,
             date_to=date_to,
             store_id=store_id,
+            offset=offset,
+            limit=limit,
+        )
+        total = PurchaseRepository.count_all(
+            self.db,
+            company_id,
+            supplier_id=supplier_id,
+            status=status,
+            date_from=date_from,
+            date_to=date_to,
+            store_id=store_id,
+        )
+
+        suppliers_by_id = SupplierRepository.find_by_ids(
+            self.db, [p.supplier_id for p in purchases], company_id
         )
         responses: list[PurchaseOrderResponse] = []
         for purchase in purchases:
-            supplier = SupplierRepository.find_by_id(self.db, purchase.supplier_id, company_id)
             response = PurchaseOrderResponse.model_validate(purchase)
+            supplier = suppliers_by_id.get(purchase.supplier_id)
             response.supplier_name = supplier.name if supplier else None
             responses.append(response)
-        return responses
+        return responses, total
 
     def get_purchase_detail(self, purchase_id: int, company_id: int) -> PurchaseOrderDetailResponse:
         purchase = PurchaseRepository.find_by_id(self.db, purchase_id, company_id)
@@ -288,9 +242,12 @@ class PurchaseService:
             raise ResourceNotFoundException(f"Purchase with ID {purchase_id} was not found.")
 
         supplier = SupplierRepository.find_by_id(self.db, purchase.supplier_id, company_id)
+        products_by_id = ProductRepository.find_by_ids(
+            self.db, [item.product_id for item in purchase.items], company_id
+        )
         item_responses: list[PurchaseItemResponse] = []
         for item in purchase.items:
-            product = ProductRepository.find_by_id(self.db, item.product_id, company_id)
+            product = products_by_id.get(item.product_id)
             item_responses.append(
                 PurchaseItemResponse(
                     **item.model_dump(),
@@ -473,7 +430,13 @@ class PurchaseService:
         company_id: int,
     ) -> Product:
         if confirm_item.product_id is not None:
-            product = ProductRepository.find_by_id(self.db, confirm_item.product_id, company_id)
+            # Locked (not just read) because this product's cost_price is about to be
+            # recalculated below (_update_weighted_average_cost) — without the row lock,
+            # two concurrent purchase confirmations for the same product race on a
+            # read-modify-write of cost_price and silently lose one update.
+            product = ProductRepository.lock_for_update(
+                self.db, confirm_item.product_id, company_id
+            )
             if not product:
                 raise ResourceNotFoundException(
                     f"Product with ID {confirm_item.product_id} was not found."

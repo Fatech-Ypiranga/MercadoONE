@@ -160,20 +160,20 @@ class PurchaseProductCreateInput(SQLModel):
     sku: str
     barcode: Optional[str] = None
     category_id: int
-    cost_price: Decimal
-    sale_price: Optional[Decimal] = None
+    cost_price: Decimal = Field(ge=0)
+    sale_price: Optional[Decimal] = Field(default=None, ge=0)
     unit_of_measure: str = "UN"
     ncm: Optional[str] = None
 
 
 class PurchaseConfirmItemInput(SQLModel):
     supplier_product_code: str
-    quantity: Decimal
-    unit_cost: Decimal
-    discount: Decimal = Decimal("0.00")
-    ipi_amount: Decimal = Decimal("0.00")
-    icms_st_amount: Decimal = Decimal("0.00")
-    total_cost: Decimal
+    quantity: Decimal = Field(gt=0, decimal_places=3, max_digits=10)
+    unit_cost: Decimal = Field(ge=0, decimal_places=2, max_digits=12)
+    discount: Decimal = Field(default=Decimal("0.00"), ge=0, decimal_places=2, max_digits=12)
+    ipi_amount: Decimal = Field(default=Decimal("0.00"), ge=0, decimal_places=2, max_digits=12)
+    icms_st_amount: Decimal = Field(default=Decimal("0.00"), ge=0, decimal_places=2, max_digits=12)
+    total_cost: Decimal = Field(ge=0, decimal_places=2, max_digits=12)
     product_id: Optional[int] = None
     create_product: Optional[PurchaseProductCreateInput] = None
 
