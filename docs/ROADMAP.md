@@ -15,7 +15,7 @@ Auditoria completa do repositório (arquitetura, segurança, banco de dados, ló
 
 Estes 8 itens concentram o maior risco real encontrado. Todo o resto do documento é o detalhamento e o contexto por trás deles, mais os itens de menor severidade.
 
-**Atualização 2026-09-16:** 7 dos 8 itens abaixo já foram corrigidos e commitados (branch `refactor/vertical-slice-architecture`). Só falta UX-02.
+**Atualização 2026-09-16:** os 8 itens abaixo já foram corrigidos e commitados (mesclado em `main`).
 
 | ID | Item | Severidade | Área | Status |
 |----|------|------------|------|--------|
@@ -26,7 +26,7 @@ Estes 8 itens concentram o maior risco real encontrado. Todo o resto do document
 | SEC-02 | Gate de produção só dispara se `ENV=production` for setado explicitamente; deploy sem `ENV` definido roda silenciosamente com JWT secret padrão | ALTO | Segurança | ✅ Resolvido (`58259d8`) |
 | BUG-02 | Filtros `date_to` em vendas/compras tratam a data como meia-noite (`<=`), excluindo praticamente todo o dia informado | ALTO | Lógica de negócio | ✅ Resolvido (`4a549e3`) |
 | UX-01 | Erros de rede crus (ex.: "Failed to fetch") aparecem sem tradução em todas as páginas exceto login | ALTO | Frontend/UX | ✅ Resolvido (`b51849b`) |
-| UX-02 | Nenhum formulário CRUD usa validação client-side (react-hook-form+zod), apesar do padrão já existir no login | ALTO | Frontend/UX | ⬜ Pendente |
+| UX-02 | Nenhum formulário CRUD usa validação client-side (react-hook-form+zod), apesar do padrão já existir no login | ALTO | Frontend/UX | ✅ Resolvido (`35f0025`) |
 
 ---
 
@@ -45,7 +45,7 @@ Estes 8 itens concentram o maior risco real encontrado. Todo o resto do document
 
 | ID | Item | Classificação | Evidência |
 |----|------|----------------|-----------|
-| FE-01 | Boilerplate de diálogo CRUD duplicado quase identicamente em 7 páginas, sem hook/componente compartilhado | FATO | `products/page.tsx` (662 linhas), `users/page.tsx` (596), `customers/page.tsx` (564), `purchases/page.tsx` (498), `suppliers/page.tsx` (358), `stock/page.tsx` (325), `categories/page.tsx` (297) |
+| FE-01 | Boilerplate de diálogo CRUD duplicado quase identicamente em 5 páginas (não 7 — `stock` e `purchases` não têm diálogo criar/editar, achado original impreciso), sem hook/componente compartilhado. **✅ Resolvido (`35f0025`)**: hook `useEntityDialog` compartilhado + validação (ver UX-02) | FATO | `products/page.tsx` (662 linhas), `users/page.tsx` (596), `customers/page.tsx` (564), `suppliers/page.tsx` (358), `categories/page.tsx` (297) |
 | FE-02 | Zero testes de componente ou E2E — cobertura limitada a 3 testes unitários de funções puras em `lib/` | FATO | `frontend/lib/*.test.ts`; ausência de Testing Library/Vitest/Playwright |
 | FE-03 | Páginas com tamanho muito desbalanceado sugerindo lógica que poderia migrar para `lib/` | PONTO A VALIDAR | `products/page.tsx` vs. `lib/format.ts`, `lib/scope.ts`, `lib/permissions.ts` |
 
@@ -118,7 +118,7 @@ Estes 8 itens concentram o maior risco real encontrado. Todo o resto do document
 | ID | Item | Severidade | Evidência |
 |----|------|------------|-----------|
 | UX-01 | Ver sumário executivo — erros de rede crus fora do login. **✅ Resolvido (`b51849b`)** | ALTO | `frontend/lib/format.ts:33-36` (`errorMessage`), contraste com `login-form.tsx:56-58` |
-| UX-02 | Ver sumário executivo — nenhuma página CRUD usa react-hook-form+zod, só `useState` com validação mínima (botão desabilitado) | ALTO | grep `useForm|zodResolver` em `app/` retorna zero; `login-form.tsx:81-83,95-97,109-111` tem o padrão correto |
+| UX-02 | Ver sumário executivo — nenhuma página CRUD usa react-hook-form+zod, só `useState` com validação mínima (botão desabilitado). **✅ Resolvido (`35f0025`)** em categories/suppliers/customers/products/users, via hook compartilhado `useEntityDialog` + `react-hook-form`+`zod`. `stock` e `purchases` não se aplicam (não têm diálogo criar/editar) | ALTO | grep `useForm|zodResolver` em `app/` retorna zero; `login-form.tsx:81-83,95-97,109-111` tem o padrão correto |
 | UX-03 | Confirmação de exclusão usa `window.confirm()` nativo em vez do `AlertDialog` do próprio design system — funciona, mas é inconsistente visualmente e não localizável/estilizável | MÉDIO | `categories/page.tsx:160`, mesmo padrão em customers/suppliers/users/products/purchases |
 | UX-04 | Sem toast/notificação — erros só aparecem como `<Alert>` inline, que pode passar despercebido em formulários longos e scrollados | MÉDIO | `components/ui-states.tsx:7-14` |
 | UX-05 | `LoadingState` é só texto, não skeleton — funcional mas pouco polido | BAIXO | `components/ui-states.tsx:40-42` |
@@ -152,13 +152,12 @@ Pesquisa externa (fontes citadas nos achados), não é auditoria de código — 
 
 ## Próximos passos
 
-**Concluído em 2026-09-16** (commits `48ebd32`, `4a549e3`, `58259d8`, `b51849b`, `ffd9066`, `a478793`): todos os itens CRÍTICO, mais SEC-02, BUG-02, UX-01, SEC-01 e NFE-01. Ver status por item nas tabelas acima.
+**Concluído em 2026-09-16** (commits `48ebd32`, `4a549e3`, `58259d8`, `b51849b`, `ffd9066`, `a478793`, `35f0025`): todos os 8 itens do sumário executivo (CRÍTICO + ALTO), mais SEC-01 e NFE-01. Ver status por item nas tabelas acima.
 
 **Pendente:**
-1. UX-02 (validação client-side nos formulários CRUD) — único item ALTO do sumário executivo ainda em aberto.
-2. Itens MÉDIO ainda não atacados: DB-02 (ondelete em FKs), SEC-03/SEC-04, PERF-05, DEAD-02/03/04, UX-03/04/05/06.
-3. Revisar os itens PONTO A VALIDAR (seções 1 e 2) — confirmar quais são exceções arquiteturais conscientes.
-4. Escolher o próximo item para virar `feat/<nome-descritivo>`, retomando o protocolo completo (compreensão → decomposição → desenho da solução → revisão crítica) antes de implementar.
+1. Itens MÉDIO ainda não atacados: DB-02 (ondelete em FKs), SEC-03/SEC-04, PERF-05, DEAD-02/03/04, UX-03/04/05/06.
+2. Revisar os itens PONTO A VALIDAR (seções 1 e 2) — confirmar quais são exceções arquiteturais conscientes.
+3. Escolher o próximo item para virar `feat/<nome-descritivo>`, retomando o protocolo completo (compreensão → decomposição → desenho da solução → revisão crítica) antes de implementar.
 
 ## Dimensões cobertas nesta auditoria
 

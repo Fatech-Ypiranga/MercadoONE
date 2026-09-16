@@ -1,7 +1,10 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { useAuth } from "@/components/auth-provider";
 import { PageHeader } from "@/components/page-header";
@@ -27,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-can";
+import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import { listBranches } from "@/lib/api/org-api";
 import { listStores } from "@/lib/api/stores-api";
 import {
@@ -59,19 +63,40 @@ const PDV_ELIGIBLE = new Set<UserProfile>([
   "operador",
 ]);
 
-type FormState = {
-  full_name: string;
-  cpf: string;
-  email: string;
-  username: string;
-  password: string;
-  profile: UserProfile;
-  is_active: boolean;
-  default_branch_id: string;
-  default_store_id: string;
-};
+const userSchema = z
+  .object({
+    full_name: z.string().trim().min(1, "Informe o nome completo"),
+    cpf: z.string(),
+    email: z.string(),
+    username: z.string(),
+    password: z.string(),
+    profile: z.enum(PROFILES as [UserProfile, ...UserProfile[]]),
+    is_active: z.boolean(),
+    default_branch_id: z.string(),
+    default_store_id: z.string(),
+    is_editing: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.cpf.replace(/\D/g, "").length !== 11) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cpf"], message: "CPF deve ter 11 dígitos" });
+    }
+    if (!data.email.trim() && !data.username.trim()) {
+      const message = "Informe e-mail ou usuário";
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["email"], message });
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["username"], message });
+    }
+    if (!data.is_editing && data.password.length < 6) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["password"],
+        message: "Senha deve ter ao menos 6 caracteres",
+      });
+    }
+  });
 
-const emptyForm: FormState = {
+type UserForm = z.infer<typeof userSchema>;
+
+const emptyForm: UserForm = {
   full_name: "",
   cpf: "",
   email: "",
@@ -81,6 +106,7 @@ const emptyForm: FormState = {
   is_active: true,
   default_branch_id: "",
   default_store_id: "",
+  is_editing: false,
 };
 
 export default function UsersPage() {
@@ -88,10 +114,7 @@ export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const hasBranches = Boolean(currentUser?.company?.has_branches);
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<UserResponse | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [error, setError] = useState<string | null>(null);
+  const dialog = useEntityDialog<UserResponse>();
   const [search, setSearch] = useState("");
   const [profileFilter, setProfileFilter] = useState<string>("");
   const [activeFilter, setActiveFilter] = useState<string>("");
@@ -102,6 +125,18 @@ export default function UsersPage() {
     pin: string;
     pdvId: string;
   } | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<UserForm>({
+    resolver: zodResolver(userSchema),
+    defaultValues: emptyForm,
+  });
+  const defaultBranchId = watch("default_branch_id");
 
   const list = useQuery({
     queryKey: ["users", search, profileFilter, activeFilter],
@@ -131,40 +166,36 @@ export default function UsersPage() {
 
   const filteredStores = useMemo(() => {
     if (!hasBranches) return stores.data ?? [];
-    const branchId = form.default_branch_id
-      ? Number(form.default_branch_id)
-      : null;
+    const branchId = defaultBranchId ? Number(defaultBranchId) : null;
     if (!branchId || !stores.data) return stores.data ?? [];
     return stores.data.filter((store) => store.branch_id === branchId);
-  }, [form.default_branch_id, hasBranches, stores.data]);
+  }, [defaultBranchId, hasBranches, stores.data]);
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (values: UserForm) => {
       const payload = {
-        full_name: form.full_name.trim(),
-        cpf: form.cpf.replace(/\D/g, ""),
-        email: form.email.trim() || null,
-        username: form.username.trim() || null,
-        profile: form.profile,
-        is_active: form.is_active,
-        default_branch_id: form.default_branch_id
-          ? Number(form.default_branch_id)
+        full_name: values.full_name.trim(),
+        cpf: values.cpf.replace(/\D/g, ""),
+        email: values.email.trim() || null,
+        username: values.username.trim() || null,
+        profile: values.profile,
+        is_active: values.is_active,
+        default_branch_id: values.default_branch_id
+          ? Number(values.default_branch_id)
           : null,
-        default_store_id: form.default_store_id
-          ? Number(form.default_store_id)
+        default_store_id: values.default_store_id
+          ? Number(values.default_store_id)
           : null,
       };
-      if (editing) return updateUser(editing.id, payload);
-      return createUser({ ...payload, password: form.password });
+      if (dialog.editing) return updateUser(dialog.editing.id, payload);
+      return createUser({ ...payload, password: values.password });
     },
     onSuccess: async () => {
-      setOpen(false);
-      setEditing(null);
-      setForm(emptyForm);
-      setError(null);
+      dialog.close();
+      reset(emptyForm);
       await qc.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
   const remove = useMutation({
@@ -172,7 +203,7 @@ export default function UsersPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
   const resetPassword = useMutation({
@@ -183,9 +214,8 @@ export default function UsersPage() {
     onSuccess: () => {
       setPasswordUser(null);
       setNewPassword("");
-      setError(null);
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
   const generatePin = useMutation({
@@ -194,7 +224,7 @@ export default function UsersPage() {
       setPinReveal({ user, pin: data.pdv_pin, pdvId: data.pdv_id });
       await qc.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
   const regeneratePdv = useMutation({
@@ -202,19 +232,17 @@ export default function UsersPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
   function openCreate() {
-    setEditing(null);
-    setForm(emptyForm);
-    setError(null);
-    setOpen(true);
+    dialog.openCreate();
+    reset(emptyForm);
   }
 
   function openEdit(user: UserResponse) {
-    setEditing(user);
-    setForm({
+    dialog.openEdit(user);
+    reset({
       full_name: user.full_name,
       cpf: user.cpf,
       email: user.email || "",
@@ -222,15 +250,10 @@ export default function UsersPage() {
       password: "",
       profile: user.profile,
       is_active: user.is_active,
-      default_branch_id: user.default_branch_id
-        ? String(user.default_branch_id)
-        : "",
-      default_store_id: user.default_store_id
-        ? String(user.default_store_id)
-        : "",
+      default_branch_id: user.default_branch_id ? String(user.default_branch_id) : "",
+      default_store_id: user.default_store_id ? String(user.default_store_id) : "",
+      is_editing: true,
     });
-    setError(null);
-    setOpen(true);
   }
 
   return (
@@ -272,7 +295,7 @@ export default function UsersPage() {
         </select>
       </div>
 
-      <ErrorAlert message={error || (list.error ? errorMessage(list.error) : null)} />
+      <ErrorAlert message={dialog.error || (list.error ? errorMessage(list.error) : null)} />
 
       {list.isLoading ? (
         <LoadingState />
@@ -334,7 +357,6 @@ export default function UsersPage() {
                         onClick={() => {
                           setPasswordUser(user);
                           setNewPassword("");
-                          setError(null);
                         }}
                       >
                         Senha
@@ -388,139 +410,140 @@ export default function UsersPage() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={dialog.open}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) dialog.close();
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar usuário" : "Novo usuário"}</DialogTitle>
+            <DialogTitle>{dialog.editing ? "Editar usuário" : "Novo usuário"}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Nome completo</Label>
-              <Input
-                value={form.full_name}
-                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>CPF</Label>
-              <Input
-                value={form.cpf}
-                onChange={(e) => setForm({ ...form, cpf: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Perfil</Label>
-              <select
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={form.profile}
-                onChange={(e) =>
-                  setForm({ ...form, profile: e.target.value as UserProfile })
-                }
-              >
-                {PROFILES.map((profile) => (
-                  <option key={profile} value={profile}>
-                    {profile}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>E-mail</Label>
-              <Input
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Usuário</Label>
-              <Input
-                value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-              />
-            </div>
-            {!editing ? (
+          <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
-                <Label>Senha de login</Label>
+                <Label htmlFor="usr-name">Nome completo</Label>
                 <Input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  id="usr-name"
+                  aria-invalid={Boolean(errors.full_name)}
+                  {...register("full_name")}
                 />
+                {errors.full_name ? (
+                  <p className="text-sm text-destructive">{errors.full_name.message}</p>
+                ) : null}
               </div>
-            ) : null}
-            {hasBranches ? (
               <div className="space-y-1.5">
-                <Label>Filial padrão</Label>
+                <Label htmlFor="usr-cpf">CPF</Label>
+                <Input id="usr-cpf" aria-invalid={Boolean(errors.cpf)} {...register("cpf")} />
+                {errors.cpf ? (
+                  <p className="text-sm text-destructive">{errors.cpf.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="usr-profile">Perfil</Label>
                 <select
+                  id="usr-profile"
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={form.default_branch_id}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      default_branch_id: e.target.value,
-                      default_store_id: "",
-                    })
-                  }
+                  {...register("profile")}
                 >
-                  <option value="">Nenhuma</option>
-                  {(branches.data ?? []).map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.code} — {branch.name}
+                  {PROFILES.map((profile) => (
+                    <option key={profile} value={profile}>
+                      {profile}
                     </option>
                   ))}
                 </select>
               </div>
-            ) : null}
-            <div className="space-y-1.5">
-              <Label>Loja padrão</Label>
-              <select
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={form.default_store_id}
-                onChange={(e) =>
-                  setForm({ ...form, default_store_id: e.target.value })
-                }
-              >
-                <option value="">Nenhuma</option>
-                {filteredStores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.code} — {store.name}
-                  </option>
-                ))}
-              </select>
+              <div className="space-y-1.5">
+                <Label htmlFor="usr-email">E-mail</Label>
+                <Input
+                  id="usr-email"
+                  aria-invalid={Boolean(errors.email)}
+                  {...register("email")}
+                />
+                {errors.email ? (
+                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="usr-username">Usuário</Label>
+                <Input
+                  id="usr-username"
+                  aria-invalid={Boolean(errors.username)}
+                  {...register("username")}
+                />
+                {errors.username ? (
+                  <p className="text-sm text-destructive">{errors.username.message}</p>
+                ) : null}
+              </div>
+              {!dialog.editing ? (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="usr-password">Senha de login</Label>
+                  <Input
+                    id="usr-password"
+                    type="password"
+                    aria-invalid={Boolean(errors.password)}
+                    {...register("password")}
+                  />
+                  {errors.password ? (
+                    <p className="text-sm text-destructive">{errors.password.message}</p>
+                  ) : null}
+                </div>
+              ) : null}
+              {hasBranches ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="usr-branch">Filial padrão</Label>
+                  <select
+                    id="usr-branch"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    {...register("default_branch_id")}
+                  >
+                    <option value="">Nenhuma</option>
+                    {(branches.data ?? []).map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.code} — {branch.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+              <div className="space-y-1.5">
+                <Label htmlFor="usr-store">Loja padrão</Label>
+                <select
+                  id="usr-store"
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  {...register("default_store_id")}
+                >
+                  <option value="">Nenhuma</option>
+                  {filteredStores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.code} — {store.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 text-sm sm:col-span-2">
+                <input id="usr-active" type="checkbox" {...register("is_active")} />
+                <Label htmlFor="usr-active" className="cursor-pointer font-normal">
+                  Ativo
+                </Label>
+              </div>
+              {dialog.editing?.pdv_id ? (
+                <p className="text-sm text-muted-foreground sm:col-span-2">
+                  PDV ID atual: <span className="font-mono">{dialog.editing.pdv_id}</span>
+                </p>
+              ) : null}
             </div>
-            <label className="flex items-center gap-2 text-sm sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-              />
-              Ativo
-            </label>
-            {editing?.pdv_id ? (
-              <p className="text-sm text-muted-foreground sm:col-span-2">
-                PDV ID atual: <span className="font-mono">{editing.pdv_id}</span>
-              </p>
-            ) : null}
-          </div>
-          <ErrorAlert message={error} />
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={
-                save.isPending ||
-                !form.full_name.trim() ||
-                form.cpf.replace(/\D/g, "").length !== 11 ||
-                (!editing && form.password.length < 6) ||
-                (!form.email.trim() && !form.username.trim())
-              }
-              onClick={() => save.mutate()}
-            >
-              {save.isPending ? "Salvando…" : "Salvar"}
-            </Button>
-          </DialogFooter>
+            <ErrorAlert message={dialog.error} />
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="outline" onClick={dialog.close}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={save.isPending}>
+                {save.isPending ? "Salvando…" : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

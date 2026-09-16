@@ -1,7 +1,10 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { PageHeader } from "@/components/page-header";
 import { RequirePermission } from "@/components/require-permission";
@@ -33,6 +36,7 @@ import {
   emptyAddress,
 } from "@/components/address-fields";
 import { useCan } from "@/hooks/use-can";
+import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import {
   createCustomer,
   createCustomerAddress,
@@ -47,17 +51,19 @@ import {
 } from "@/lib/api/customers-api";
 import { errorMessage } from "@/lib/format";
 
-type FormState = {
-  name: string;
-  document: string;
-  email: string;
-  phone: string;
-  customer_type: "F" | "J";
-  ie_indicator: "1" | "2" | "9";
-  is_active: boolean;
-};
+const customerSchema = z.object({
+  name: z.string().trim().min(1, "Informe o nome"),
+  document: z.string().refine((v) => v.replace(/\D/g, "").length > 0, "Informe o CPF/CNPJ"),
+  email: z.string(),
+  phone: z.string(),
+  customer_type: z.enum(["F", "J"]),
+  ie_indicator: z.enum(["1", "2", "9"]),
+  is_active: z.boolean(),
+});
 
-const emptyForm: FormState = {
+type CustomerForm = z.infer<typeof customerSchema>;
+
+const emptyForm: CustomerForm = {
   name: "",
   document: "",
   email: "",
@@ -70,12 +76,9 @@ const emptyForm: FormState = {
 export default function CustomersPage() {
   const canWrite = useCan("customers", "write");
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<CustomerResponse | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const dialog = useEntityDialog<CustomerResponse>();
   const [createAddress, setCreateAddress] = useState<AddressFormState>(emptyAddress);
   const [includeAddress, setIncludeAddress] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const [addressesFor, setAddressesFor] = useState<CustomerResponse | null>(null);
@@ -83,6 +86,16 @@ export default function CustomersPage() {
   const [editingAddress, setEditingAddress] =
     useState<CustomerAddressResponse | null>(null);
   const [addressError, setAddressError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CustomerForm>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: emptyForm,
+  });
 
   const list = useQuery({ queryKey: ["customers"], queryFn: listCustomers });
 
@@ -122,22 +135,22 @@ export default function CustomersPage() {
   }, [editingAddress]);
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (values: CustomerForm) => {
       const payload = {
-        name: form.name.trim(),
-        document: form.document.replace(/\D/g, ""),
-        email: form.email.trim() || null,
-        phone: form.phone.trim() || null,
-        customer_type: form.customer_type,
-        ie_indicator: form.ie_indicator,
-        is_active: form.is_active,
+        name: values.name,
+        document: values.document.replace(/\D/g, ""),
+        email: values.email.trim() || null,
+        phone: values.phone.trim() || null,
+        customer_type: values.customer_type,
+        ie_indicator: values.ie_indicator,
+        is_active: values.is_active,
         addresses:
-          !editing && includeAddress && addressReady(createAddress)
+          !dialog.editing && includeAddress && addressReady(createAddress)
             ? [addressPayload(createAddress)]
             : [],
       };
-      if (editing) {
-        return updateCustomer(editing.id, {
+      if (dialog.editing) {
+        return updateCustomer(dialog.editing.id, {
           name: payload.name,
           document: payload.document,
           email: payload.email,
@@ -150,15 +163,13 @@ export default function CustomersPage() {
       return createCustomer(payload);
     },
     onSuccess: async () => {
-      setOpen(false);
-      setEditing(null);
-      setForm(emptyForm);
+      dialog.close();
+      reset(emptyForm);
       setCreateAddress(emptyAddress);
       setIncludeAddress(false);
-      setError(null);
       await qc.invalidateQueries({ queryKey: ["customers"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
   const remove = useMutation({
@@ -166,7 +177,7 @@ export default function CustomersPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["customers"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
   const saveAddress = useMutation({
@@ -202,24 +213,34 @@ export default function CustomersPage() {
     onError: (err) => setAddressError(errorMessage(err)),
   });
 
+  function openCreate() {
+    dialog.openCreate();
+    reset(emptyForm);
+    setCreateAddress(emptyAddress);
+    setIncludeAddress(false);
+  }
+
+  function openEdit(item: CustomerResponse) {
+    dialog.openEdit(item);
+    reset({
+      name: item.name,
+      document: item.document,
+      email: item.email ?? "",
+      phone: item.phone ?? "",
+      customer_type: item.customer_type,
+      ie_indicator: item.ie_indicator,
+      is_active: item.is_active,
+    });
+    setIncludeAddress(false);
+  }
+
   return (
     <RequirePermission module="customers">
       <PageHeader
         title="Clientes"
         description="Cadastro de clientes PF/PJ e endereços."
         actionLabel={canWrite ? "Novo cliente" : undefined}
-        onAction={
-          canWrite
-            ? () => {
-                setEditing(null);
-                setForm(emptyForm);
-                setCreateAddress(emptyAddress);
-                setIncludeAddress(false);
-                setError(null);
-                setOpen(true);
-              }
-            : undefined
-        }
+        onAction={canWrite ? openCreate : undefined}
       />
 
       <div className="mb-4">
@@ -231,7 +252,7 @@ export default function CustomersPage() {
         />
       </div>
 
-      <ErrorAlert message={error || (list.error ? errorMessage(list.error) : null)} />
+      <ErrorAlert message={dialog.error || (list.error ? errorMessage(list.error) : null)} />
 
       {list.isLoading ? (
         <LoadingState />
@@ -284,21 +305,7 @@ export default function CustomersPage() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            setEditing(item);
-                            setForm({
-                              name: item.name,
-                              document: item.document,
-                              email: item.email ?? "",
-                              phone: item.phone ?? "",
-                              customer_type: item.customer_type,
-                              ie_indicator: item.ie_indicator,
-                              is_active: item.is_active,
-                            });
-                            setIncludeAddress(false);
-                            setError(null);
-                            setOpen(true);
-                          }}
+                          onClick={() => openEdit(item)}
                         >
                           Editar
                         </Button>
@@ -324,108 +331,95 @@ export default function CustomersPage() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={dialog.open}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) dialog.close();
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Editar cliente" : "Novo cliente"}
+              {dialog.editing ? "Editar cliente" : "Novo cliente"}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Nome</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>CPF/CNPJ</Label>
-              <Input
-                value={form.document}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, document: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Tipo</Label>
-              <select
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
-                value={form.customer_type}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    customer_type: e.target.value as "F" | "J",
-                  }))
-                }
-              >
-                <option value="F">Pessoa física</option>
-                <option value="J">Pessoa jurídica</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>E-mail</Label>
-              <Input
-                value={form.email}
-                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Telefone</Label>
-              <Input
-                value={form.phone}
-                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-              />
-            </div>
-            <label className="flex items-center gap-2 self-end text-sm sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, is_active: e.target.checked }))
-                }
-              />
-              Ativo
-            </label>
-
-            {!editing ? (
-              <div className="space-y-3 border-t border-border pt-3 sm:col-span-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={includeAddress}
-                    onChange={(e) => setIncludeAddress(e.target.checked)}
-                  />
-                  Incluir endereço agora
-                </label>
-                {includeAddress ? (
-                  <AddressFields
-                    form={createAddress}
-                    onChange={setCreateAddress}
-                  />
+          <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="cus-name">Nome</Label>
+                <Input id="cus-name" aria-invalid={Boolean(errors.name)} {...register("name")} />
+                {errors.name ? (
+                  <p className="text-sm text-destructive">{errors.name.message}</p>
                 ) : null}
               </div>
-            ) : null}
-          </div>
-          <ErrorAlert message={error} />
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={
-                !form.name.trim() ||
-                !form.document.replace(/\D/g, "") ||
-                (includeAddress && !addressReady(createAddress)) ||
-                save.isPending
-              }
-              onClick={() => save.mutate()}
-            >
-              {save.isPending ? "Salvando…" : "Salvar"}
-            </Button>
-          </DialogFooter>
+              <div className="space-y-1.5">
+                <Label htmlFor="cus-document">CPF/CNPJ</Label>
+                <Input
+                  id="cus-document"
+                  aria-invalid={Boolean(errors.document)}
+                  {...register("document")}
+                />
+                {errors.document ? (
+                  <p className="text-sm text-destructive">{errors.document.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cus-type">Tipo</Label>
+                <select
+                  id="cus-type"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
+                  {...register("customer_type")}
+                >
+                  <option value="F">Pessoa física</option>
+                  <option value="J">Pessoa jurídica</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cus-email">E-mail</Label>
+                <Input id="cus-email" {...register("email")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cus-phone">Telefone</Label>
+                <Input id="cus-phone" {...register("phone")} />
+              </div>
+              <div className="flex items-center gap-2 self-end text-sm sm:col-span-2">
+                <input id="cus-active" type="checkbox" {...register("is_active")} />
+                <Label htmlFor="cus-active" className="cursor-pointer font-normal">
+                  Ativo
+                </Label>
+              </div>
+
+              {!dialog.editing ? (
+                <div className="space-y-3 border-t border-border pt-3 sm:col-span-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={includeAddress}
+                      onChange={(e) => setIncludeAddress(e.target.checked)}
+                    />
+                    Incluir endereço agora
+                  </label>
+                  {includeAddress ? (
+                    <AddressFields form={createAddress} onChange={setCreateAddress} />
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            <ErrorAlert message={dialog.error} />
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="outline" onClick={dialog.close}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  (includeAddress && !addressReady(createAddress)) || save.isPending
+                }
+              >
+                {save.isPending ? "Salvando…" : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

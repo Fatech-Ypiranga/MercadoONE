@@ -1,14 +1,16 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import {
   AddressFields,
   addressPayload,
   addressReady,
   emptyAddress,
-  type AddressFormState,
 } from "@/components/address-fields";
 import { PageHeader } from "@/components/page-header";
 import { RequirePermission } from "@/components/require-permission";
@@ -33,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-can";
+import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import {
   createSupplier,
   deleteSupplier,
@@ -42,18 +45,36 @@ import {
 } from "@/lib/api/suppliers-api";
 import { errorMessage } from "@/lib/format";
 
-type FormState = {
-  name: string;
-  trade_name: string;
-  document: string;
-  state_registration: string;
-  email: string;
-  phone: string;
-  is_active: boolean;
-  address: AddressFormState;
-};
+const addressSchema = z
+  .object({
+    description: z.string(),
+    zip_code: z.string(),
+    street: z.string(),
+    number: z.string(),
+    complement: z.string(),
+    neighborhood: z.string(),
+    city: z.string(),
+    state: z.string(),
+    ibge_code: z.string(),
+  })
+  .refine((address) => addressReady(address), {
+    message: "Endereço incompleto: informe CEP, rua, número, bairro, cidade e UF",
+  });
 
-const emptyForm: FormState = {
+const supplierSchema = z.object({
+  name: z.string().trim().min(1, "Informe a razão social"),
+  trade_name: z.string(),
+  document: z.string().refine((v) => v.replace(/\D/g, "").length > 0, "Informe o CNPJ"),
+  state_registration: z.string(),
+  email: z.string(),
+  phone: z.string(),
+  is_active: z.boolean(),
+  address: addressSchema,
+});
+
+type SupplierForm = z.infer<typeof supplierSchema>;
+
+const emptyForm: SupplierForm = {
   name: "",
   trade_name: "",
   document: "",
@@ -67,10 +88,7 @@ const emptyForm: FormState = {
 export default function SuppliersPage() {
   const canWrite = useCan("suppliers", "write");
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<SupplierResponse | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [error, setError] = useState<string | null>(null);
+  const dialog = useEntityDialog<SupplierResponse>();
   const [search, setSearch] = useState("");
   const trimmedSearch = search.trim();
   const searchDigits = trimmedSearch.replace(/\D/g, "");
@@ -80,6 +98,19 @@ export default function SuppliersPage() {
     !searchByCode &&
     searchDigits.length > 0 &&
     searchDigits.length >= searchableCharacters / 2;
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<SupplierForm>({
+    resolver: zodResolver(supplierSchema),
+    defaultValues: emptyForm,
+  });
+  const address = watch("address");
 
   const list = useQuery({
     queryKey: ["suppliers", search],
@@ -93,28 +124,26 @@ export default function SuppliersPage() {
   });
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (values: SupplierForm) => {
       const payload = {
-        name: form.name.trim(),
-        trade_name: form.trade_name.trim() || null,
-        document: form.document.replace(/\D/g, ""),
-        state_registration: form.state_registration.trim() || null,
-        email: form.email.trim() || null,
-        phone: form.phone.trim() || null,
-        is_active: form.is_active,
-        address: addressPayload(form.address),
+        name: values.name,
+        trade_name: values.trade_name.trim() || null,
+        document: values.document.replace(/\D/g, ""),
+        state_registration: values.state_registration.trim() || null,
+        email: values.email.trim() || null,
+        phone: values.phone.trim() || null,
+        is_active: values.is_active,
+        address: addressPayload(values.address),
       };
-      if (editing) return updateSupplier(editing.id, payload);
+      if (dialog.editing) return updateSupplier(dialog.editing.id, payload);
       return createSupplier(payload);
     },
     onSuccess: async () => {
-      setOpen(false);
-      setEditing(null);
-      setForm(emptyForm);
-      setError(null);
+      dialog.close();
+      reset(emptyForm);
       await qc.invalidateQueries({ queryKey: ["suppliers"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
   const remove = useMutation({
@@ -122,8 +151,39 @@ export default function SuppliersPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["suppliers"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
+
+  function openEdit(item: SupplierResponse) {
+    dialog.openEdit(item);
+    reset({
+      name: item.name,
+      trade_name: item.trade_name ?? "",
+      document: item.document,
+      state_registration: item.state_registration ?? "",
+      email: item.email ?? "",
+      phone: item.phone ?? "",
+      is_active: item.is_active,
+      address: item.address
+        ? {
+            description: item.address.description,
+            zip_code: item.address.zip_code,
+            street: item.address.street,
+            number: item.address.number,
+            complement: item.address.complement ?? "",
+            neighborhood: item.address.neighborhood,
+            city: item.address.city,
+            state: item.address.state,
+            ibge_code: item.address.ibge_code,
+          }
+        : emptyAddress,
+    });
+  }
+
+  function openCreate() {
+    dialog.openCreate();
+    reset(emptyForm);
+  }
 
   return (
     <RequirePermission module="suppliers">
@@ -131,16 +191,7 @@ export default function SuppliersPage() {
         title="Fornecedores"
         description="Cadastro de fornecedores para compras."
         actionLabel={canWrite ? "Novo fornecedor" : undefined}
-        onAction={
-          canWrite
-            ? () => {
-                setEditing(null);
-                setForm(emptyForm);
-                setError(null);
-                setOpen(true);
-              }
-            : undefined
-        }
+        onAction={canWrite ? openCreate : undefined}
       />
 
       <div className="mb-4">
@@ -152,7 +203,7 @@ export default function SuppliersPage() {
         />
       </div>
 
-      <ErrorAlert message={error || (list.error ? errorMessage(list.error) : null)} />
+      <ErrorAlert message={dialog.error || (list.error ? errorMessage(list.error) : null)} />
 
       {list.isLoading ? (
         <LoadingState />
@@ -202,33 +253,7 @@ export default function SuppliersPage() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => {
-                          setEditing(item);
-                          setForm({
-                            name: item.name,
-                            trade_name: item.trade_name ?? "",
-                            document: item.document,
-                            state_registration: item.state_registration ?? "",
-                            email: item.email ?? "",
-                            phone: item.phone ?? "",
-                            is_active: item.is_active,
-                            address: item.address
-                              ? {
-                                  description: item.address.description,
-                                  zip_code: item.address.zip_code,
-                                  street: item.address.street,
-                                  number: item.address.number,
-                                  complement: item.address.complement ?? "",
-                                  neighborhood: item.address.neighborhood,
-                                  city: item.address.city,
-                                  state: item.address.state,
-                                  ibge_code: item.address.ibge_code,
-                                }
-                              : emptyAddress,
-                          });
-                          setError(null);
-                          setOpen(true);
-                        }}
+                        onClick={() => openEdit(item)}
                       >
                         Editar
                       </Button>
@@ -253,104 +278,87 @@ export default function SuppliersPage() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={dialog.open}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) dialog.close();
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Editar fornecedor" : "Novo fornecedor"}
+              {dialog.editing ? "Editar fornecedor" : "Novo fornecedor"}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {editing ? (
+          <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {dialog.editing ? (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Código</Label>
+                  <Input value={dialog.editing.code ?? "Será gerado ao salvar"} readOnly />
+                </div>
+              ) : null}
               <div className="space-y-1.5 sm:col-span-2">
-                <Label>Código</Label>
-                <Input value={editing.code ?? "Será gerado ao salvar"} readOnly />
+                <Label htmlFor="sup-name">Razão social</Label>
+                <Input id="sup-name" aria-invalid={Boolean(errors.name)} {...register("name")} />
+                {errors.name ? (
+                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                ) : null}
               </div>
-            ) : null}
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Razão social</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              />
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="sup-trade-name">Nome fantasia</Label>
+                <Input id="sup-trade-name" {...register("trade_name")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sup-document">CNPJ</Label>
+                <Input
+                  id="sup-document"
+                  aria-invalid={Boolean(errors.document)}
+                  {...register("document")}
+                />
+                {errors.document ? (
+                  <p className="text-sm text-destructive">{errors.document.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sup-ie">Inscrição estadual</Label>
+                <Input id="sup-ie" {...register("state_registration")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sup-email">E-mail</Label>
+                <Input id="sup-email" {...register("email")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sup-phone">Telefone</Label>
+                <Input id="sup-phone" {...register("phone")} />
+              </div>
+              <div className="flex items-center gap-2 self-end text-sm">
+                <input id="sup-active" type="checkbox" {...register("is_active")} />
+                <Label htmlFor="sup-active" className="cursor-pointer font-normal">
+                  Ativo
+                </Label>
+              </div>
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Nome fantasia</Label>
-              <Input
-                value={form.trade_name}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, trade_name: e.target.value }))
-                }
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium">Endereço principal</h3>
+              <AddressFields
+                form={address}
+                onChange={(next) => setValue("address", next, { shouldValidate: true })}
               />
+              {errors.address ? (
+                <p className="text-sm text-destructive">{errors.address.message}</p>
+              ) : null}
             </div>
-            <div className="space-y-1.5">
-              <Label>CNPJ</Label>
-              <Input
-                value={form.document}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, document: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Inscrição estadual</Label>
-              <Input
-                value={form.state_registration}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, state_registration: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>E-mail</Label>
-              <Input
-                value={form.email}
-                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Telefone</Label>
-              <Input
-                value={form.phone}
-                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-              />
-            </div>
-            <label className="flex items-center gap-2 self-end text-sm">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, is_active: e.target.checked }))
-                }
-              />
-              Ativo
-            </label>
-          </div>
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium">Endereço principal</h3>
-            <AddressFields
-              form={form.address}
-              onChange={(address) => setForm((previous) => ({ ...previous, address }))}
-            />
-          </div>
-          <ErrorAlert message={error} />
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={
-                !form.name.trim() ||
-                !form.document.replace(/\D/g, "") ||
-                !addressReady(form.address) ||
-                save.isPending
-              }
-              onClick={() => save.mutate()}
-            >
-              {save.isPending ? "Salvando…" : "Salvar"}
-            </Button>
-          </DialogFooter>
+            <ErrorAlert message={dialog.error} />
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="outline" onClick={dialog.close}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={save.isPending}>
+                {save.isPending ? "Salvando…" : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </RequirePermission>
