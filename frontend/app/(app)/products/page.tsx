@@ -1,7 +1,10 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { PageHeader } from "@/components/page-header";
 import { RefreshControls } from "@/components/refresh-controls";
@@ -28,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-can";
+import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import { listCategories } from "@/lib/api/categories-api";
 import {
   createProduct,
@@ -41,27 +45,56 @@ import { listSuppliers } from "@/lib/api/suppliers-api";
 import { errorMessage, formatMoney } from "@/lib/format";
 import { liveQueryOptions } from "@/lib/live-query";
 
-type FormState = {
-  name: string;
-  sku: string;
-  barcode: string;
-  description: string;
-  cost_price: string;
-  sale_price: string;
-  weight_net: string;
-  weight_gross: string;
-  min_stock: string;
-  category_id: string;
-  primary_supplier_id: string;
-  unit_of_measure: "UN" | "KG" | "CX";
-  is_active: boolean;
-  ncm: string;
-  cest: string;
-  cfop_default: string;
-  origem_produto: string;
-};
+const productSchema = z
+  .object({
+    name: z.string().trim().min(1, "Informe o nome"),
+    sku: z.string().trim().min(1, "Informe o SKU"),
+    barcode: z.string(),
+    description: z.string(),
+    cost_price: z.string(),
+    sale_price: z.string(),
+    weight_net: z.string(),
+    weight_gross: z.string(),
+    min_stock: z.string(),
+    category_id: z.string().min(1, "Selecione a categoria"),
+    primary_supplier_id: z.string().min(1, "Selecione o fornecedor"),
+    unit_of_measure: z.enum(["UN", "KG", "CX"]),
+    is_active: z.boolean(),
+    ncm: z.string(),
+    cest: z.string(),
+    cfop_default: z.string(),
+    origem_produto: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    const hasFiscal = Boolean(
+      data.ncm.trim() ||
+        data.cest.trim() ||
+        data.cfop_default.trim() ||
+        data.origem_produto.trim(),
+    );
+    if (!hasFiscal) return;
+    if (!data.ncm.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["ncm"], message: "Informe o NCM" });
+    }
+    if (!data.cfop_default.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cfop_default"],
+        message: "Informe o CFOP",
+      });
+    }
+    if (!data.origem_produto.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["origem_produto"],
+        message: "Informe a origem",
+      });
+    }
+  });
 
-const emptyForm: FormState = {
+type ProductForm = z.infer<typeof productSchema>;
+
+const emptyForm: ProductForm = {
   name: "",
   sku: "",
   barcode: "",
@@ -86,14 +119,21 @@ const PAGE_SIZE = 50;
 export default function ProductsPage() {
   const canWrite = useCan("products", "write");
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<ProductResponse | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [error, setError] = useState<string | null>(null);
+  const dialog = useEntityDialog<ProductResponse>();
   const [search, setSearch] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("");
   const [offset, setOffset] = useState(0);
   const [loadingProductId, setLoadingProductId] = useState<number | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ProductForm>({
+    resolver: zodResolver(productSchema),
+    defaultValues: emptyForm,
+  });
 
   const products = useQuery({
     queryKey: ["products", search, supplierFilter, offset, PAGE_SIZE],
@@ -143,47 +183,45 @@ export default function ProductsPage() {
   };
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (values: ProductForm) => {
       const hasFiscal = Boolean(
-        form.ncm.trim() ||
-          form.cest.trim() ||
-          form.cfop_default.trim() ||
-          form.origem_produto.trim(),
+        values.ncm.trim() ||
+          values.cest.trim() ||
+          values.cfop_default.trim() ||
+          values.origem_produto.trim(),
       );
       const payload = {
-        name: form.name.trim(),
-        sku: form.sku.trim(),
-        barcode: form.barcode.trim() || null,
-        description: form.description.trim() || null,
-        cost_price: form.cost_price || "0",
-        sale_price: form.sale_price || "0",
-        weight_net: form.weight_net || null,
-        weight_gross: form.weight_gross || null,
-        min_stock: form.min_stock.trim() || null,
-        category_id: Number(form.category_id),
-        primary_supplier_id: Number(form.primary_supplier_id),
-        unit_of_measure: form.unit_of_measure,
-        is_active: form.is_active,
+        name: values.name.trim(),
+        sku: values.sku.trim(),
+        barcode: values.barcode.trim() || null,
+        description: values.description.trim() || null,
+        cost_price: values.cost_price || "0",
+        sale_price: values.sale_price || "0",
+        weight_net: values.weight_net || null,
+        weight_gross: values.weight_gross || null,
+        min_stock: values.min_stock.trim() || null,
+        category_id: Number(values.category_id),
+        primary_supplier_id: Number(values.primary_supplier_id),
+        unit_of_measure: values.unit_of_measure,
+        is_active: values.is_active,
         fiscal: hasFiscal
           ? {
-              ncm: form.ncm.trim(),
-              cest: form.cest.trim() || null,
-              cfop_default: form.cfop_default.trim(),
-              origem_produto: Number(form.origem_produto),
+              ncm: values.ncm.trim(),
+              cest: values.cest.trim() || null,
+              cfop_default: values.cfop_default.trim(),
+              origem_produto: Number(values.origem_produto),
             }
           : null,
       };
-      if (editing) return updateProduct(editing.id, payload);
+      if (dialog.editing) return updateProduct(dialog.editing.id, payload);
       return createProduct(payload);
     },
     onSuccess: async () => {
-      setOpen(false);
-      setEditing(null);
-      setForm(emptyForm);
-      setError(null);
+      dialog.close();
+      reset(emptyForm);
       await qc.invalidateQueries({ queryKey: ["products"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
   const remove = useMutation({
@@ -191,29 +229,24 @@ export default function ProductsPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["products"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
   function openCreate() {
-    setEditing(null);
-    setForm({
+    dialog.openCreate();
+    reset({
       ...emptyForm,
       category_id: leafCategories[0] ? String(leafCategories[0].id) : "",
-      primary_supplier_id: suppliers.data?.[0]
-        ? String(suppliers.data[0].id)
-        : "",
+      primary_supplier_id: suppliers.data?.[0] ? String(suppliers.data[0].id) : "",
     });
-    setError(null);
-    setOpen(true);
   }
 
   async function openEdit(item: ProductResponse) {
     setLoadingProductId(item.id);
-    setError(null);
     try {
       const detail = await getProduct(item.id);
-      setEditing(detail);
-      setForm({
+      dialog.openEdit(detail);
+      reset({
         name: detail.name,
         sku: detail.sku,
         barcode: detail.barcode ?? "",
@@ -233,13 +266,10 @@ export default function ProductsPage() {
         cest: detail.fiscal?.cest ?? "",
         cfop_default: detail.fiscal?.cfop_default ?? "",
         origem_produto:
-          detail.fiscal?.origem_produto == null
-            ? ""
-            : String(detail.fiscal.origem_produto),
+          detail.fiscal?.origem_produto == null ? "" : String(detail.fiscal.origem_produto),
       });
-      setOpen(true);
     } catch (err) {
-      setError(errorMessage(err));
+      dialog.setError(errorMessage(err));
     } finally {
       setLoadingProductId(null);
     }
@@ -292,7 +322,7 @@ export default function ProductsPage() {
       </div>
 
       <ErrorAlert
-        message={error || (products.error ? errorMessage(products.error) : null)}
+        message={dialog.error || (products.error ? errorMessage(products.error) : null)}
       />
 
       {products.isLoading ? (
@@ -401,260 +431,219 @@ export default function ProductsPage() {
         </Button>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={dialog.open}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) dialog.close();
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Editar produto" : "Novo produto"}
+              {dialog.editing ? "Editar produto" : "Novo produto"}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {editing ? (
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Código interno de material</Label>
-                <Input value={editing.material_code} readOnly disabled />
-              </div>
-            ) : null}
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Nome</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>SKU</Label>
-              <Input
-                value={form.sku}
-                onChange={(e) => setForm((p) => ({ ...p, sku: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Código de barras</Label>
-              <Input
-                value={form.barcode}
-                onChange={(e) => setForm((p) => ({ ...p, barcode: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Descrição</Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, description: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Preço de custo</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={form.cost_price}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, cost_price: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Peso líquido</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.001"
-                value={form.weight_net}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, weight_net: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Peso bruto</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.001"
-                value={form.weight_gross}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, weight_gross: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Preço de venda</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={form.sale_price}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, sale_price: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Estoque mínimo</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.001"
-                placeholder="Usar limiar global"
-                value={form.min_stock}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, min_stock: e.target.value }))
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                Vazio usa o limiar global do dashboard (5).
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Categoria</Label>
-              <select
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
-                value={form.category_id}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, category_id: e.target.value }))
-                }
-              >
-                <option value="">Selecione…</option>
-                {leafCategories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {categoryLabel(c)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Fornecedor principal</Label>
-              <select
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
-                value={form.primary_supplier_id}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, primary_supplier_id: e.target.value }))
-                }
-              >
-                <option value="">Selecione…</option>
-                {suppliers.data?.map((supplier) => (
-                  <option key={supplier.id} value={supplier.id}>
-                    {supplier.code ? `${supplier.code} — ` : ""}
-                    {supplier.name}
-                  </option>
-                ))}
-              </select>
-              {editing != null && editing.primary_supplier_id == null ? (
-                <p className="text-xs text-destructive">
-                  Produto legado: selecione um fornecedor antes de salvar.
-                </p>
+          <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {dialog.editing ? (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Código interno de material</Label>
+                  <Input value={dialog.editing.material_code} readOnly disabled />
+                </div>
               ) : null}
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="prod-name">Nome</Label>
+                <Input id="prod-name" aria-invalid={Boolean(errors.name)} {...register("name")} />
+                {errors.name ? (
+                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-sku">SKU</Label>
+                <Input id="prod-sku" aria-invalid={Boolean(errors.sku)} {...register("sku")} />
+                {errors.sku ? (
+                  <p className="text-sm text-destructive">{errors.sku.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-barcode">Código de barras</Label>
+                <Input id="prod-barcode" {...register("barcode")} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="prod-description">Descrição</Label>
+                <Textarea id="prod-description" {...register("description")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-cost">Preço de custo</Label>
+                <Input id="prod-cost" type="number" step="0.01" {...register("cost_price")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-weight-net">Peso líquido</Label>
+                <Input
+                  id="prod-weight-net"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  {...register("weight_net")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-weight-gross">Peso bruto</Label>
+                <Input
+                  id="prod-weight-gross"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  {...register("weight_gross")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-sale">Preço de venda</Label>
+                <Input id="prod-sale" type="number" step="0.01" {...register("sale_price")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-min-stock">Estoque mínimo</Label>
+                <Input
+                  id="prod-min-stock"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  placeholder="Usar limiar global"
+                  {...register("min_stock")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Vazio usa o limiar global do dashboard (5).
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-category">Categoria</Label>
+                <select
+                  id="prod-category"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
+                  aria-invalid={Boolean(errors.category_id)}
+                  {...register("category_id")}
+                >
+                  <option value="">Selecione…</option>
+                  {leafCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {categoryLabel(c)}
+                    </option>
+                  ))}
+                </select>
+                {errors.category_id ? (
+                  <p className="text-sm text-destructive">{errors.category_id.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-supplier">Fornecedor principal</Label>
+                <select
+                  id="prod-supplier"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
+                  aria-invalid={Boolean(errors.primary_supplier_id)}
+                  {...register("primary_supplier_id")}
+                >
+                  <option value="">Selecione…</option>
+                  {suppliers.data?.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.code ? `${supplier.code} — ` : ""}
+                      {supplier.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.primary_supplier_id ? (
+                  <p className="text-sm text-destructive">
+                    {errors.primary_supplier_id.message}
+                  </p>
+                ) : dialog.editing != null && dialog.editing.primary_supplier_id == null ? (
+                  <p className="text-xs text-destructive">
+                    Produto legado: selecione um fornecedor antes de salvar.
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-unit">Unidade</Label>
+                <select
+                  id="prod-unit"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
+                  {...register("unit_of_measure")}
+                >
+                  <option value="UN">UN</option>
+                  <option value="KG">KG</option>
+                  <option value="CX">CX</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2 self-end text-sm">
+                <input id="prod-active" type="checkbox" {...register("is_active")} />
+                <Label htmlFor="prod-active" className="cursor-pointer font-normal">
+                  Ativo
+                </Label>
+              </div>
+              <div className="sm:col-span-2 mt-2 border-t border-border pt-3">
+                <p className="text-sm font-medium">Dados fiscais (opcional)</p>
+                <p className="text-xs text-muted-foreground">
+                  Ao preencher, informe NCM, CFOP e origem.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-ncm">NCM</Label>
+                <Input
+                  id="prod-ncm"
+                  inputMode="numeric"
+                  maxLength={8}
+                  aria-invalid={Boolean(errors.ncm)}
+                  {...register("ncm")}
+                />
+                {errors.ncm ? (
+                  <p className="text-sm text-destructive">{errors.ncm.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-cest">CEST</Label>
+                <Input id="prod-cest" inputMode="numeric" maxLength={7} {...register("cest")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-cfop">CFOP padrão</Label>
+                <Input
+                  id="prod-cfop"
+                  inputMode="numeric"
+                  maxLength={4}
+                  aria-invalid={Boolean(errors.cfop_default)}
+                  {...register("cfop_default")}
+                />
+                {errors.cfop_default ? (
+                  <p className="text-sm text-destructive">{errors.cfop_default.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prod-origem">Origem do produto</Label>
+                <select
+                  id="prod-origem"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
+                  aria-invalid={Boolean(errors.origem_produto)}
+                  {...register("origem_produto")}
+                >
+                  <option value="">Selecione…</option>
+                  {Array.from({ length: 9 }, (_, value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+                {errors.origem_produto ? (
+                  <p className="text-sm text-destructive">{errors.origem_produto.message}</p>
+                ) : null}
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Unidade</Label>
-              <select
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
-                value={form.unit_of_measure}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    unit_of_measure: e.target.value as FormState["unit_of_measure"],
-                  }))
-                }
-              >
-                <option value="UN">UN</option>
-                <option value="KG">KG</option>
-                <option value="CX">CX</option>
-              </select>
-            </div>
-            <label className="flex items-center gap-2 self-end text-sm">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, is_active: e.target.checked }))
-                }
-              />
-              Ativo
-            </label>
-            <div className="sm:col-span-2 mt-2 border-t border-border pt-3">
-              <p className="text-sm font-medium">Dados fiscais (opcional)</p>
-              <p className="text-xs text-muted-foreground">
-                Ao preencher, informe NCM, CFOP e origem.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>NCM</Label>
-              <Input
-                inputMode="numeric"
-                maxLength={8}
-                value={form.ncm}
-                onChange={(e) => setForm((p) => ({ ...p, ncm: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>CEST</Label>
-              <Input
-                inputMode="numeric"
-                maxLength={7}
-                value={form.cest}
-                onChange={(e) => setForm((p) => ({ ...p, cest: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>CFOP padrão</Label>
-              <Input
-                inputMode="numeric"
-                maxLength={4}
-                value={form.cfop_default}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, cfop_default: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Origem do produto</Label>
-              <select
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
-                value={form.origem_produto}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, origem_produto: e.target.value }))
-                }
-              >
-                <option value="">Selecione…</option>
-                {Array.from({ length: 9 }, (_, value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <ErrorAlert message={error} />
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={
-                !form.name.trim() ||
-                !form.sku.trim() ||
-                !form.category_id ||
-                !form.primary_supplier_id ||
-                (Boolean(
-                  form.ncm.trim() ||
-                    form.cest.trim() ||
-                    form.cfop_default.trim() ||
-                    form.origem_produto.trim(),
-                ) &&
-                  (!form.ncm.trim() ||
-                    !form.cfop_default.trim() ||
-                    !form.origem_produto.trim())) ||
-                save.isPending
-              }
-              onClick={() => save.mutate()}
-            >
-              {save.isPending ? "Salvando…" : "Salvar"}
-            </Button>
-          </DialogFooter>
+            <ErrorAlert message={dialog.error} />
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="outline" onClick={dialog.close}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={save.isPending}>
+                {save.isPending ? "Salvando…" : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </RequirePermission>

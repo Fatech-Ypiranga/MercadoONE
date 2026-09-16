@@ -1,7 +1,10 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { PageHeader } from "@/components/page-header";
 import { RequirePermission } from "@/components/require-permission";
@@ -26,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-can";
+import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import {
   createCategory,
   deleteCategory,
@@ -37,24 +41,36 @@ import { visibleCategoryRows } from "@/lib/category-display";
 import { errorMessage } from "@/lib/format";
 import { slugify } from "@/lib/slugify";
 
-type FormState = {
-  name: string;
-  slug: string;
-  is_active: boolean;
-  parent_id: number | null;
-};
+const categorySchema = z.object({
+  name: z.string().trim().min(1, "Informe o nome da categoria"),
+  slug: z.string().trim().min(1, "Informe o slug"),
+  is_active: z.boolean(),
+  parent_id: z.number().nullable(),
+});
 
-const emptyForm: FormState = { name: "", slug: "", is_active: true, parent_id: null };
+type CategoryForm = z.infer<typeof categorySchema>;
+
+const emptyForm: CategoryForm = { name: "", slug: "", is_active: true, parent_id: null };
 
 export default function CategoriesPage() {
   const canWrite = useCan("categories", "write");
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<CategoryResponse | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [error, setError] = useState<string | null>(null);
+  const dialog = useEntityDialog<CategoryResponse>();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "active" | "inactive">("all");
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<CategoryForm>({
+    resolver: zodResolver(categorySchema),
+    defaultValues: emptyForm,
+  });
+  const parentId = watch("parent_id");
 
   const list = useQuery({
     queryKey: ["categories", search, activeFilter],
@@ -70,26 +86,24 @@ export default function CategoriesPage() {
   const displayRows = visibleCategoryRows(list.data ?? []);
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (values: CategoryForm) => {
       const payload = {
-        name: form.name.trim(),
-        slug: form.slug.trim() || slugify(form.name),
-        is_active: form.is_active,
-        parent_id: form.parent_id ?? undefined,
+        name: values.name,
+        slug: values.slug || slugify(values.name),
+        is_active: values.is_active,
+        parent_id: values.parent_id ?? undefined,
       };
-      if (editing) {
-        return updateCategory(editing.id, payload);
+      if (dialog.editing) {
+        return updateCategory(dialog.editing.id, payload);
       }
       return createCategory(payload);
     },
     onSuccess: async () => {
-      setOpen(false);
-      setEditing(null);
-      setForm(emptyForm);
-      setError(null);
+      dialog.close();
+      reset(emptyForm);
       await qc.invalidateQueries({ queryKey: ["categories"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
   const remove = useMutation({
@@ -97,26 +111,22 @@ export default function CategoriesPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["categories"] });
     },
-    onError: (err) => setError(errorMessage(err)),
+    onError: (err) => dialog.setError(errorMessage(err)),
   });
 
-  function openCreate(parentId: number | null = null) {
-    setEditing(null);
-    setForm({ ...emptyForm, parent_id: parentId });
-    setError(null);
-    setOpen(true);
+  function openCreate(parentIdValue: number | null = null) {
+    dialog.openCreate();
+    reset({ ...emptyForm, parent_id: parentIdValue });
   }
 
   function openEdit(item: CategoryResponse) {
-    setEditing(item);
-    setForm({
+    dialog.openEdit(item);
+    reset({
       name: item.name,
       slug: item.slug,
       is_active: item.is_active,
       parent_id: item.parent_id ?? null,
     });
-    setError(null);
-    setOpen(true);
   }
 
   function renderRow(item: CategoryResponse, isChild = false) {
@@ -199,7 +209,7 @@ export default function CategoriesPage() {
         </select>
       </div>
 
-      <ErrorAlert message={error || (list.error ? errorMessage(list.error) : null)} />
+      <ErrorAlert message={dialog.error || (list.error ? errorMessage(list.error) : null)} />
 
       {list.isLoading ? (
         <LoadingState />
@@ -223,73 +233,71 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={dialog.open}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) dialog.close();
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editing
+              {dialog.editing
                 ? "Editar categoria"
-                : form.parent_id
+                : parentId
                 ? "Nova subcategoria"
                 : "Nova categoria"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            {form.parent_id && !editing && (
-              <p className="text-sm text-muted-foreground">
-                Subcategoria de:{" "}
-                <strong>
-                  {list.data?.find((c) => c.id === form.parent_id)?.name}
-                </strong>
-              </p>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="cat-name">Nome</Label>
-              <Input
-                id="cat-name"
-                value={form.name}
-                onChange={(e) => {
-                  const name = e.target.value;
-                  setForm((prev) => ({
-                    ...prev,
-                    name,
-                    slug: editing ? prev.slug : slugify(name),
-                  }));
-                }}
-              />
+          <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
+            <div className="space-y-3">
+              {parentId && !dialog.editing && (
+                <p className="text-sm text-muted-foreground">
+                  Subcategoria de:{" "}
+                  <strong>{list.data?.find((c) => c.id === parentId)?.name}</strong>
+                </p>
+              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="cat-name">Nome</Label>
+                <Input
+                  id="cat-name"
+                  aria-invalid={Boolean(errors.name)}
+                  {...register("name", {
+                    onChange: (e) => {
+                      if (!dialog.editing) {
+                        setValue("slug", slugify(e.target.value));
+                      }
+                    },
+                  })}
+                />
+                {errors.name ? (
+                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cat-slug">Slug</Label>
+                <Input id="cat-slug" aria-invalid={Boolean(errors.slug)} {...register("slug")} />
+                {errors.slug ? (
+                  <p className="text-sm text-destructive">{errors.slug.message}</p>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <input id="cat-active" type="checkbox" {...register("is_active")} />
+                <Label htmlFor="cat-active" className="cursor-pointer font-normal">
+                  Ativa
+                </Label>
+              </div>
+              <ErrorAlert message={dialog.error} />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cat-slug">Slug</Label>
-              <Input
-                id="cat-slug"
-                value={form.slug}
-                onChange={(e) => setForm((prev) => ({ ...prev, slug: e.target.value }))}
-              />
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, is_active: e.target.checked }))
-                }
-              />
-              Ativa
-            </label>
-            <ErrorAlert message={error} />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={!form.name.trim() || save.isPending}
-              onClick={() => save.mutate()}
-            >
-              {save.isPending ? "Salvando…" : "Salvar"}
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="outline" onClick={dialog.close}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={save.isPending}>
+                {save.isPending ? "Salvando…" : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </RequirePermission>
