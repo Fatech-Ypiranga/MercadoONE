@@ -12,6 +12,11 @@ from shared.exceptions import ValidationError
 NFE_NS = "http://www.portalfiscal.inf.br/nfe"
 NS = {"nfe": NFE_NS}
 
+# A real NF-e rarely carries more than a few hundred line items; this caps
+# synchronous, in-request processing time and memory use against a malicious
+# or corrupted upload (docs/ROADMAP.md NFE-01).
+MAX_NFE_ITEMS = 500
+
 
 @dataclass
 class ParsedNfeSupplierAddress:
@@ -129,6 +134,12 @@ def parse_nfe_xml(xml_content: str | bytes) -> ParsedNfe:
     if isinstance(xml_content, bytes):
         xml_content = xml_content.decode("utf-8", errors="replace")
 
+    # A real NF-e is a plain document with no DOCTYPE/entity declarations.
+    # Rejecting one outright is a cheap guard against entity-expansion
+    # ("billion laughs") DoS payloads, without adding a new XML dependency.
+    if "<!DOCTYPE" in xml_content.upper():
+        raise ValidationError("NF-e XML must not contain a DOCTYPE declaration.")
+
     try:
         root = ET.fromstring(xml_content)
     except ET.ParseError as exc:
@@ -208,6 +219,10 @@ def parse_nfe_xml(xml_content: str | bytes) -> ParsedNfe:
 
     if not items:
         raise ValidationError("NF-e XML does not contain any items.")
+    if len(items) > MAX_NFE_ITEMS:
+        raise ValidationError(
+            f"NF-e XML has {len(items)} items, exceeding the maximum of {MAX_NFE_ITEMS}."
+        )
 
     invoice = ParsedNfeInvoice(
         access_key=access_key,
