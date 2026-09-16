@@ -130,9 +130,9 @@ Estes 8 itens concentram o maior risco real encontrado. Todo o resto do document
 | ID | Item | Severidade | Evidência |
 |----|------|------------|-----------|
 | DEAD-01 | **Confirmado**: `confirm_purchase_from_xml` não é exposto por nenhuma rota (`router.py` só liga `/confirm` a `confirm_purchase`) — é código morto. Ver BUG-01 para o impacto disso (a validação "seria segura" nunca roda no servidor). **✅ Resolvido (`48ebd32`)**: função removida | FATO | `backend/purchases/service.py:188`, `backend/purchases/router.py:39-54` |
-| DEAD-02 | `SupplierRepository.update` e `ProductRepository.update` sem chamadores — o próprio código já documenta isso em comentário ("sem callers atuais, service muta inline") | MÉDIO (parece API viva mas é inalcançável/não testado) | `backend/suppliers/repository.py:8-14`, `backend/products/repository.py:8-14` |
-| DEAD-03 | `ProductRepository.find_by_category` sem chamadores nem testes | BAIXO | `backend/products/repository.py:70` |
-| DEAD-04 | Pequenos exports não utilizados fora do próprio arquivo no frontend (`LIVE_REFETCH_INTERVAL_MS`, `NAV_SECTIONS`, `getActiveStoreId`, `ForbiddenState`) | BAIXO | `frontend/lib/live-query.ts:2`, `lib/nav.ts:35`, `lib/scope.ts:9`, `components/require-permission.tsx:14` |
+| DEAD-02 | `SupplierRepository.update` e `ProductRepository.update` sem chamadores — o próprio código já documenta isso em comentário ("sem callers atuais, service muta inline"). **✅ Resolvido (`b5740e7`)**: métodos removidos | MÉDIO (parece API viva mas é inalcançável/não testado) | `backend/suppliers/repository.py:8-14`, `backend/products/repository.py:8-14` |
+| DEAD-03 | `ProductRepository.find_by_category` sem chamadores nem testes. **✅ Resolvido (`b5740e7`)**: método removido | BAIXO | `backend/products/repository.py:70` |
+| DEAD-04 | Pequenos exports não utilizados fora do próprio arquivo no frontend (`LIVE_REFETCH_INTERVAL_MS`, `NAV_SECTIONS`, `getActiveStoreId`, `ForbiddenState`). **✅ Resolvido (`b5740e7`)**: `export` removido, mantidos como internos | BAIXO | `frontend/lib/live-query.ts:2`, `lib/nav.ts:35`, `lib/scope.ts:9`, `components/require-permission.tsx:14` |
 | DEAD-05 | Nenhum TODO/FIXME/HACK real encontrado, nenhum código comentado, nenhuma duplicação de utilitário além do já consolidado, nenhum `print()`/`console.log` fora de scripts CLI — repositório limpo nessas frentes | BAIXO / OK | busca em todo `backend/` e `frontend/` |
 
 ## 12. Pesquisa de Mercado — Comparação com Práticas Estabelecidas
@@ -155,7 +155,7 @@ Pesquisa externa (fontes citadas nos achados), não é auditoria de código — 
 **Concluído em 2026-09-16** (commits `48ebd32`, `4a549e3`, `58259d8`, `b51849b`, `ffd9066`, `a478793`, `35f0025`): todos os 8 itens do sumário executivo (CRÍTICO + ALTO), mais SEC-01 e NFE-01. Ver status por item nas tabelas acima.
 
 **Pendente:**
-1. Itens MÉDIO ainda não atacados: DB-02 (ondelete em FKs), SEC-03/SEC-04, PERF-05, DEAD-02/03/04, UX-03/04/05/06.
+1. Itens MÉDIO ainda não atacados: DB-02 (ondelete em FKs), SEC-03/SEC-04, PERF-05, UX-03/04/05/06. (DEAD-02/03/04 resolvidos em `b5740e7`)
 2. Revisar os itens PONTO A VALIDAR (seções 1 e 2) — confirmar quais são exceções arquiteturais conscientes.
 3. Escolher o próximo item para virar `feat/<nome-descritivo>`, retomando o protocolo completo (compreensão → decomposição → desenho da solução → revisão crítica) antes de implementar.
 
