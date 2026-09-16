@@ -28,14 +28,14 @@ docker compose up -d
 
 O PostgreSQL sobe na porta `5432` com:
 - Banco principal: `erp_vendas`
-- Banco de testes: `erp_vendas_test` (criado automaticamente via `scripts/init-test-db.sql`)
+- Banco de testes: `erp_vendas_test` (criado automaticamente via `backend/scripts/init-test-db.sql`)
 
 Opcional: pgAdmin em http://localhost:8080 (`admin@erp.com` / `admin`).
 
 ### 2. Configurar variáveis de ambiente
 
 ```bash
-cp .env.example .env
+cp backend/.env.example backend/.env
 ```
 
 Ajuste os valores conforme necessário. Em desenvolvimento, os defaults do `.env.example` funcionam — mas **defina `ADMIN_PASSWORD`** antes de subir a API.
@@ -55,6 +55,7 @@ Ajuste os valores conforme necessário. Em desenvolvimento, os defaults do `.env
 ### 3. Instalar dependências
 
 ```bash
+cd backend
 pip install -r requirements.lock -r requirements-dev.txt
 ```
 
@@ -65,7 +66,7 @@ pip install -r requirements.lock -r requirements-dev.txt
 Com Docker Compose da API (`make up-app`), o entrypoint roda `alembic upgrade head`
 quando `RUN_MIGRATIONS=1`. O seed do admin/org demo roda no lifespan.
 
-Local sem container:
+Local sem container (a partir de `backend/`):
 
 ```bash
 make migrate   # ou: alembic upgrade head
@@ -75,6 +76,7 @@ uvicorn main:app --reload
 ### 5. Iniciar a API
 
 ```bash
+cd backend
 uvicorn main:app --reload
 # ou: make up-app
 ```
@@ -85,13 +87,14 @@ uvicorn main:app --reload
 - Readiness: http://localhost:8000/readyz (`/healthz` é alias)
 ## Testes
 
-Com o Docker rodando (`docker compose up -d`):
+Com o Docker rodando (`docker compose up -d`), a partir de `backend/`:
 
 ```bash
+cd backend
 pytest
 ```
 
-Os testes usam `TEST_DATABASE_URL` (banco `erp_vendas_test`). O schema é recriado na sessão e truncado entre cada caso. XMLs mínimos de NF-e ficam em `tests/fixtures/nfe/` (CI).
+Os testes usam `TEST_DATABASE_URL` (banco `erp_vendas_test`). O schema é recriado na sessão e truncado entre cada caso. XMLs mínimos de NF-e ficam em `backend/tests/fixtures/nfe/` (CI).
 
 Listagens de negócio usam o contrato paginado `{ items, total, offset, limit }` (`offset`/`limit` na query; default 50, máx. 200).
 
@@ -128,17 +131,26 @@ Após o primeiro startup com seed (defina `ADMIN_PASSWORD` no `.env` antes de su
 
 O schema do banco é gerenciado pelo **Alembic** (`alembic upgrade head`). Não há migrações SQL legadas no repositório.
 
+Migração em andamento para Vertical Slice Architecture: funcionalidades já
+migradas (`auth/`, `organization/`, `categories/`, `suppliers/`, `customers/`,
+...) reúnem seu próprio router, service, repository e models numa única
+pasta; o que ainda não foi migrado continua em `routers/`, `services/`,
+`repositories/` e `models/` (organização por camada técnica).
+
 ```
-├── alembic/          # Migrações de banco
-├── auth/             # JWT, permissões, dependências
-├── database/         # Conexão, seed, utilitários de migração
+├── backend/
+│   ├── alembic/          # Migrações de banco
+│   ├── shared/           # Kernel compartilhado (identity/auth, audit)
+│   ├── <slice>/          # Uma pasta por funcionalidade já migrada
+│   ├── routers/          # Endpoints ainda não migrados para slice própria
+│   ├── services/         # Regras de negócio ainda não migradas
+│   ├── repositories/     # Acesso a dados ainda não migrado
+│   ├── models/           # Schemas ainda não migrados
+│   ├── database/         # Conexão, seed, utilitários de migração
+│   ├── tests/            # Testes de integração (pytest) + fixtures/nfe CI
+│   └── main.py           # Entry point FastAPI
 ├── frontend/         # Painel Next.js 15 (App Router) + shadcn/ui
-├── models/           # Modelos SQLModel / schemas Pydantic
-├── repositories/     # Acesso a dados
-├── routers/          # Endpoints HTTP
-├── services/         # Regras de negócio
-├── tests/            # Testes de integração (pytest) + fixtures/nfe CI
-└── main.py           # Entry point FastAPI
+└── docs/             # Documentação da equipe e contratos
 ```
 
 ## Frontend (painel de desenvolvimento)
@@ -151,6 +163,7 @@ A API libera CORS para `http://localhost:3000` por padrão (`CORS_ORIGINS`).
 
 ```bash
 # terminal 1 — API
+cd backend
 uvicorn main:app --reload
 
 # terminal 2 — frontend
@@ -165,7 +178,7 @@ App em http://localhost:3000 — detalhes em [`frontend/README.md`](frontend/REA
 Para republicar o contrato tipado após mudanças na API:
 
 ```bash
-python scripts/export_openapi.py
+python backend/scripts/export_openapi.py
 cd frontend && npm run generate:api
 ```
 
@@ -189,4 +202,4 @@ O pipeline GitHub Actions (`.github/workflows/ci.yml`) roda em cada push/PR para
 
 ## Dados de demonstração
 
-Catálogo e XMLs de compra fictícios ficam fora do monorepo (Data Sim cadastra via API). Para testes locais/CI, use `tests/fixtures/nfe/` e o seed em `tests/catalog_seed.py`.
+Catálogo e XMLs de compra fictícios ficam fora do monorepo (Data Sim cadastra via API). Para testes locais/CI, use `backend/tests/fixtures/nfe/` e o seed em `backend/tests/catalog_seed.py`.

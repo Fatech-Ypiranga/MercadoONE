@@ -24,20 +24,20 @@ down:
 	docker compose -f docker-compose.app.yml down
 
 test:
-	pytest -q --cov=. --cov-fail-under=55
+	cd backend && pytest -q --cov=. --cov-fail-under=55
 
 lint:
-	ruff check .
-	ruff format --check .
+	cd backend && ruff check .
+	cd backend && ruff format --check .
 
 migrate:
-	alembic upgrade head
+	cd backend && alembic upgrade head
 
 migrate-down:
-	alembic downgrade -1
+	cd backend && alembic downgrade -1
 
 lock:
-	uv pip compile requirements.txt -o requirements.lock --python 3.11 --strip-extras
+	cd backend && uv pip compile requirements.txt -o requirements.lock --python 3.11 --strip-extras
 
 frontend-test:
 	cd frontend && npm test

@@ -15,13 +15,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { listOrgStores } from "@/lib/api/org-api";
+import { listStores } from "@/lib/api/stores-api";
 import { errorMessage } from "@/lib/format";
 
 export default function StoresPage() {
   const { user } = useAuth();
   const hasBranches = Boolean(user?.company?.has_branches);
-  const list = useQuery({ queryKey: ["stores"], queryFn: listOrgStores });
+  const list = useQuery({ queryKey: ["stores"], queryFn: listStores });
 
   return (
     <RequirePermission module="stores" action="write">

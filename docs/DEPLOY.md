@@ -45,9 +45,9 @@ origens liberadas em `CORS_ORIGINS` (ou chamadas server-to-server).
 ## Pré-requisitos no repo
 
 - [`Dockerfile`](../Dockerfile) — Python 3.11 + `requirements.lock` + `HEALTHCHECK` `/livez`
-- [`scripts/docker-entrypoint.sh`](../scripts/docker-entrypoint.sh) —
+- [`backend/scripts/docker-entrypoint.sh`](../backend/scripts/docker-entrypoint.sh) —
   migrate opcional (`RUN_MIGRATIONS`) + `uvicorn`
-- [`scripts/migrate-only.sh`](../scripts/migrate-only.sh) — job só de schema
+- [`backend/scripts/migrate-only.sh`](../backend/scripts/migrate-only.sh) — job só de schema
 - [`railway.toml`](../railway.toml) — healthcheck / Dockerfile path
 - [`.dockerignore`](../.dockerignore)
 - [`docker-compose.app.yml`](../docker-compose.app.yml) — paridade local API + Postgres
@@ -72,7 +72,7 @@ backup/restore sob sua responsabilidade.
 
 ## Variáveis de ambiente (API)
 
-Espelho de [`.env.example`](../.env.example):
+Espelho de [`.env.example`](../backend/.env.example):
 
 | Variável | Dev | Prod |
 |----------|-----|------|
@@ -195,9 +195,9 @@ Dependabot: [`.github/dependabot.yml`](../.github/dependabot.yml) (pip, npm, Act
 
 ### Lockfile Python
 
-- Ranges em [`requirements.txt`](../requirements.txt)
-- Pins em [`requirements.lock`](../requirements.lock) (`pip-compile`)
-- Dev: [`requirements-dev.txt`](../requirements-dev.txt)
+- Ranges em [`requirements.txt`](../backend/requirements.txt)
+- Pins em [`requirements.lock`](../backend/requirements.lock) (`pip-compile`)
+- Dev: [`requirements-dev.txt`](../backend/requirements-dev.txt)
 
 Regenerar: `make lock`
 
