@@ -31,6 +31,15 @@ export function formatDateTime(value: string | null | undefined): string {
 }
 
 export function errorMessage(error: unknown, fallback = "Ocorreu um erro"): string {
-  if (error instanceof Error && error.message) return error.message;
+  // ApiError carries a server-provided message (already user-facing, in
+  // Portuguese). Any other Error — most commonly a network failure like
+  // "TypeError: Failed to fetch" — is not something a user should see verbatim.
+  if (error && typeof error === "object" && "name" in error && error.name === "ApiError") {
+    const message = (error as { message?: string }).message;
+    if (message) return message;
+  }
+  if (error instanceof Error && error.message) {
+    return "Não foi possível conectar à API. Verifique sua conexão e tente novamente.";
+  }
   return fallback;
 }
