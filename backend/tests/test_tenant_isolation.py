@@ -17,7 +17,7 @@ from products.service import ProductService
 from shared.identity.pdv_credentials import ensure_pdv_id
 from shared.identity.security import hash_password
 from suppliers.models import Supplier
-from tests.conftest import make_client, page_items
+from tests.conftest import create_test_user, make_client, page_items
 from users.models import User
 from users.repository import UserRepository
 from utils.cpf import build_cpf
@@ -299,6 +299,61 @@ def test_company_isolation_customers_and_products_cross_tenant(
         assert all(p["id"] != product["id"] for p in page_items(client_b.get("/products/")))
     finally:
         client_b.app.dependency_overrides.clear()
+
+
+def test_write_isolation_cross_tenant(
+    client: TestClient, test_engine, db_session, product: dict
+):
+    """PUT/DELETE must 404 across tenants, not just GET/list (docs/ROADMAP.md SEC-03).
+
+    Read isolation was already covered elsewhere in this file; nothing here
+    previously exercised the write paths of ProductService/CustomerService/
+    UserService against a cross-tenant id.
+    """
+    me = client.get("/auth/me").json()
+    company_a_id = me["company_id"]
+
+    customer_created = client.post(
+        "/customers/",
+        json={"name": "Cliente A", "document": "11144477735", "customer_type": "F"},
+    )
+    assert customer_created.status_code == 201
+    customer_id = customer_created.json()["id"]
+
+    user_a = create_test_user(
+        db_session,
+        full_name="Operador A",
+        cpf=build_cpf(555),
+        email="operadora@test.local",
+        username="operadora",
+        company_id=company_a_id,
+    )
+    db_session.commit()
+
+    with Session(test_engine) as session:
+        _create_second_org(session)
+
+    client_b = make_client(
+        test_engine,
+        username="adminb",
+        password="adminb123",
+        company_document="11222333000181",
+    )
+    try:
+        assert client_b.put(f"/products/{product['id']}", json={"name": "Hacked"}).status_code == 404
+        assert client_b.delete(f"/products/{product['id']}").status_code == 404
+
+        assert client_b.put(f"/customers/{customer_id}", json={"name": "Hacked"}).status_code == 404
+        assert client_b.delete(f"/customers/{customer_id}").status_code == 404
+
+        assert client_b.put(f"/users/{user_a.id}", json={"full_name": "Hacked"}).status_code == 404
+        assert client_b.delete(f"/users/{user_a.id}").status_code == 404
+    finally:
+        client_b.app.dependency_overrides.clear()
+
+    assert client.get(f"/products/{product['id']}").json()["name"] != "Hacked"
+    assert client.get(f"/customers/{customer_id}").json()["name"] == "Cliente A"
+    assert client.get(f"/users/{user_a.id}").json()["full_name"] == "Operador A"
 
 
 def test_company_isolation_purchases(client: TestClient, test_engine, seeded_catalog):
