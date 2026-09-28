@@ -131,34 +131,35 @@ export default function DashboardPage() {
 
       <ErrorAlert message={loadError ? errorMessage(loadError) : null} />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
+      <StatStrip>
+        <StatStripItem
           label="Receita"
           hint={periodHint}
           loading={sales.isLoading}
           value={formatMoney(salesSummary.revenue)}
           note={salesSummary.capped ? `Até ${DASHBOARD_SALES_LIMIT} vendas` : undefined}
         />
-        <MetricCard
+        <StatStripItem
           label="Vendas"
           hint={periodHint}
           loading={sales.isLoading}
           value={formatNumber(salesSummary.count)}
           note={salesSummary.capped ? `Até ${DASHBOARD_SALES_LIMIT} vendas` : undefined}
         />
-        <MetricCard
+        <StatStripItem
           label="Ticket médio"
           hint="Histórico da loja"
           loading={ticket.isLoading}
           value={formatMoney(ticket.data?.average_ticket)}
         />
-        <MetricCard
+        <StatStripItem
           label="Estoque crítico"
           hint="Limiar ≥ 5"
           loading={critical.isLoading}
           value={formatNumber(critical.data?.length ?? 0)}
+          tone={critical.data?.length ? "destructive" : undefined}
         />
-      </div>
+      </StatStrip>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <DashboardPanel
@@ -340,40 +341,48 @@ export default function DashboardPage() {
   );
 }
 
-function MetricCard({
+function StatStrip({ children }: { children: ReactNode }) {
+  return (
+    <div className="mb-6 flex flex-col overflow-hidden rounded-lg border border-border bg-card sm:flex-row">
+      {children}
+    </div>
+  );
+}
+
+function StatStripItem({
   label,
   value,
   hint,
   note,
   loading,
+  tone,
 }: {
   label: string;
   value: string;
   hint?: string;
   note?: string;
   loading?: boolean;
+  tone?: "destructive";
 }) {
   return (
-    <Card size="sm">
-      <CardHeader>
-        <CardDescription className="text-xs font-medium tracking-wide uppercase">
-          {label}
-        </CardDescription>
-        {loading ? (
-          <div className="mt-1 h-8 w-24 animate-pulse rounded-md bg-muted" />
-        ) : (
-          <CardTitle className="text-2xl font-semibold tracking-tight">
-            {value}
-          </CardTitle>
-        )}
-        {hint ? (
-          <p className="text-xs text-muted-foreground">{hint}</p>
-        ) : null}
-        {note && !loading ? (
-          <p className="text-xs text-muted-foreground">{note}</p>
-        ) : null}
-      </CardHeader>
-    </Card>
+    <div className="flex-1 border-b border-border px-5 py-4 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      {loading ? (
+        <div className="mt-1.5 h-6 w-24 animate-pulse rounded-md bg-muted" />
+      ) : (
+        <p
+          className={`mt-1 text-xl font-semibold tracking-tight tabular-nums ${
+            tone === "destructive" ? "text-destructive" : ""
+          }`}
+        >
+          {value}
+        </p>
+      )}
+      {hint ? <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p> : null}
+      {note && !loading ? (
+        <p className="text-[11px] text-muted-foreground">{note}</p>
+      ) : null}
+    </div>
   );
 }
 

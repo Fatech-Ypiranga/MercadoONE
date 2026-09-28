@@ -3,7 +3,9 @@ import {
   Building2,
   ClipboardList,
   FileBarChart,
+  FolderKanban,
   LayoutDashboard,
+  LayoutGrid,
   Package,
   ScrollText,
   Store,
@@ -29,12 +31,14 @@ export type NavItem = {
 
 export type NavSection = {
   title: string;
+  icon: LucideIcon;
   items: NavItem[];
 };
 
 const NAV_SECTIONS: NavSection[] = [
   {
     title: "Principal",
+    icon: LayoutGrid,
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/sales", label: "Vendas", icon: ClipboardList, module: "sales" },
@@ -45,6 +49,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Cadastros",
+    icon: FolderKanban,
     items: [
       { href: "/products", label: "Produtos", icon: Package, module: "products" },
       { href: "/categories", label: "Categorias", icon: Tags, module: "categories" },
@@ -54,6 +59,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Organização",
+    icon: Building2,
     items: [
       {
         href: "/company",

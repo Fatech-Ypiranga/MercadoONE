@@ -2,6 +2,14 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  createColumnHelper,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from "@tanstack/react-table";
+import { Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -12,24 +20,17 @@ import { RequirePermission } from "@/components/require-permission";
 import { EmptyState, ErrorAlert, LoadingState } from "@/components/ui-states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { useCan } from "@/hooks/use-can";
 import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import { listCategories } from "@/lib/api/categories-api";
@@ -275,6 +276,115 @@ export default function ProductsPage() {
     }
   }
 
+  const columns = useMemo(() => {
+    const helper = createColumnHelper<ProductResponse>();
+    const cols = [
+      helper.accessor("material_code", {
+        header: "Material",
+        cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+      }),
+      helper.accessor("sku", {
+        header: "SKU",
+        cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+      }),
+      helper.accessor("name", {
+        header: "Nome",
+        cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+      }),
+      helper.accessor((row) => categoryMap.get(row.category_id) ?? String(row.category_id), {
+        id: "category",
+        header: "Categoria",
+      }),
+      helper.accessor(
+        (row) =>
+          row.primary_supplier_id ? (supplierMap.get(row.primary_supplier_id) ?? "") : "",
+        {
+          id: "supplier",
+          header: "Fornecedor principal",
+          cell: (info) =>
+            info.row.original.primary_supplier_id ? (
+              info.getValue()
+            ) : (
+              <Badge variant="destructive">Regularização obrigatória</Badge>
+            ),
+        },
+      ),
+      helper.accessor((row) => Number(row.cost_price), {
+        id: "cost_price",
+        header: "Custo",
+        cell: (info) => formatMoney(info.getValue()),
+        meta: { align: "right" },
+      }),
+      helper.accessor((row) => Number(row.sale_price), {
+        id: "sale_price",
+        header: "Venda",
+        cell: (info) => formatMoney(info.getValue()),
+        meta: { align: "right" },
+      }),
+      helper.accessor("is_active", {
+        header: "Status",
+        cell: (info) => (
+          <Badge variant={info.getValue() ? "default" : "secondary"}>
+            {info.getValue() ? "Ativo" : "Inativo"}
+          </Badge>
+        ),
+        enableSorting: false,
+      }),
+      ...(canWrite
+        ? [
+            helper.display({
+              id: "actions",
+              header: "Ações",
+              meta: { align: "right" },
+              cell: (info) => {
+                const item = info.row.original;
+                return (
+                  <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={loadingProductId === item.id}
+                      onClick={() => void openEdit(item)}
+                      aria-label="Editar produto"
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => {
+                        if (confirm(`Excluir produto "${item.name}"?`)) {
+                          remove.mutate(item.id);
+                        }
+                      }}
+                      aria-label="Excluir produto"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                );
+              },
+            }),
+          ]
+        : []),
+    ];
+    return cols;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canWrite, categoryMap, supplierMap, loadingProductId]);
+
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const table = useReactTable({
+    data: products.data ?? [],
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
   return (
     <RequirePermission module="products">
       <PageHeader
@@ -331,81 +441,7 @@ export default function ProductsPage() {
         <EmptyState message="Nenhum produto encontrado." />
       ) : (
         <div className="rounded-xl border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Material</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Fornecedor principal</TableHead>
-                <TableHead className="text-right">Custo</TableHead>
-                <TableHead className="text-right">Venda</TableHead>
-                <TableHead>Status</TableHead>
-                {canWrite ? <TableHead className="text-right">Ações</TableHead> : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products.data.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-mono text-xs">
-                    {item.material_code}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{item.sku}</TableCell>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>
-                    {categoryMap.get(item.category_id) ?? item.category_id}
-                  </TableCell>
-                  <TableCell>
-                    {item.primary_supplier_id
-                      ? (supplierMap.get(item.primary_supplier_id) ??
-                        item.primary_supplier_id)
-                      : (
-                        <Badge variant="destructive">
-                          Regularização obrigatória
-                        </Badge>
-                      )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatMoney(item.cost_price)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatMoney(item.sale_price)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={item.is_active ? "default" : "secondary"}>
-                      {item.is_active ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </TableCell>
-                  {canWrite ? (
-                    <TableCell className="space-x-2 text-right">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={loadingProductId === item.id}
-                        onClick={() => void openEdit(item)}
-                      >
-                        {loadingProductId === item.id ? "Carregando…" : "Editar"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm(`Excluir produto "${item.name}"?`)) {
-                            remove.mutate(item.id);
-                          }
-                        }}
-                      >
-                        Excluir
-                      </Button>
-                    </TableCell>
-                  ) : null}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable table={table} />
         </div>
       )}
 
@@ -431,19 +467,23 @@ export default function ProductsPage() {
         </Button>
       </div>
 
-      <Dialog
+      <Sheet
         open={dialog.open}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) dialog.close();
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>
               {dialog.editing ? "Editar produto" : "Novo produto"}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
+            </SheetTitle>
+          </SheetHeader>
+          <form
+            onSubmit={handleSubmit((values) => save.mutate(values))}
+            noValidate
+            className="flex flex-1 flex-col overflow-y-auto px-4"
+          >
             <div className="grid gap-3 sm:grid-cols-2">
               {dialog.editing ? (
                 <div className="space-y-1.5 sm:col-span-2">
@@ -635,17 +675,17 @@ export default function ProductsPage() {
               </div>
             </div>
             <ErrorAlert message={dialog.error} />
-            <DialogFooter className="mt-4">
+            <SheetFooter className="flex-row justify-end gap-2 border-t border-border px-0">
               <Button type="button" variant="outline" onClick={dialog.close}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={save.isPending}>
                 {save.isPending ? "Salvando…" : "Salvar"}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </RequirePermission>
   );
 }

@@ -2,7 +2,15 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import {
+  createColumnHelper,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from "@tanstack/react-table";
+import { Pencil, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -17,23 +25,16 @@ import { RequirePermission } from "@/components/require-permission";
 import { EmptyState, ErrorAlert, LoadingState } from "@/components/ui-states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useCan } from "@/hooks/use-can";
 import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import {
@@ -185,6 +186,103 @@ export default function SuppliersPage() {
     reset(emptyForm);
   }
 
+  const columns = useMemo(() => {
+    const helper = createColumnHelper<SupplierResponse>();
+    return [
+      helper.accessor((row) => row.code || "—", {
+        id: "code",
+        header: "Código",
+        cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+      }),
+      helper.accessor("name", {
+        header: "Nome",
+        cell: (info) => (
+          <div>
+            <div className="font-medium">{info.getValue()}</div>
+            {info.row.original.trade_name ? (
+              <div className="text-xs text-muted-foreground">{info.row.original.trade_name}</div>
+            ) : null}
+          </div>
+        ),
+      }),
+      helper.accessor("document", {
+        header: "CNPJ",
+        cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+      }),
+      helper.accessor((row) => row.state_registration || "—", {
+        id: "ie",
+        header: "IE",
+        cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+        enableSorting: false,
+      }),
+      helper.accessor((row) => row.email || row.phone || "—", {
+        id: "contact",
+        header: "Contato",
+        cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+        enableSorting: false,
+      }),
+      helper.accessor("is_active", {
+        header: "Status",
+        cell: (info) => (
+          <Badge variant={info.getValue() ? "default" : "secondary"}>
+            {info.getValue() ? "Ativo" : "Inativo"}
+          </Badge>
+        ),
+        enableSorting: false,
+      }),
+      ...(canWrite
+        ? [
+            helper.display({
+              id: "actions",
+              header: "Ações",
+              meta: { align: "right" },
+              cell: (info) => {
+                const item = info.row.original;
+                return (
+                  <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => openEdit(item)}
+                      aria-label="Editar fornecedor"
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => {
+                        if (confirm(`Excluir fornecedor "${item.name}"?`)) {
+                          remove.mutate(item.id);
+                        }
+                      }}
+                      aria-label="Excluir fornecedor"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                );
+              },
+            }),
+          ]
+        : []),
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canWrite]);
+
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const table = useReactTable({
+    data: list.data ?? [],
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
   return (
     <RequirePermission module="suppliers">
       <PageHeader
@@ -211,86 +309,27 @@ export default function SuppliersPage() {
         <EmptyState message="Nenhum fornecedor encontrado." />
       ) : (
         <div className="rounded-xl border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>CNPJ</TableHead>
-                <TableHead>IE</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Status</TableHead>
-                {canWrite ? <TableHead className="text-right">Ações</TableHead> : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {list.data.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>
-                  <TableCell>
-                    <div className="font-medium">{item.name}</div>
-                    {item.trade_name ? (
-                      <div className="text-xs text-muted-foreground">
-                        {item.trade_name}
-                      </div>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{item.document}</TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {item.state_registration || "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {item.email || item.phone || "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={item.is_active ? "default" : "secondary"}>
-                      {item.is_active ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </TableCell>
-                  {canWrite ? (
-                    <TableCell className="space-x-2 text-right">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEdit(item)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm(`Excluir fornecedor "${item.name}"?`)) {
-                            remove.mutate(item.id);
-                          }
-                        }}
-                      >
-                        Excluir
-                      </Button>
-                    </TableCell>
-                  ) : null}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable table={table} />
         </div>
       )}
 
-      <Dialog
+      <Sheet
         open={dialog.open}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) dialog.close();
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>
               {dialog.editing ? "Editar fornecedor" : "Novo fornecedor"}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
+            </SheetTitle>
+          </SheetHeader>
+          <form
+            onSubmit={handleSubmit((values) => save.mutate(values))}
+            noValidate
+            className="flex flex-1 flex-col overflow-y-auto px-4"
+          >
             <div className="grid gap-3 sm:grid-cols-2">
               {dialog.editing ? (
                 <div className="space-y-1.5 sm:col-span-2">
@@ -350,17 +389,17 @@ export default function SuppliersPage() {
               ) : null}
             </div>
             <ErrorAlert message={dialog.error} />
-            <DialogFooter className="mt-4">
+            <SheetFooter className="flex-row justify-end gap-2 border-t border-border px-0">
               <Button type="button" variant="outline" onClick={dialog.close}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={save.isPending}>
                 {save.isPending ? "Salvando…" : "Salvar"}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </RequirePermission>
   );
 }

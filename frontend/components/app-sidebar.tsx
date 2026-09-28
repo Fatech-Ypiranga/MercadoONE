@@ -20,7 +20,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="flex h-full flex-col gap-6 px-3 py-4">
       <div className="px-2">
-        <p className="text-sm font-semibold tracking-tight">PyERP</p>
+        <p className="text-sm font-semibold tracking-tight">MercadoONE</p>
         <p className="truncate text-xs text-muted-foreground">
           {user.company?.trade_name || user.company?.legal_name || "Empresa"}
         </p>

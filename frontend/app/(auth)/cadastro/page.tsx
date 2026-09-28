@@ -98,7 +98,7 @@ export default function CadastroPage() {
             Cadastro de empresa
           </CardTitle>
           <CardDescription>
-            Solicite acesso ao PyERP (até 15 lojas). Sua solicitação será
+            Solicite acesso ao MercadoONE (até 15 lojas). Sua solicitação será
             avaliada pela equipe gestora.
           </CardDescription>
         </CardHeader>
