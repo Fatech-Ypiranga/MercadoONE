@@ -1,11 +1,12 @@
 "use client";
 
-import { Menu } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { useState } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/components/auth-provider";
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
+import { openCommandPalette } from "@/components/command-palette";
 import { StoreSelector } from "@/components/store-selector";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +47,18 @@ export function AppHeader() {
             <AppSidebar onNavigate={() => setOpen(false)} />
           </SheetContent>
         </Sheet>
+
+        <button
+          type="button"
+          onClick={openCommandPalette}
+          className="hidden h-9 w-64 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-ring sm:flex"
+        >
+          <Search className="size-4 shrink-0" />
+          <span className="flex-1 text-left">Buscar…</span>
+          <span className="rounded-md border border-border px-1.5 py-0.5 text-[11px] font-medium">
+            ⌘K
+          </span>
+        </button>
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{companyName}</p>
