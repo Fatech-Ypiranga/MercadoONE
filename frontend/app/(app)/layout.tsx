@@ -4,8 +4,8 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { AppHeader } from "@/components/app-header";
-import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/components/auth-provider";
+import { NavRail } from "@/components/nav-rail";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -32,11 +32,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <div className="flex min-h-screen">
-        <aside className="hidden w-60 shrink-0 border-r border-border lg:block">
-          <div className="sticky top-0 h-screen overflow-y-auto">
-            <AppSidebar />
-          </div>
-        </aside>
+        <div className="sticky top-0 h-screen shrink-0 overflow-y-auto">
+          <NavRail />
+        </div>
 
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader />
