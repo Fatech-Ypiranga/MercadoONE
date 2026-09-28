@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -14,12 +15,18 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -285,44 +292,49 @@ export default function CustomersPage() {
                       {item.is_active ? "Ativo" : "Inativo"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="space-x-2 text-right">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setAddressesFor(item);
-                        setEditingAddress(null);
-                        setAddressForm(emptyAddress);
-                        setAddressError(null);
-                      }}
-                    >
-                      Endereços
-                    </Button>
-                    {canWrite ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEdit(item)}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm(`Excluir cliente "${item.name}"?`)) {
-                              remove.mutate(item.id);
-                            }
-                          }}
-                        >
-                          Excluir
-                        </Button>
-                      </>
-                    ) : null}
+                  <TableCell className="text-right">
+                    <div className="flex justify-end items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setAddressesFor(item);
+                          setEditingAddress(null);
+                          setAddressForm(emptyAddress);
+                          setAddressError(null);
+                        }}
+                      >
+                        Endereços
+                      </Button>
+                      {canWrite ? (
+                        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => openEdit(item)}
+                            aria-label="Editar cliente"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => {
+                              if (confirm(`Excluir cliente "${item.name}"?`)) {
+                                remove.mutate(item.id);
+                              }
+                            }}
+                            aria-label="Excluir cliente"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -331,19 +343,23 @@ export default function CustomersPage() {
         </div>
       )}
 
-      <Dialog
+      <Sheet
         open={dialog.open}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) dialog.close();
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>
               {dialog.editing ? "Editar cliente" : "Novo cliente"}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
+            </SheetTitle>
+          </SheetHeader>
+          <form
+            onSubmit={handleSubmit((values) => save.mutate(values))}
+            noValidate
+            className="flex flex-1 flex-col overflow-y-auto px-4"
+          >
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="cus-name">Nome</Label>
@@ -406,7 +422,7 @@ export default function CustomersPage() {
               ) : null}
             </div>
             <ErrorAlert message={dialog.error} />
-            <DialogFooter className="mt-4">
+            <SheetFooter className="flex-row justify-end gap-2 border-t border-border px-0">
               <Button type="button" variant="outline" onClick={dialog.close}>
                 Cancelar
               </Button>
@@ -418,10 +434,10 @@ export default function CustomersPage() {
               >
                 {save.isPending ? "Salvando…" : "Salvar"}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <Dialog
         open={addressesFor != null}
@@ -477,34 +493,39 @@ export default function CustomersPage() {
                             {addr.city}/{addr.state}
                           </TableCell>
                           {canWrite ? (
-                            <TableCell className="space-x-2 text-right">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingAddress(addr);
-                                  setAddressError(null);
-                                }}
-                              >
-                                Editar
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => {
-                                  if (
-                                    confirm(
-                                      `Excluir endereço "${addr.description}"?`,
-                                    )
-                                  ) {
-                                    removeAddress.mutate(addr.id);
-                                  }
-                                }}
-                              >
-                                Excluir
-                              </Button>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => {
+                                    setEditingAddress(addr);
+                                    setAddressError(null);
+                                  }}
+                                  aria-label="Editar endereço"
+                                >
+                                  <Pencil className="size-3.5" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                  onClick={() => {
+                                    if (
+                                      confirm(
+                                        `Excluir endereço "${addr.description}"?`,
+                                      )
+                                    ) {
+                                      removeAddress.mutate(addr.id);
+                                    }
+                                  }}
+                                  aria-label="Excluir endereço"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           ) : null}
                         </TableRow>

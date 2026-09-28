@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { KeyRound, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -21,6 +22,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -341,66 +349,75 @@ export default function UsersPage() {
                     </Badge>
                   </TableCell>
                   {canWrite ? (
-                    <TableCell className="space-x-2 text-right">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEdit(user)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setPasswordUser(user);
-                          setNewPassword("");
-                        }}
-                      >
-                        Senha
-                      </Button>
-                      {SUPERVISOR_PLUS.has(user.profile) ? (
+                    <TableCell className="text-right">
+                      <div className="flex justify-end items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                        {SUPERVISOR_PLUS.has(user.profile) ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generatePin.mutate(user)}
+                          >
+                            PIN PDV
+                          </Button>
+                        ) : null}
+                        {PDV_ELIGIBLE.has(user.profile) ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            title="Gerar novo ID de PDV"
+                            aria-label="Gerar novo ID de PDV"
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  "Regenerar o ID de PDV? O código anterior deixará de funcionar.",
+                                )
+                              ) {
+                                regeneratePdv.mutate(user.id);
+                              }
+                            }}
+                          >
+                            <RefreshCw className="size-3.5" />
+                          </Button>
+                        ) : null}
                         <Button
                           type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => generatePin.mutate(user)}
-                        >
-                          PIN PDV
-                        </Button>
-                      ) : null}
-                      {PDV_ELIGIBLE.has(user.profile) ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
+                          variant="ghost"
+                          size="icon-sm"
+                          title="Redefinir senha"
+                          aria-label="Redefinir senha"
                           onClick={() => {
-                            if (
-                              confirm(
-                                "Regenerar o ID de PDV? O código anterior deixará de funcionar.",
-                              )
-                            ) {
-                              regeneratePdv.mutate(user.id);
-                            }
+                            setPasswordUser(user);
+                            setNewPassword("");
                           }}
                         >
-                          Novo PDV ID
+                          <KeyRound className="size-3.5" />
                         </Button>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm(`Excluir ${user.full_name}?`)) {
-                            remove.mutate(user.id);
-                          }
-                        }}
-                      >
-                        Excluir
-                      </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => openEdit(user)}
+                          aria-label="Editar usuário"
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => {
+                            if (confirm(`Excluir ${user.full_name}?`)) {
+                              remove.mutate(user.id);
+                            }
+                          }}
+                          aria-label="Excluir usuário"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   ) : null}
                 </TableRow>
@@ -410,17 +427,21 @@ export default function UsersPage() {
         </div>
       )}
 
-      <Dialog
+      <Sheet
         open={dialog.open}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) dialog.close();
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{dialog.editing ? "Editar usuário" : "Novo usuário"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>{dialog.editing ? "Editar usuário" : "Novo usuário"}</SheetTitle>
+          </SheetHeader>
+          <form
+            onSubmit={handleSubmit((values) => save.mutate(values))}
+            noValidate
+            className="flex flex-1 flex-col overflow-y-auto px-4"
+          >
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="usr-name">Nome completo</Label>
@@ -535,17 +556,17 @@ export default function UsersPage() {
               ) : null}
             </div>
             <ErrorAlert message={dialog.error} />
-            <DialogFooter className="mt-4">
+            <SheetFooter className="flex-row justify-end gap-2 border-t border-border px-0">
               <Button type="button" variant="outline" onClick={dialog.close}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={save.isPending}>
                 {save.isPending ? "Salvando…" : "Salvar"}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <Dialog
         open={passwordUser != null}

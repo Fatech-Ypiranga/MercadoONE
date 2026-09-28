@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -11,15 +12,15 @@ import { RequirePermission } from "@/components/require-permission";
 import { EmptyState, ErrorAlert, LoadingState } from "@/components/ui-states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -142,38 +143,44 @@ export default function CategoriesPage() {
           </Badge>
         </TableCell>
         {canWrite ? (
-          <TableCell className="space-x-2 text-right">
-            {!isChild && (
+          <TableCell className="text-right">
+            <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+              {!isChild && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => openCreate(item.id)}
+                  title="Adicionar subcategoria"
+                  aria-label="Adicionar subcategoria"
+                >
+                  +
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
-                onClick={() => openCreate(item.id)}
-                title="Adicionar subcategoria"
+                size="icon-sm"
+                onClick={() => openEdit(item)}
+                aria-label="Editar categoria"
               >
-                + Sub
+                <Pencil className="size-3.5" />
               </Button>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => openEdit(item)}
-            >
-              Editar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                if (confirm(`Excluir categoria "${item.name}"?`)) {
-                  remove.mutate(item.id);
-                }
-              }}
-            >
-              Excluir
-            </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => {
+                  if (confirm(`Excluir categoria "${item.name}"?`)) {
+                    remove.mutate(item.id);
+                  }
+                }}
+                aria-label="Excluir categoria"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
           </TableCell>
         ) : null}
       </TableRow>
@@ -233,23 +240,27 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      <Dialog
+      <Sheet
         open={dialog.open}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) dialog.close();
         }}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
+        <SheetContent side="right" className="w-full sm:max-w-sm">
+          <SheetHeader>
+            <SheetTitle>
               {dialog.editing
                 ? "Editar categoria"
                 : parentId
                 ? "Nova subcategoria"
                 : "Nova categoria"}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
+            </SheetTitle>
+          </SheetHeader>
+          <form
+            onSubmit={handleSubmit((values) => save.mutate(values))}
+            noValidate
+            className="flex flex-1 flex-col overflow-y-auto px-4"
+          >
             <div className="space-y-3">
               {parentId && !dialog.editing && (
                 <p className="text-sm text-muted-foreground">
@@ -289,17 +300,17 @@ export default function CategoriesPage() {
               </div>
               <ErrorAlert message={dialog.error} />
             </div>
-            <DialogFooter className="mt-4">
+            <SheetFooter className="flex-row justify-end gap-2 border-t border-border px-0">
               <Button type="button" variant="outline" onClick={dialog.close}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={save.isPending}>
                 {save.isPending ? "Salvando…" : "Salvar"}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </RequirePermission>
   );
 }
