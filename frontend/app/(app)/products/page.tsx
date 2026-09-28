@@ -2,7 +2,15 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2 } from "lucide-react";
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from "@tanstack/react-table";
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -276,6 +284,115 @@ export default function ProductsPage() {
     }
   }
 
+  const columns = useMemo(() => {
+    const helper = createColumnHelper<ProductResponse>();
+    const cols = [
+      helper.accessor("material_code", {
+        header: "Material",
+        cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+      }),
+      helper.accessor("sku", {
+        header: "SKU",
+        cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+      }),
+      helper.accessor("name", {
+        header: "Nome",
+        cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+      }),
+      helper.accessor((row) => categoryMap.get(row.category_id) ?? String(row.category_id), {
+        id: "category",
+        header: "Categoria",
+      }),
+      helper.accessor(
+        (row) =>
+          row.primary_supplier_id ? (supplierMap.get(row.primary_supplier_id) ?? "") : "",
+        {
+          id: "supplier",
+          header: "Fornecedor principal",
+          cell: (info) =>
+            info.row.original.primary_supplier_id ? (
+              info.getValue()
+            ) : (
+              <Badge variant="destructive">Regularização obrigatória</Badge>
+            ),
+        },
+      ),
+      helper.accessor((row) => Number(row.cost_price), {
+        id: "cost_price",
+        header: "Custo",
+        cell: (info) => formatMoney(info.getValue()),
+        meta: { align: "right" },
+      }),
+      helper.accessor((row) => Number(row.sale_price), {
+        id: "sale_price",
+        header: "Venda",
+        cell: (info) => formatMoney(info.getValue()),
+        meta: { align: "right" },
+      }),
+      helper.accessor("is_active", {
+        header: "Status",
+        cell: (info) => (
+          <Badge variant={info.getValue() ? "default" : "secondary"}>
+            {info.getValue() ? "Ativo" : "Inativo"}
+          </Badge>
+        ),
+        enableSorting: false,
+      }),
+      ...(canWrite
+        ? [
+            helper.display({
+              id: "actions",
+              header: "Ações",
+              meta: { align: "right" },
+              cell: (info) => {
+                const item = info.row.original;
+                return (
+                  <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={loadingProductId === item.id}
+                      onClick={() => void openEdit(item)}
+                      aria-label="Editar produto"
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => {
+                        if (confirm(`Excluir produto "${item.name}"?`)) {
+                          remove.mutate(item.id);
+                        }
+                      }}
+                      aria-label="Excluir produto"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                );
+              },
+            }),
+          ]
+        : []),
+    ];
+    return cols;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canWrite, categoryMap, supplierMap, loadingProductId]);
+
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const table = useReactTable({
+    data: products.data ?? [],
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
   return (
     <RequirePermission module="products">
       <PageHeader
@@ -334,80 +451,53 @@ export default function ProductsPage() {
         <div className="rounded-xl border border-border">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Material</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Fornecedor principal</TableHead>
-                <TableHead className="text-right">Custo</TableHead>
-                <TableHead className="text-right">Venda</TableHead>
-                <TableHead>Status</TableHead>
-                {canWrite ? <TableHead className="text-right">Ações</TableHead> : null}
-              </TableRow>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    const align = (header.column.columnDef.meta as { align?: string } | undefined)
+                      ?.align;
+                    const sortDir = header.column.getIsSorted();
+                    return (
+                      <TableHead
+                        key={header.id}
+                        className={align === "right" ? "text-right" : undefined}
+                      >
+                        {header.column.getCanSort() ? (
+                          <button
+                            type="button"
+                            onClick={header.column.getToggleSortingHandler()}
+                            className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {sortDir === "asc" ? (
+                              <ArrowUp className="size-3" />
+                            ) : sortDir === "desc" ? (
+                              <ArrowDown className="size-3" />
+                            ) : (
+                              <ArrowUpDown className="size-3 opacity-40" />
+                            )}
+                          </button>
+                        ) : (
+                          flexRender(header.column.columnDef.header, header.getContext())
+                        )}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
-              {products.data.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-mono text-xs">
-                    {item.material_code}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{item.sku}</TableCell>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>
-                    {categoryMap.get(item.category_id) ?? item.category_id}
-                  </TableCell>
-                  <TableCell>
-                    {item.primary_supplier_id
-                      ? (supplierMap.get(item.primary_supplier_id) ??
-                        item.primary_supplier_id)
-                      : (
-                        <Badge variant="destructive">
-                          Regularização obrigatória
-                        </Badge>
-                      )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatMoney(item.cost_price)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatMoney(item.sale_price)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={item.is_active ? "default" : "secondary"}>
-                      {item.is_active ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </TableCell>
-                  {canWrite ? (
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          disabled={loadingProductId === item.id}
-                          onClick={() => void openEdit(item)}
-                          aria-label="Editar produto"
-                        >
-                          <Pencil className="size-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => {
-                            if (confirm(`Excluir produto "${item.name}"?`)) {
-                              remove.mutate(item.id);
-                            }
-                          }}
-                          aria-label="Excluir produto"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  ) : null}
+              {table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => {
+                    const align = (cell.column.columnDef.meta as { align?: string } | undefined)
+                      ?.align;
+                    return (
+                      <TableCell key={cell.id} className={align === "right" ? "text-right" : undefined}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))}
             </TableBody>
