@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth-provider";
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { openCommandPalette } from "@/components/command-palette";
 import { StoreSelector } from "@/components/store-selector";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -68,6 +69,7 @@ export function AppHeader() {
         </div>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <StoreSelector />
           <ChangePasswordDialog />
           <Button type="button" variant="outline" size="sm" onClick={logout}>
