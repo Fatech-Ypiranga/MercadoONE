@@ -4,13 +4,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createColumnHelper,
-  flexRender,
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -21,6 +20,7 @@ import { RequirePermission } from "@/components/require-permission";
 import { EmptyState, ErrorAlert, LoadingState } from "@/components/ui-states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -31,14 +31,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useCan } from "@/hooks/use-can";
 import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import { listCategories } from "@/lib/api/categories-api";
@@ -449,59 +441,7 @@ export default function ProductsPage() {
         <EmptyState message="Nenhum produto encontrado." />
       ) : (
         <div className="rounded-xl border border-border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    const align = (header.column.columnDef.meta as { align?: string } | undefined)
-                      ?.align;
-                    const sortDir = header.column.getIsSorted();
-                    return (
-                      <TableHead
-                        key={header.id}
-                        className={align === "right" ? "text-right" : undefined}
-                      >
-                        {header.column.getCanSort() ? (
-                          <button
-                            type="button"
-                            onClick={header.column.getToggleSortingHandler()}
-                            className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}
-                          >
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            {sortDir === "asc" ? (
-                              <ArrowUp className="size-3" />
-                            ) : sortDir === "desc" ? (
-                              <ArrowDown className="size-3" />
-                            ) : (
-                              <ArrowUpDown className="size-3 opacity-40" />
-                            )}
-                          </button>
-                        ) : (
-                          flexRender(header.column.columnDef.header, header.getContext())
-                        )}
-                      </TableHead>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => {
-                    const align = (cell.column.columnDef.meta as { align?: string } | undefined)
-                      ?.align;
-                    return (
-                      <TableCell key={cell.id} className={align === "right" ? "text-right" : undefined}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable table={table} />
         </div>
       )}
 

@@ -2,6 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  createColumnHelper,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -18,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -241,6 +249,103 @@ export default function CustomersPage() {
     setIncludeAddress(false);
   }
 
+  const columns = useMemo(() => {
+    const helper = createColumnHelper<CustomerResponse>();
+    return [
+      helper.accessor("name", {
+        header: "Nome",
+        cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+      }),
+      helper.accessor("document", {
+        header: "Documento",
+        cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+      }),
+      helper.accessor((row) => (row.customer_type === "J" ? "PJ" : "PF"), {
+        id: "type",
+        header: "Tipo",
+        enableSorting: false,
+      }),
+      helper.accessor((row) => row.email || row.phone || "—", {
+        id: "contact",
+        header: "Contato",
+        cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+        enableSorting: false,
+      }),
+      helper.accessor("is_active", {
+        header: "Status",
+        cell: (info) => (
+          <Badge variant={info.getValue() ? "default" : "secondary"}>
+            {info.getValue() ? "Ativo" : "Inativo"}
+          </Badge>
+        ),
+        enableSorting: false,
+      }),
+      helper.display({
+        id: "actions",
+        header: "Ações",
+        meta: { align: "right" },
+        cell: (info) => {
+          const item = info.row.original;
+          return (
+            <div className="flex justify-end items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setAddressesFor(item);
+                  setEditingAddress(null);
+                  setAddressForm(emptyAddress);
+                  setAddressError(null);
+                }}
+              >
+                Endereços
+              </Button>
+              {canWrite ? (
+                <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => openEdit(item)}
+                    aria-label="Editar cliente"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => {
+                      if (confirm(`Excluir cliente "${item.name}"?`)) {
+                        remove.mutate(item.id);
+                      }
+                    }}
+                    aria-label="Excluir cliente"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          );
+        },
+      }),
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canWrite]);
+
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const table = useReactTable({
+    data: filtered,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
   return (
     <RequirePermission module="customers">
       <PageHeader
@@ -267,79 +372,7 @@ export default function CustomersPage() {
         <EmptyState message="Nenhum cliente encontrado." />
       ) : (
         <div className="rounded-xl border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Documento</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell className="font-mono text-xs">{item.document}</TableCell>
-                  <TableCell>{item.customer_type === "J" ? "PJ" : "PF"}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {item.email || item.phone || "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={item.is_active ? "default" : "secondary"}>
-                      {item.is_active ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end items-center gap-1">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setAddressesFor(item);
-                          setEditingAddress(null);
-                          setAddressForm(emptyAddress);
-                          setAddressError(null);
-                        }}
-                      >
-                        Endereços
-                      </Button>
-                      {canWrite ? (
-                        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => openEdit(item)}
-                            aria-label="Editar cliente"
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => {
-                              if (confirm(`Excluir cliente "${item.name}"?`)) {
-                                remove.mutate(item.id);
-                              }
-                            }}
-                            aria-label="Excluir cliente"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable table={table} />
         </div>
       )}
 

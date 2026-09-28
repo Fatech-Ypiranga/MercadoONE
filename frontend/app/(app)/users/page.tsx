@@ -2,6 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  createColumnHelper,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from "@tanstack/react-table";
 import { KeyRound, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -20,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -29,14 +37,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useCan } from "@/hooks/use-can";
 import { useEntityDialog } from "@/hooks/use-entity-dialog";
 import { listBranches } from "@/lib/api/org-api";
@@ -264,6 +264,144 @@ export default function UsersPage() {
     });
   }
 
+  const columns = useMemo(() => {
+    const helper = createColumnHelper<UserResponse>();
+    return [
+      helper.accessor("full_name", {
+        header: "Nome",
+        cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+      }),
+      helper.accessor((row) => row.email || row.username || "—", {
+        id: "login",
+        header: "Login",
+        cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+      }),
+      helper.accessor("profile", { header: "Perfil" }),
+      helper.accessor((row) => row.pdv_id || "—", {
+        id: "pdv_id",
+        header: "PDV ID",
+        cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+        enableSorting: false,
+      }),
+      helper.display({
+        id: "pdv_pin",
+        header: "PIN PDV",
+        cell: (info) => {
+          const user = info.row.original;
+          return SUPERVISOR_PLUS.has(user.profile) ? (
+            <Badge variant={user.has_pdv_pin ? "default" : "secondary"}>
+              {user.has_pdv_pin ? "Definido" : "Ausente"}
+            </Badge>
+          ) : (
+            "—"
+          );
+        },
+      }),
+      helper.accessor("is_active", {
+        header: "Status",
+        cell: (info) => (
+          <Badge variant={info.getValue() ? "default" : "secondary"}>
+            {info.getValue() ? "Ativo" : "Inativo"}
+          </Badge>
+        ),
+        enableSorting: false,
+      }),
+      ...(canWrite
+        ? [
+            helper.display({
+              id: "actions",
+              header: "Ações",
+              meta: { align: "right" },
+              cell: (info) => {
+                const user = info.row.original;
+                return (
+                  <div className="flex justify-end items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    {SUPERVISOR_PLUS.has(user.profile) ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => generatePin.mutate(user)}
+                      >
+                        PIN PDV
+                      </Button>
+                    ) : null}
+                    {PDV_ELIGIBLE.has(user.profile) ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        title="Gerar novo ID de PDV"
+                        aria-label="Gerar novo ID de PDV"
+                        onClick={() => {
+                          if (
+                            confirm(
+                              "Regenerar o ID de PDV? O código anterior deixará de funcionar.",
+                            )
+                          ) {
+                            regeneratePdv.mutate(user.id);
+                          }
+                        }}
+                      >
+                        <RefreshCw className="size-3.5" />
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      title="Redefinir senha"
+                      aria-label="Redefinir senha"
+                      onClick={() => {
+                        setPasswordUser(user);
+                        setNewPassword("");
+                      }}
+                    >
+                      <KeyRound className="size-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => openEdit(user)}
+                      aria-label="Editar usuário"
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => {
+                        if (confirm(`Excluir ${user.full_name}?`)) {
+                          remove.mutate(user.id);
+                        }
+                      }}
+                      aria-label="Excluir usuário"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                );
+              },
+            }),
+          ]
+        : []),
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canWrite]);
+
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const table = useReactTable({
+    data: list.data ?? [],
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
   return (
     <RequirePermission module="users">
       <PageHeader
@@ -311,119 +449,7 @@ export default function UsersPage() {
         <EmptyState message="Nenhum usuário encontrado." />
       ) : (
         <div className="rounded-xl border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Login</TableHead>
-                <TableHead>Perfil</TableHead>
-                <TableHead>PDV ID</TableHead>
-                <TableHead>PIN PDV</TableHead>
-                <TableHead>Status</TableHead>
-                {canWrite ? <TableHead className="text-right">Ações</TableHead> : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {list.data.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.full_name}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {user.email || user.username || "—"}
-                  </TableCell>
-                  <TableCell>{user.profile}</TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {user.pdv_id || "—"}
-                  </TableCell>
-                  <TableCell>
-                    {SUPERVISOR_PLUS.has(user.profile) ? (
-                      <Badge variant={user.has_pdv_pin ? "default" : "secondary"}>
-                        {user.has_pdv_pin ? "Definido" : "Ausente"}
-                      </Badge>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.is_active ? "default" : "secondary"}>
-                      {user.is_active ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </TableCell>
-                  {canWrite ? (
-                    <TableCell className="text-right">
-                      <div className="flex justify-end items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                        {SUPERVISOR_PLUS.has(user.profile) ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => generatePin.mutate(user)}
-                          >
-                            PIN PDV
-                          </Button>
-                        ) : null}
-                        {PDV_ELIGIBLE.has(user.profile) ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            title="Gerar novo ID de PDV"
-                            aria-label="Gerar novo ID de PDV"
-                            onClick={() => {
-                              if (
-                                confirm(
-                                  "Regenerar o ID de PDV? O código anterior deixará de funcionar.",
-                                )
-                              ) {
-                                regeneratePdv.mutate(user.id);
-                              }
-                            }}
-                          >
-                            <RefreshCw className="size-3.5" />
-                          </Button>
-                        ) : null}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          title="Redefinir senha"
-                          aria-label="Redefinir senha"
-                          onClick={() => {
-                            setPasswordUser(user);
-                            setNewPassword("");
-                          }}
-                        >
-                          <KeyRound className="size-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => openEdit(user)}
-                          aria-label="Editar usuário"
-                        >
-                          <Pencil className="size-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => {
-                            if (confirm(`Excluir ${user.full_name}?`)) {
-                              remove.mutate(user.id);
-                            }
-                          }}
-                          aria-label="Excluir usuário"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  ) : null}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable table={table} />
         </div>
       )}
 
