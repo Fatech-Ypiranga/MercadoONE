@@ -62,7 +62,7 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md border-border/80 shadow-sm">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-semibold tracking-tight">PyERP</CardTitle>
+        <CardTitle className="text-2xl font-semibold tracking-tight">MercadoONE</CardTitle>
         <CardDescription>
           Entre com o CNPJ da empresa, e-mail ou usuário e senha.
         </CardDescription>

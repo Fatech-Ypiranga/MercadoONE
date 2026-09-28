@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PyERP",
-  description: "Painel administrativo PyERP",
+  title: "MercadoONE",
+  description: "Painel administrativo MercadoONE",
 };
 
 export default function RootLayout({
