@@ -1,9 +1,10 @@
 import os
 from datetime import datetime, timedelta, timezone
 
+import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
-from jose import JWTError, jwt
+from jwt import InvalidTokenError
 from passlib.context import CryptContext
 
 # bcrypt_sha256 avoids silent 72-byte truncation; bcrypt kept for legacy hashes.
@@ -157,5 +158,5 @@ def decode_and_require_access_token(token: str) -> dict:
     typ = payload.get("typ")
     # Legacy access tokens (pre-typ claim) are treated as access.
     if typ is not None and typ != ACCESS_TOKEN_TYP:
-        raise JWTError("Token type is not an access token.")
+        raise InvalidTokenError("Token type is not an access token.")
     return payload

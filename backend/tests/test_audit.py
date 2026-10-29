@@ -45,7 +45,7 @@ def test_operador_cannot_access_audit_log(operador_client: TestClient):
 def test_audit_log_filters_by_user_id(
     client: TestClient, category: dict, supplier: dict, admin_token: str
 ):
-    from jose import jwt
+    import jwt
 
     from shared.identity.security import JWT_ALGORITHM, JWT_SECRET
 

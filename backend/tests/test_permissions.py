@@ -90,7 +90,7 @@ def test_colaborador_can_list_products(colaborador_client: TestClient):
 
 
 def test_sale_user_id_from_token(client: TestClient, stocked_product: dict, admin_token: str):
-    from jose import jwt
+    import jwt
 
     from shared.identity.security import JWT_ALGORITHM, JWT_SECRET
 
