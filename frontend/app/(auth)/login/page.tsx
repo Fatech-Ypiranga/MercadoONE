@@ -19,7 +19,9 @@ export default function LoginPage() {
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-muted/30">
-        <p className="text-sm text-muted-foreground">Carregando…</p>
+        <p role="status" className="text-sm text-muted-foreground">
+          Carregando…
+        </p>
       </main>
     );
   }

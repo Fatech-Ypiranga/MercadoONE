@@ -398,7 +398,7 @@ export default function CustomersPage() {
                 <Label htmlFor="cus-name">Nome</Label>
                 <Input id="cus-name" aria-invalid={Boolean(errors.name)} {...register("name")} />
                 {errors.name ? (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.name.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -409,7 +409,7 @@ export default function CustomersPage() {
                   {...register("document")}
                 />
                 {errors.document ? (
-                  <p className="text-sm text-destructive">{errors.document.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.document.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">

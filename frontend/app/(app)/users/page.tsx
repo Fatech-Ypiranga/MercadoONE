@@ -477,14 +477,14 @@ export default function UsersPage() {
                   {...register("full_name")}
                 />
                 {errors.full_name ? (
-                  <p className="text-sm text-destructive">{errors.full_name.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.full_name.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="usr-cpf">CPF</Label>
                 <Input id="usr-cpf" aria-invalid={Boolean(errors.cpf)} {...register("cpf")} />
                 {errors.cpf ? (
-                  <p className="text-sm text-destructive">{errors.cpf.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.cpf.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -509,7 +509,7 @@ export default function UsersPage() {
                   {...register("email")}
                 />
                 {errors.email ? (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.email.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -520,7 +520,7 @@ export default function UsersPage() {
                   {...register("username")}
                 />
                 {errors.username ? (
-                  <p className="text-sm text-destructive">{errors.username.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.username.message}</p>
                 ) : null}
               </div>
               {!dialog.editing ? (
@@ -533,7 +533,7 @@ export default function UsersPage() {
                     {...register("password")}
                   />
                   {errors.password ? (
-                    <p className="text-sm text-destructive">{errors.password.message}</p>
+                    <p role="alert" className="text-sm text-destructive">{errors.password.message}</p>
                   ) : null}
                 </div>
               ) : null}

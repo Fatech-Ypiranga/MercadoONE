@@ -30,11 +30,16 @@ export function NavRail() {
   return (
     <div className="hidden lg:flex">
       {/* Icon rail */}
-      <div className="flex w-16 shrink-0 flex-col items-center gap-2 bg-sidebar py-4">
-        <div className="mb-2 flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-[13px] font-bold text-sidebar-primary-foreground">
+      <nav
+        aria-label="Seções"
+        className="flex w-16 shrink-0 flex-col items-center gap-2 bg-sidebar py-4"
+      >
+        <div
+          aria-hidden
+          className="mb-2 flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-[13px] font-bold text-sidebar-primary-foreground">
           M1
         </div>
-        <div className="mb-1 h-px w-8 bg-sidebar-border" />
+        <div aria-hidden className="mb-1 h-px w-8 bg-sidebar-border" />
         {sections.map((section) => {
           const Icon = section.icon;
           const active = section.title === activeSection.title;
@@ -43,6 +48,8 @@ export function NavRail() {
               key={section.title}
               href={section.items[0].href}
               title={section.title}
+              aria-label={section.title}
+              aria-current={active ? "true" : undefined}
               className={cn(
                 "flex size-10 items-center justify-center rounded-lg transition-colors",
                 active
@@ -50,14 +57,14 @@ export function NavRail() {
                   : "text-sidebar-foreground/55 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
               )}
             >
-              <Icon className="size-[18px]" />
+              <Icon className="size-[18px]" aria-hidden />
             </Link>
           );
         })}
-      </div>
+      </nav>
 
       {/* Contextual sub-rail */}
-      <div className="w-52 shrink-0 border-r border-border bg-card px-3 py-4">
+      <nav aria-label={activeSection.title} className="w-52 shrink-0 border-r border-border bg-card px-3 py-4">
         <div className="mb-5 px-2">
           <p className="text-sm font-semibold tracking-tight">MercadoONE</p>
           <p className="truncate text-xs text-muted-foreground">
@@ -76,6 +83,7 @@ export function NavRail() {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex items-center gap-2.5 rounded-md px-2 py-[7px] text-[13px] transition-colors",
                     active
@@ -90,7 +98,7 @@ export function NavRail() {
             );
           })}
         </ul>
-      </div>
+      </nav>
     </div>
   );
 }

@@ -495,14 +495,14 @@ export default function ProductsPage() {
                 <Label htmlFor="prod-name">Nome</Label>
                 <Input id="prod-name" aria-invalid={Boolean(errors.name)} {...register("name")} />
                 {errors.name ? (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.name.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="prod-sku">SKU</Label>
                 <Input id="prod-sku" aria-invalid={Boolean(errors.sku)} {...register("sku")} />
                 {errors.sku ? (
-                  <p className="text-sm text-destructive">{errors.sku.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.sku.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -571,7 +571,7 @@ export default function ProductsPage() {
                   ))}
                 </select>
                 {errors.category_id ? (
-                  <p className="text-sm text-destructive">{errors.category_id.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.category_id.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -591,7 +591,7 @@ export default function ProductsPage() {
                   ))}
                 </select>
                 {errors.primary_supplier_id ? (
-                  <p className="text-sm text-destructive">
+                  <p role="alert" className="text-sm text-destructive">
                     {errors.primary_supplier_id.message}
                   </p>
                 ) : dialog.editing != null && dialog.editing.primary_supplier_id == null ? (
@@ -634,7 +634,7 @@ export default function ProductsPage() {
                   {...register("ncm")}
                 />
                 {errors.ncm ? (
-                  <p className="text-sm text-destructive">{errors.ncm.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.ncm.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -651,7 +651,7 @@ export default function ProductsPage() {
                   {...register("cfop_default")}
                 />
                 {errors.cfop_default ? (
-                  <p className="text-sm text-destructive">{errors.cfop_default.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.cfop_default.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -670,7 +670,7 @@ export default function ProductsPage() {
                   ))}
                 </select>
                 {errors.origem_produto ? (
-                  <p className="text-sm text-destructive">{errors.origem_produto.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.origem_produto.message}</p>
                 ) : null}
               </div>
             </div>

@@ -38,5 +38,9 @@ export function EmptyState({
 }
 
 export function LoadingState({ message = "Carregando…" }: { message?: string }) {
-  return <p className="text-sm text-muted-foreground">{message}</p>;
+  return (
+    <p role="status" className="text-sm text-muted-foreground">
+      {message}
+    </p>
+  );
 }

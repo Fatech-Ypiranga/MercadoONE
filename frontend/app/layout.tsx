@@ -3,6 +3,7 @@ import { Geist_Mono, IBM_Plex_Sans } from "next/font/google";
 
 import { AuthProvider } from "@/components/auth-provider";
 import { Providers } from "@/components/providers";
+import { COLOR_VISION_INIT_SCRIPT } from "@/lib/color-vision";
 
 import "./globals.css";
 
@@ -29,6 +30,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: COLOR_VISION_INIT_SCRIPT }} />
+      </head>
       <body className={`${plexSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
           <AuthProvider>{children}</AuthProvider>

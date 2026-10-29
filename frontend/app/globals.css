@@ -124,11 +124,101 @@
   --sidebar-ring: oklch(0.7 0.09 262);
 }
 
+/*
+ * Modos para daltonismo (atributo data-cvd no <html>, ver lib/color-vision.ts).
+ * Só trocamos as cores com significado (sucesso/erro/gráficos); a marca navy
+ * continua igual. Base: paleta Okabe-Ito, segura para os três tipos de
+ * dicromacia, com pares escolhidos para diferir também em luminosidade.
+ */
+
+/* Protanopia/protanomalia: vermelho fica escuro e confunde com verde.
+   Erro = laranja claro, sucesso = azul. */
+[data-cvd="protanopia"] {
+  --destructive: oklch(0.56 0.15 60);
+  --success: oklch(0.5 0.13 245);
+  --success-foreground: oklch(0.985 0 0);
+  --chart-2: oklch(0.5 0.13 245);
+  --chart-3: oklch(0.72 0.15 70);
+  --chart-4: oklch(0.73 0.11 235);
+}
+.dark[data-cvd="protanopia"] {
+  --destructive: oklch(0.76 0.15 70);
+  --success: oklch(0.72 0.11 240);
+  --success-foreground: oklch(0.16 0.02 240);
+  --chart-2: oklch(0.72 0.11 240);
+  --chart-3: oklch(0.78 0.15 70);
+  --chart-4: oklch(0.6 0.012 260);
+}
+
+/* Deuteranopia/deuteranomalia: verde e vermelho se confundem.
+   Erro = vermelhão (laranja-avermelhado), sucesso = azul. */
+[data-cvd="deuteranopia"] {
+  --destructive: oklch(0.56 0.17 42);
+  --success: oklch(0.5 0.13 245);
+  --success-foreground: oklch(0.985 0 0);
+  --chart-2: oklch(0.5 0.13 245);
+  --chart-3: oklch(0.62 0.18 45);
+  --chart-4: oklch(0.73 0.11 235);
+}
+.dark[data-cvd="deuteranopia"] {
+  --destructive: oklch(0.7 0.16 45);
+  --success: oklch(0.72 0.11 240);
+  --success-foreground: oklch(0.16 0.02 240);
+  --chart-2: oklch(0.72 0.11 240);
+  --chart-3: oklch(0.7 0.16 45);
+  --chart-4: oklch(0.6 0.012 260);
+}
+
+/* Tritanopia/tritanomalia: azul confunde com verde e amarelo com violeta.
+   Erro = vermelho-rosado, sucesso = ciano/teal (contraste vermelho×ciano). */
+[data-cvd="tritanopia"] {
+  --destructive: oklch(0.55 0.2 15);
+  --success: oklch(0.52 0.09 200);
+  --success-foreground: oklch(0.985 0 0);
+  --chart-2: oklch(0.62 0.1 200);
+  --chart-3: oklch(0.55 0.2 15);
+  --chart-4: oklch(0.3 0.01 260);
+}
+.dark[data-cvd="tritanopia"] {
+  --destructive: oklch(0.68 0.19 15);
+  --success: oklch(0.76 0.1 200);
+  --success-foreground: oklch(0.16 0.02 200);
+  --chart-2: oklch(0.76 0.1 200);
+  --chart-3: oklch(0.68 0.19 15);
+  --chart-4: oklch(0.92 0.005 260);
+}
+
+/* Acromatopsia: sem percepção de cor — tudo se distingue por luminosidade. */
+[data-cvd="achromatopsia"] {
+  --destructive: oklch(0.25 0 0);
+  --success: oklch(0.5 0 0);
+  --success-foreground: oklch(1 0 0);
+  --chart-1: oklch(0.25 0 0);
+  --chart-2: oklch(0.45 0 0);
+  --chart-3: oklch(0.62 0 0);
+  --chart-4: oklch(0.76 0 0);
+  --chart-5: oklch(0.88 0 0);
+}
+.dark[data-cvd="achromatopsia"] {
+  --destructive: oklch(0.97 0 0);
+  --success: oklch(0.72 0 0);
+  --success-foreground: oklch(0.15 0 0);
+  --chart-1: oklch(0.95 0 0);
+  --chart-2: oklch(0.78 0 0);
+  --chart-3: oklch(0.62 0 0);
+  --chart-4: oklch(0.48 0 0);
+  --chart-5: oklch(0.36 0 0);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground font-sans;
+  }
+  /* Pista que não depende de cor: erros ficam em negrito nos modos daltônicos. */
+  [data-cvd] .text-destructive {
+    font-weight: 600;
   }
 }
