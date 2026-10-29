@@ -282,14 +282,14 @@ export default function CategoriesPage() {
                   })}
                 />
                 {errors.name ? (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.name.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="cat-slug">Slug</Label>
                 <Input id="cat-slug" aria-invalid={Boolean(errors.slug)} {...register("slug")} />
                 {errors.slug ? (
-                  <p className="text-sm text-destructive">{errors.slug.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.slug.message}</p>
                 ) : null}
               </div>
               <div className="flex items-center gap-2 text-sm">

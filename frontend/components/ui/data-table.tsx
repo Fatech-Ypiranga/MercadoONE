@@ -18,7 +18,13 @@ export function DataTable<T>({ table }: { table: TanStackTable<T> }) {
             {headerGroup.headers.map((header) => {
               const sortDir = header.column.getIsSorted();
               return (
-                <TableHead key={header.id} className={align(header.column.columnDef.meta)}>
+                <TableHead
+                  key={header.id}
+                  className={align(header.column.columnDef.meta)}
+                  aria-sort={
+                    sortDir === "asc" ? "ascending" : sortDir === "desc" ? "descending" : undefined
+                  }
+                >
                   {header.column.getCanSort() ? (
                     <button
                       type="button"
@@ -29,12 +35,19 @@ export function DataTable<T>({ table }: { table: TanStackTable<T> }) {
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
                       {sortDir === "asc" ? (
-                        <ArrowUp className="size-3" />
+                        <ArrowUp className="size-3" aria-hidden />
                       ) : sortDir === "desc" ? (
-                        <ArrowDown className="size-3" />
+                        <ArrowDown className="size-3" aria-hidden />
                       ) : (
-                        <ArrowUpDown className="size-3 opacity-40" />
+                        <ArrowUpDown className="size-3 opacity-40" aria-hidden />
                       )}
+                      <span className="sr-only">
+                        {sortDir === "asc"
+                          ? ", em ordem crescente"
+                          : sortDir === "desc"
+                            ? ", em ordem decrescente"
+                            : ", ordenar"}
+                      </span>
                     </button>
                   ) : (
                     flexRender(header.column.columnDef.header, header.getContext())

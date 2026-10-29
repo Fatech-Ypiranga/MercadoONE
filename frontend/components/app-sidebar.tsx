@@ -18,7 +18,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   });
 
   return (
-    <nav className="flex h-full flex-col gap-6 px-3 py-4">
+    <nav aria-label="Menu principal" className="flex h-full flex-col gap-6 px-3 py-4">
       <div className="px-2">
         <p className="text-sm font-semibold tracking-tight">MercadoONE</p>
         <p className="truncate text-xs text-muted-foreground">
@@ -42,6 +42,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   <Link
                     href={item.href}
                     onClick={onNavigate}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
                       "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors",
                       active

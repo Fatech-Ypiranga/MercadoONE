@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/components/auth-provider";
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
+import { ColorVisionSelect } from "@/components/color-vision-select";
 import { openCommandPalette } from "@/components/command-palette";
 import { StoreSelector } from "@/components/store-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -35,6 +36,7 @@ export function AppHeader() {
           size="icon-sm"
           className="lg:hidden"
           aria-label="Abrir menu"
+          aria-expanded={open}
           onClick={() => setOpen(true)}
         >
           <Menu className="size-4" />
@@ -52,11 +54,15 @@ export function AppHeader() {
         <button
           type="button"
           onClick={openCommandPalette}
+          aria-keyshortcuts="Control+K Meta+K"
           className="hidden h-9 w-64 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-ring sm:flex"
         >
           <Search className="size-4 shrink-0" />
           <span className="flex-1 text-left">Buscar…</span>
-          <span className="rounded-md border border-border px-1.5 py-0.5 text-[11px] font-medium">
+          <span
+            aria-hidden
+            className="rounded-md border border-border px-1.5 py-0.5 text-[11px] font-medium"
+          >
             ⌘K
           </span>
         </button>
@@ -70,6 +76,7 @@ export function AppHeader() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <ColorVisionSelect />
           <StoreSelector />
           <ChangePasswordDialog />
           <Button type="button" variant="outline" size="sm" onClick={logout}>

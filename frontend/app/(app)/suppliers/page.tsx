@@ -341,7 +341,7 @@ export default function SuppliersPage() {
                 <Label htmlFor="sup-name">Razão social</Label>
                 <Input id="sup-name" aria-invalid={Boolean(errors.name)} {...register("name")} />
                 {errors.name ? (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.name.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5 sm:col-span-2">
@@ -356,7 +356,7 @@ export default function SuppliersPage() {
                   {...register("document")}
                 />
                 {errors.document ? (
-                  <p className="text-sm text-destructive">{errors.document.message}</p>
+                  <p role="alert" className="text-sm text-destructive">{errors.document.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -385,7 +385,7 @@ export default function SuppliersPage() {
                 onChange={(next) => setValue("address", next, { shouldValidate: true })}
               />
               {errors.address ? (
-                <p className="text-sm text-destructive">{errors.address.message}</p>
+                <p role="alert" className="text-sm text-destructive">{errors.address.message}</p>
               ) : null}
             </div>
             <ErrorAlert message={dialog.error} />

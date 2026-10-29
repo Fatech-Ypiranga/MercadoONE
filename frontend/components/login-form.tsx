@@ -79,7 +79,7 @@ export function LoginForm() {
               {...register("company_document")}
             />
             {errors.company_document ? (
-              <p className="text-sm text-destructive">{errors.company_document.message}</p>
+              <p role="alert" className="text-sm text-destructive">{errors.company_document.message}</p>
             ) : null}
           </div>
 
@@ -93,7 +93,7 @@ export function LoginForm() {
               {...register("login")}
             />
             {errors.login ? (
-              <p className="text-sm text-destructive">{errors.login.message}</p>
+              <p role="alert" className="text-sm text-destructive">{errors.login.message}</p>
             ) : null}
           </div>
 
@@ -107,12 +107,12 @@ export function LoginForm() {
               {...register("password")}
             />
             {errors.password ? (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
+              <p role="alert" className="text-sm text-destructive">{errors.password.message}</p>
             ) : null}
           </div>
 
           {serverError ? (
-            <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {serverError}
             </p>
           ) : null}
