@@ -15,8 +15,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.lock backend/requirements.txt ./
+# pip/setuptools/wheel só são necessários no build: são removidos ao final
+# porque o pip embute cópias próprias (vendored) de urllib3/msgpack que
+# acumulam CVEs e não são usadas pela aplicação em runtime.
 RUN pip install --upgrade pip setuptools wheel \
-    && pip install -r requirements.lock
+    && pip install -r requirements.lock \
+    && pip uninstall -y pip setuptools wheel
 
 COPY backend/ .
 
