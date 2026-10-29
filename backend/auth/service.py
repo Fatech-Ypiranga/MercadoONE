@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from jose import JWTError
+from jwt import InvalidTokenError
 from sqlmodel import Session
 
 from organization.repository import BranchRepository, CompanyRepository, StoreRepository
@@ -101,7 +101,7 @@ class AuthService:
     ) -> int:
         try:
             payload = decode_access_token(token)
-        except JWTError as exc:
+        except InvalidTokenError as exc:
             raise UnauthorizedException("Invalid supervisor authorization.") from exc
 
         if payload.get("typ") != PDV_AUTHORIZATION_TYP:

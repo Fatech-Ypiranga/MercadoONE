@@ -2,7 +2,7 @@ from typing import Annotated, Callable
 
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError
+from jwt import InvalidTokenError
 from sqlmodel import Session
 
 from database.connection import get_db
@@ -26,7 +26,7 @@ def get_current_user(
         payload = decode_and_require_access_token(credentials.credentials)
         user_id = int(payload["sub"])
         token_ver = int(payload.get("ver", 1))
-    except (JWTError, KeyError, ValueError, TypeError):
+    except (InvalidTokenError, KeyError, ValueError, TypeError):
         raise UnauthorizedException("Invalid or expired token.")
 
     user = UserRepository.find_by_id(db, user_id)

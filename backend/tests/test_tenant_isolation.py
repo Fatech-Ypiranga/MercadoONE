@@ -204,7 +204,7 @@ def test_stock_balance_is_per_store(client: TestClient, product: dict, test_engi
 
 
 def test_jwt_contains_company_id(client: TestClient, admin_token: str):
-    from jose import jwt
+    import jwt
 
     from shared.identity.security import JWT_ALGORITHM, JWT_SECRET
 

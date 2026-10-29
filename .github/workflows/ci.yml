@@ -78,15 +78,7 @@ jobs:
           path: backend/coverage.xml
 
       - name: pip-audit (lockfile)
-        run: |
-          # PYSEC-2026-1325 (ecdsa, Minerva timing attack on P-256): the
-          # python-ecdsa maintainers have stated side-channel attacks are
-          # out of scope for a pure-Python implementation and there is no
-          # planned fix. This app's JWTs use HS256 (shared-secret HMAC),
-          # never ECDSA, so the affected sign/verify path isn't exercised;
-          # ecdsa is only present as a transitive dependency of
-          # python-jose[cryptography].
-          pip-audit -r requirements.lock --progress-spinner off --ignore-vuln PYSEC-2026-1325
+        run: pip-audit -r requirements.lock --progress-spinner off
 
   frontend:
     runs-on: ubuntu-latest
