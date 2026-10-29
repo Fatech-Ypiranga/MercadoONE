@@ -21,7 +21,7 @@ bcrypt==4.3.0
     # via
     #   -r requirements.txt
     #   passlib
-certifi==2026.6.17
+certifi==2026.10.18
     # via
     #   httpcore
     #   httpx
@@ -118,7 +118,7 @@ typing-inspection==0.4.2
     # via
     #   fastapi
     #   pydantic
-urllib3==2.7.0
+urllib3==2.8.0
     # via sentry-sdk
 uvicorn==0.51.0
     # via -r requirements.txt
