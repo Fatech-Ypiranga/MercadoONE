@@ -55,7 +55,7 @@ jobs:
 
       # Artefato imutável do SHA (Railway ainda faz railway up; imagem fica no GHCR para rollback / image source).
       - name: Build and push Dev image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
@@ -186,7 +186,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push release image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
