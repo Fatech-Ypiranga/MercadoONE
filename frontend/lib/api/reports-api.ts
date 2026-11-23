@@ -17,6 +17,35 @@ export type CriticalStockItem = {
   min_stock: number | string;
 };
 
+export type SalesGroupRow = {
+  id: number;
+  name: string;
+  sales_count: number;
+  total_amount: number | string;
+  average_ticket: number | string;
+};
+
+export type SalesGroupQuery = {
+  store_id?: number;
+  date_from?: string;
+  date_to?: string;
+  limit?: number;
+};
+
+export function getSalesByOperator(query?: SalesGroupQuery) {
+  return apiFetch("/reports/sales-by-operator", {
+    method: "get",
+    query,
+  }) as Promise<SalesGroupRow[]>;
+}
+
+export function getSalesByCustomer(query?: SalesGroupQuery) {
+  return apiFetch("/reports/sales-by-customer", {
+    method: "get",
+    query,
+  }) as Promise<SalesGroupRow[]>;
+}
+
 export function getTopProducts(query?: { limit?: number; store_id?: number }) {
   return apiFetch("/reports/top-products", {
     method: "get",

@@ -1,11 +1,15 @@
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import and_, case
 from sqlmodel import Session, func, select
 
+from customers.models import Customer
 from products.models import Product
 from sales.models import Sale, SaleItem, SaleStatus
+from shared.dates import inclusive_end_of_day
 from stock.models import MovementType, StockMovement
+from users.models import User
 
 
 class ReportService:
@@ -98,3 +102,114 @@ class ReportService:
                 )
 
         return critical_products
+
+
+def _sales_filters(
+    company_id: int,
+    *,
+    store_id: int | None,
+    date_from: datetime | None,
+    date_to: datetime | None,
+) -> list:
+    conditions = [Sale.company_id == company_id, Sale.status != SaleStatus.CANCELADA]
+    if store_id is not None:
+        conditions.append(Sale.store_id == store_id)
+    if date_from is not None:
+        conditions.append(Sale.sale_date >= date_from)
+    if date_to is not None:
+        conditions.append(Sale.sale_date <= inclusive_end_of_day(date_to))
+    return conditions
+
+
+def _grouped_sales_report(
+    db: Session,
+    company_id: int,
+    *,
+    id_col,
+    name_col,
+    join_model,
+    store_id: int | None,
+    date_from: datetime | None,
+    date_to: datetime | None,
+    limit: int,
+) -> list[dict]:
+    total = func.coalesce(func.sum(Sale.total_amount), 0)
+    count = func.count(Sale.id)
+    stmt = (
+        select(
+            id_col.label("id"),
+            name_col.label("name"),
+            count.label("sales_count"),
+            total.label("total_amount"),
+        )
+        .join(join_model, join_model.id == id_col)
+        .where(
+            join_model.company_id == company_id,
+            *_sales_filters(company_id, store_id=store_id, date_from=date_from, date_to=date_to),
+        )
+        .group_by(id_col, name_col)
+        .order_by(total.desc(), id_col)
+        .limit(limit)
+    )
+    result = []
+    for row in db.exec(stmt).all():
+        sales_count = int(row.sales_count)
+        total_amount = Decimal(row.total_amount)
+        result.append(
+            {
+                "id": row.id,
+                "name": row.name,
+                "sales_count": sales_count,
+                "total_amount": total_amount,
+                "average_ticket": (total_amount / sales_count).quantize(Decimal("0.01"))
+                if sales_count
+                else Decimal("0.00"),
+            }
+        )
+    return result
+
+
+def sales_by_operator(
+    db: Session,
+    company_id: int,
+    *,
+    store_id: int | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    """Non-cancelled sales grouped by the operator who made them, biggest first."""
+    return _grouped_sales_report(
+        db,
+        company_id,
+        id_col=Sale.user_id,
+        name_col=User.full_name,
+        join_model=User,
+        store_id=store_id,
+        date_from=date_from,
+        date_to=date_to,
+        limit=limit,
+    )
+
+
+def sales_by_customer(
+    db: Session,
+    company_id: int,
+    *,
+    store_id: int | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    """Non-cancelled sales grouped by identified customer (sales without one are skipped)."""
+    return _grouped_sales_report(
+        db,
+        company_id,
+        id_col=Sale.customer_id,
+        name_col=Customer.name,
+        join_model=Customer,
+        store_id=store_id,
+        date_from=date_from,
+        date_to=date_to,
+        limit=limit,
+    )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   Bar,
   BarChart,
@@ -16,11 +17,24 @@ import { useAuth } from "@/components/auth-provider";
 import { PageHeader } from "@/components/page-header";
 import { RefreshControls } from "@/components/refresh-controls";
 import { RequirePermission } from "@/components/require-permission";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { EmptyState, ErrorAlert, LoadingState } from "@/components/ui-states";
 import {
   getAverageTicket,
   getCriticalStock,
+  getSalesByCustomer,
+  getSalesByOperator,
   getTopProducts,
+  type SalesGroupRow,
 } from "@/lib/api/reports-api";
 import { errorMessage, formatMoney, formatNumber } from "@/lib/format";
 import { latestDataUpdatedAt, liveQueryOptions } from "@/lib/live-query";
@@ -34,9 +48,62 @@ const CHART_TOOLTIP_STYLE = {
 };
 const CHART_TICK_STYLE = { fill: "var(--color-muted-foreground)", fontSize: 12 };
 
+function SalesGroupTable({
+  title,
+  nameLabel,
+  rows,
+  loading,
+  emptyMessage,
+}: {
+  title: string;
+  nameLabel: string;
+  rows: SalesGroupRow[] | undefined;
+  loading: boolean;
+  emptyMessage: string;
+}) {
+  return (
+    <section className="rounded-xl border border-border p-4">
+      <h2 className="mb-3 text-sm font-semibold">{title}</h2>
+      {loading ? (
+        <LoadingState />
+      ) : !rows?.length ? (
+        <EmptyState message={emptyMessage} />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{nameLabel}</TableHead>
+              <TableHead className="text-right">Vendas</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead className="text-right">Ticket médio</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{row.name}</TableCell>
+                <TableCell className="text-right">{row.sales_count}</TableCell>
+                <TableCell className="text-right">{formatMoney(row.total_amount)}</TableCell>
+                <TableCell className="text-right">{formatMoney(row.average_ticket)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </section>
+  );
+}
+
 export default function ReportsPage() {
   const { activeStoreId, activeStore } = useAuth();
   const storeQuery = activeStoreId ?? undefined;
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const periodQuery = {
+    store_id: storeQuery,
+    date_from: dateFrom || undefined,
+    date_to: dateTo || undefined,
+  };
 
   const top = useQuery({
     queryKey: ["reports", "top", storeQuery, 20],
@@ -54,12 +121,31 @@ export default function ReportsPage() {
     ...liveQueryOptions,
   });
 
-  const err = top.error || ticket.error || critical.error;
-  const isFetching = top.isFetching || ticket.isFetching || critical.isFetching;
+  const byOperator = useQuery({
+    queryKey: ["reports", "by-operator", storeQuery, dateFrom, dateTo],
+    queryFn: () => getSalesByOperator(periodQuery),
+    ...liveQueryOptions,
+  });
+  const byCustomer = useQuery({
+    queryKey: ["reports", "by-customer", storeQuery, dateFrom, dateTo],
+    queryFn: () => getSalesByCustomer(periodQuery),
+    ...liveQueryOptions,
+  });
+
+  const err =
+    top.error || ticket.error || critical.error || byOperator.error || byCustomer.error;
+  const isFetching =
+    top.isFetching ||
+    ticket.isFetching ||
+    critical.isFetching ||
+    byOperator.isFetching ||
+    byCustomer.isFetching;
   const dataUpdatedAt = latestDataUpdatedAt(
     top.dataUpdatedAt,
     ticket.dataUpdatedAt,
     critical.dataUpdatedAt,
+    byOperator.dataUpdatedAt,
+    byCustomer.dataUpdatedAt,
   );
 
   return (
@@ -79,6 +165,8 @@ export default function ReportsPage() {
               void top.refetch();
               void ticket.refetch();
               void critical.refetch();
+              void byOperator.refetch();
+              void byCustomer.refetch();
             }}
           />
         }
@@ -190,6 +278,47 @@ export default function ReportsPage() {
             </ResponsiveContainer>
           )}
         </section>
+      </div>
+
+      <div className="mt-8 mb-3 flex flex-wrap items-end gap-4">
+        <h2 className="mr-auto text-base font-semibold">Vendas por operador e por cliente</h2>
+        <div className="space-y-1">
+          <Label htmlFor="report_from">De</Label>
+          <Input
+            id="report_from"
+            type="date"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="report_to">Até</Label>
+          <Input
+            id="report_to"
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SalesGroupTable
+          title="Por operador"
+          nameLabel="Operador"
+          rows={byOperator.data}
+          loading={byOperator.isLoading}
+          emptyMessage="Sem vendas no período."
+        />
+        <SalesGroupTable
+          title="Por cliente"
+          nameLabel="Cliente"
+          rows={byCustomer.data}
+          loading={byCustomer.isLoading}
+          emptyMessage="Nenhuma venda com cliente identificado no período."
+        />
       </div>
     </RequirePermission>
   );

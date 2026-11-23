@@ -805,6 +805,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/sales-by-operator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vendas por operador (exclui canceladas) */
+        get: operations["report_sales_by_operator_reports_sales_by_operator_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/sales-by-customer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vendas por cliente identificado (exclui canceladas) */
+        get: operations["report_sales_by_customer_reports_sales_by_customer_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/suppliers/": {
         parameters: {
             query?: never;
@@ -2681,6 +2715,19 @@ export interface components {
             method: string;
             /** Amount */
             amount: string;
+        };
+        /** SalesGroupRow */
+        SalesGroupRow: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Sales Count */
+            sales_count: number;
+            /** Total Amount */
+            total_amount: string;
+            /** Average Ticket */
+            average_ticket: string;
         };
         /**
          * StateRegistrationIndicator
@@ -5285,6 +5332,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_sales_by_operator_reports_sales_by_operator_get: {
+        parameters: {
+            query?: {
+                store_id?: number | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesGroupRow"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_sales_by_customer_reports_sales_by_customer_get: {
+        parameters: {
+            query?: {
+                store_id?: number | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesGroupRow"][];
                 };
             };
             /** @description Validation Error */
