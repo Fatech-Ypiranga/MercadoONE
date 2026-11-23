@@ -61,3 +61,79 @@ export function saleStatusBadge(status: string): StatusBadge {
 export function purchaseStatusBadge(status: string): StatusBadge {
   return PURCHASE_STATUS[status] ?? { label: status, variant: "outline" };
 }
+
+export type DailyRevenuePoint = { date: string; label: string; revenue: number; count: number };
+
+function localDateKey(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Receita e quantidade de vendas por dia nos últimos `days` dias (inclui hoje).
+ * Dias sem venda aparecem com zero; vendas canceladas são ignoradas.
+ */
+export function salesByDay(
+  sales: Array<SaleLike & { sale_date?: string }>,
+  days = DASHBOARD_PERIOD_DAYS,
+  today: Date = new Date(),
+): DailyRevenuePoint[] {
+  const points: DailyRevenuePoint[] = [];
+  const index = new Map<string, DailyRevenuePoint>();
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    const key = localDateKey(d);
+    const point = {
+      date: key,
+      label: `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`,
+      revenue: 0,
+      count: 0,
+    };
+    points.push(point);
+    index.set(key, point);
+  }
+  for (const sale of sales) {
+    if (sale.status === "Cancelada" || !sale.sale_date) continue;
+    const when = new Date(sale.sale_date);
+    if (Number.isNaN(when.getTime())) continue;
+    const point = index.get(localDateKey(when));
+    if (!point) continue;
+    point.revenue += Number(sale.total_amount) || 0;
+    point.count += 1;
+  }
+  return points;
+}
+
+export type PaymentSlice = { method: string; label: string; revenue: number; count: number };
+
+const PAYMENT_LABEL: Record<string, string> = {
+  dinheiro: "Dinheiro",
+  cartao: "Cartão",
+  cartao_credito: "Cartão de crédito",
+  cartao_debito: "Cartão de débito",
+  credito: "Crédito",
+  debito: "Débito",
+  pix: "PIX",
+  fiado: "Fiado",
+};
+
+/** Receita por forma de pagamento, da maior para a menor; sem forma informada vira "Não informado". */
+export function salesByPaymentMethod(
+  sales: Array<SaleLike & { payment_method?: string | null }>,
+): PaymentSlice[] {
+  const map = new Map<string, PaymentSlice>();
+  for (const sale of sales) {
+    if (sale.status === "Cancelada") continue;
+    const raw = (sale.payment_method ?? "").trim().toLowerCase();
+    const method = raw || "nao_informado";
+    const label =
+      PAYMENT_LABEL[method] ?? (raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "Não informado");
+    const slice = map.get(method) ?? { method, label, revenue: 0, count: 0 };
+    slice.revenue += Number(sale.total_amount) || 0;
+    slice.count += 1;
+    map.set(method, slice);
+  }
+  return [...map.values()].sort((a, b) => b.revenue - a.revenue);
+}

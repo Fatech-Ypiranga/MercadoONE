@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth-provider";
 import { PageHeader } from "@/components/page-header";
 import { RefreshControls } from "@/components/refresh-controls";
 import { RequirePermission } from "@/components/require-permission";
+import { PaymentMethodChart, RevenueByDayChart } from "@/components/dashboard-charts";
 import { EmptyState, ErrorAlert } from "@/components/ui-states";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,6 +40,8 @@ import {
   periodStartIso,
   purchaseStatusBadge,
   saleStatusBadge,
+  salesByDay,
+  salesByPaymentMethod,
   summarizeSales,
 } from "@/lib/dashboard-metrics";
 import { errorMessage, formatDate, formatMoney, formatNumber } from "@/lib/format";
@@ -84,6 +87,9 @@ export default function DashboardPage() {
     () => summarizeSales(sales.data ?? []),
     [sales.data],
   );
+
+  const dailyRevenue = useMemo(() => salesByDay(sales.data ?? []), [sales.data]);
+  const paymentSlices = useMemo(() => salesByPaymentMethod(sales.data ?? []), [sales.data]);
 
   if (!user) return null;
 
@@ -160,6 +166,13 @@ export default function DashboardPage() {
           tone={critical.data?.length ? "destructive" : undefined}
         />
       </StatStrip>
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <RevenueByDayChart data={dailyRevenue} loading={sales.isLoading} periodHint={periodHint} />
+        </div>
+        <PaymentMethodChart data={paymentSlices} loading={sales.isLoading} periodHint={periodHint} />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <DashboardPanel
