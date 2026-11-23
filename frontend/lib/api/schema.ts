@@ -544,6 +544,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sales/discount-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Política de desconto por perfil */
+        get: operations["get_discount_policy_sales_discount_policy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sales/{sale_id}": {
         parameters: {
             query?: never;
@@ -1598,6 +1615,25 @@ export interface components {
             ie_indicator?: components["schemas"]["StateRegistrationIndicator"] | null;
             /** Is Active */
             is_active?: boolean | null;
+        };
+        /** DiscountPolicyResponse */
+        DiscountPolicyResponse: {
+            /** Profile */
+            profile: string;
+            /**
+             * Max Discount Percent
+             * @description Desconto máximo (% do total bruto) que o usuário atual concede sozinho
+             */
+            max_discount_percent: string;
+            /**
+             * Requires Authorization Above Percent
+             * @description Acima deste percentual é necessária autorização Supervisor+
+             */
+            requires_authorization_above_percent: string;
+            /** By Profile */
+            by_profile: {
+                [key: string]: string;
+            };
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -4601,6 +4637,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_discount_policy_sales_discount_policy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscountPolicyResponse"];
                 };
             };
         };

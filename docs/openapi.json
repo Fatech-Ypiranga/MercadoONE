@@ -2783,6 +2783,32 @@
         }
       }
     },
+    "/sales/discount-policy": {
+      "get": {
+        "tags": [
+          "Vendas"
+        ],
+        "summary": "Política de desconto por perfil",
+        "operationId": "get_discount_policy_sales_discount_policy_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscountPolicyResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/sales/{sale_id}": {
       "get": {
         "tags": [
@@ -6145,6 +6171,42 @@
         },
         "type": "object",
         "title": "CustomerUpdate"
+      },
+      "DiscountPolicyResponse": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "title": "Profile"
+          },
+          "max_discount_percent": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Max Discount Percent",
+            "description": "Desconto máximo (% do total bruto) que o usuário atual concede sozinho"
+          },
+          "requires_authorization_above_percent": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Requires Authorization Above Percent",
+            "description": "Acima deste percentual é necessária autorização Supervisor+"
+          },
+          "by_profile": {
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+            },
+            "type": "object",
+            "title": "By Profile"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile",
+          "max_discount_percent",
+          "requires_authorization_above_percent",
+          "by_profile"
+        ],
+        "title": "DiscountPolicyResponse"
       },
       "HTTPValidationError": {
         "properties": {

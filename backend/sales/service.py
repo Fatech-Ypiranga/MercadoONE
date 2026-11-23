@@ -6,6 +6,7 @@ from sqlmodel import Session
 from auth.service import AuthService
 from customers.repository import CustomerRepository
 from products.repository import ProductRepository
+from sales.discount_policy import discount_percent, max_discount_percent
 from sales.models import Sale, SaleStatus
 from sales.repository import SaleRepository
 from shared.audit import AuditService
@@ -107,12 +108,6 @@ class SaleService:
         if not actor:
             raise ResourceNotFoundException(f"User with ID {user_id} was not found.")
 
-        if discount > 0:
-            self._ensure_discount_authorized(
-                actor=actor,
-                supervisor_authorization=supervisor_authorization,
-            )
-
         try:
             validated_items: list[dict] = []
             total_sale_price = Decimal("0.00")
@@ -157,6 +152,13 @@ class SaleService:
 
             if discount > total_sale_price:
                 raise ValidationError("Discount cannot exceed the sale total.")
+
+            if discount > 0:
+                self._ensure_discount_authorized(
+                    actor=actor,
+                    supervisor_authorization=supervisor_authorization,
+                    percent=discount_percent(discount, total_sale_price),
+                )
 
             final_total = (total_sale_price - discount).quantize(Decimal("0.01"))
             payment_rows = self._resolve_payments(payments, payment_method, final_total)
@@ -364,17 +366,22 @@ class SaleService:
         return sales, total
 
     def _ensure_discount_authorized(
-        self, *, actor: User, supervisor_authorization: str | None
+        self, *, actor: User, supervisor_authorization: str | None, percent: Decimal
     ) -> None:
-        if has_permission(actor.profile, "sales:discount"):
+        if has_permission(actor.profile, "sales:discount") and percent <= max_discount_percent(
+            actor.profile
+        ):
             return
         if not supervisor_authorization:
             raise UnauthorizedException("Discount requires Supervisor+ authorization.")
-        AuthService(self.db).validate_pdv_authorization(
+        authorizer_id = AuthService(self.db).validate_pdv_authorization(
             token=supervisor_authorization,
             operator=actor,
             required_action="discount",
         )
+        authorizer = UserRepository.find_by_id(self.db, authorizer_id, company_id=actor.company_id)
+        if not authorizer or percent > max_discount_percent(authorizer.profile):
+            raise UnauthorizedException("Discount exceeds the authorizer's limit.")
 
     def _ensure_cancel_authorized(
         self, *, actor: User, supervisor_authorization: str | None

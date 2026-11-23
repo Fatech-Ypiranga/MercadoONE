@@ -196,3 +196,37 @@ def test_supervisor_cannot_confirm_purchase(supervisor_client: TestClient, seede
             files={"file": ("ci_sample_01.xml", handle, "application/xml")},
         )
     assert preview.status_code == 403
+
+
+def test_discount_policy_endpoint_lists_limits(
+    operador_client: TestClient, gerente_client: TestClient
+):
+    operador = operador_client.get("/sales/discount-policy")
+    assert operador.status_code == 200
+    assert operador.json()["profile"] == "operador"
+    assert Decimal(operador.json()["max_discount_percent"]) == 0
+    assert "supervisor" in operador.json()["by_profile"]
+
+    gerente = gerente_client.get("/sales/discount-policy")
+    assert Decimal(gerente.json()["max_discount_percent"]) > 0
+
+
+def test_discount_above_profile_limit_requires_authorization(
+    gerente_client: TestClient, stocked_product: dict, monkeypatch
+):
+    from sales import discount_policy
+    from utils.enums import UserProfile
+
+    monkeypatch.setitem(discount_policy.MAX_DISCOUNT_PERCENT, UserProfile.GERENTE, Decimal("10"))
+
+    def sale(discount: str):
+        return gerente_client.post(
+            "/sales/",
+            json={
+                "items": [{"product_id": stocked_product["id"], "quantity": 2}],  # total 100.00
+                "discount_amount": discount,
+            },
+        )
+
+    assert sale("10.00").status_code == 201  # exactly 10%
+    assert sale("10.01").status_code == 401  # above limit, no authorization

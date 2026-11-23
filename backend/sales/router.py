@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlmodel import Session
 
 from database.connection import get_db
+from sales.discount_policy import MAX_DISCOUNT_PERCENT, max_discount_percent
 from sales.models import SaleDetailResponse
 from sales.service import SaleService
 from shared.identity.dependencies import require_permission
@@ -60,6 +61,17 @@ class SaleCreateInput(BaseModel):
         return self
 
 
+class DiscountPolicyResponse(BaseModel):
+    profile: str
+    max_discount_percent: Decimal = Field(
+        description="Desconto máximo (% do total bruto) que o usuário atual concede sozinho"
+    )
+    requires_authorization_above_percent: Decimal = Field(
+        description="Acima deste percentual é necessária autorização Supervisor+"
+    )
+    by_profile: dict[str, Decimal]
+
+
 class SaleCancelInput(BaseModel):
     supervisor_authorization: str | None = None
 
@@ -90,6 +102,23 @@ def list_sales(
         limit=limit,
     )
     return Page(items=sales, total=total, offset=offset, limit=limit)
+
+
+@router.get(
+    "/discount-policy",
+    response_model=DiscountPolicyResponse,
+    summary="Política de desconto por perfil",
+)
+def get_discount_policy(
+    current_user: User = Depends(require_permission("sales:read")),
+):
+    own = max_discount_percent(current_user.profile)
+    return DiscountPolicyResponse(
+        profile=current_user.profile.value,
+        max_discount_percent=own,
+        requires_authorization_above_percent=own,
+        by_profile={profile.value: pct for profile, pct in MAX_DISCOUNT_PERCENT.items()},
+    )
 
 
 @router.get("/{sale_id}", response_model=SaleDetailResponse, summary="Buscar venda por ID")
