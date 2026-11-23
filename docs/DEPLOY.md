@@ -82,6 +82,9 @@ Espelho de [`.env.example`](../backend/.env.example):
 | `ADMIN_PASSWORD` / `ADMIN_*` | fortes, só Dev | fortes, só Prod |
 | `CORS_ORIGINS` | URL Vercel + `http://localhost:3000` | `https://pyerp-frontend.vercel.app` (+ apps oficiais) |
 | `LOGIN_RATE_LIMIT` | ex. `10` | adequado ao tráfego |
+| `SMTP_HOST` / `SMTP_PORT` (587) / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | servidor SMTP de teste | obrigatório para a redefinição de senha por e-mail (sem `SMTP_HOST` o e-mail não é enviado). Opcionais: `SMTP_STARTTLS` (padrão `true`), `SMTP_SSL` (padrão `false`, use com porta 465) |
+| `FRONTEND_BASE_URL` | `http://localhost:3000` | URL pública do painel, usada no link do e-mail |
+| `PASSWORD_RESET_TTL_MINUTES` | `30` | validade do link de redefinição |
 | `REDIS_URL` | opcional | obrigatório se `UVICORN_WORKERS>1` |
 | `TRUSTED_PROXY_HOSTS` | peers exatos do proxy Railway (sem CIDR) | idem |
 | `SENTRY_DSN` | opcional | obrigatório (ou `ALLOW_MISSING_SENTRY=1`) |

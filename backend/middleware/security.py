@@ -29,6 +29,9 @@ _RATE_LIMITED_POST_SUFFIXES = (
     "/auth/pdv-login",
     "/auth/pdv-authorize",
     "/auth/change-password",
+    "/auth/password/request",
+    "/auth/password/check",
+    "/auth/password/confirm",
     "/company-registrations",
 )
 

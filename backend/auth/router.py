@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
+from auth.password_reset import PasswordResetService, deliver_reset_email
 from auth.service import AuthService
 from database.connection import get_db
 from middleware.security import resolve_client_ip
@@ -27,6 +28,28 @@ class PdvAuthorizeRequest(BaseModel):
     pdv_id: str = Field(description="ID de PDV do Supervisor+")
     pin: str = Field(description="PIN numérico de 12 dígitos")
     actions: list[str] = Field(description="Ações a autorizar: discount, cancel")
+
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=150)
+    company_document: str = Field(description="CNPJ da empresa (com ou sem pontuação)")
+
+
+class PasswordResetRequestResponse(BaseModel):
+    message: str
+
+
+class PasswordResetTokenRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=200)
+
+
+class PasswordResetCheckResponse(BaseModel):
+    valid: bool
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=200)
+    new_password: str = Field(min_length=6, max_length=128)
 
 
 class TokenResponse(BaseModel):
@@ -92,6 +115,55 @@ def pdv_authorize(
 @router.get("/me", response_model=MeResponse, summary="Obter usuário autenticado")
 def me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return AuthService(db).build_me_response(current_user)
+
+
+@router.post(
+    "/password/request",
+    response_model=PasswordResetRequestResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Pedir redefinição de senha por e-mail",
+)
+def request_password_reset(
+    body: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    # Same answer whether or not the account exists (no user enumeration).
+    result = PasswordResetService(db).request_reset(
+        email=body.email, company_document=body.company_document
+    )
+    if result:
+        email, token = result
+        background_tasks.add_task(deliver_reset_email, email, token)
+    return PasswordResetRequestResponse(
+        message="Se existir uma conta com esse e-mail, enviamos o link de redefinição."
+    )
+
+
+@router.post(
+    "/password/check",
+    response_model=PasswordResetCheckResponse,
+    summary="Verificar se o link de redefinição ainda é válido",
+)
+def check_password_reset(body: PasswordResetTokenRequest, db: Session = Depends(get_db)):
+    return PasswordResetCheckResponse(valid=PasswordResetService(db).check(body.token))
+
+
+@router.post(
+    "/password/confirm",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Definir nova senha com o link de redefinição",
+)
+def confirm_password_reset(
+    body: PasswordResetConfirmRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    PasswordResetService(db).confirm(
+        token=body.token,
+        new_password=body.new_password,
+        ip_address=resolve_client_ip(request),
+    )
 
 
 @router.post(
