@@ -19,6 +19,17 @@ class SaleRepository:
         return db.exec(stmt).first()
 
     @staticmethod
+    def find_by_client_sale_id(
+        db: Session, company_id: int, client_sale_id: str
+    ) -> Sale | None:
+        stmt = (
+            select(Sale)
+            .where(Sale.company_id == company_id, Sale.client_sale_id == client_sale_id)
+            .options(selectinload(Sale.items))
+        )
+        return db.exec(stmt).first()
+
+    @staticmethod
     def create(
         db: Session,
         *,
@@ -31,6 +42,7 @@ class SaleRepository:
         payment_method: str | None = None,
         status: str = "Em_Andamento",
         created_by: int | None = None,
+        client_sale_id: str | None = None,
     ) -> Sale:
         sale = Sale(
             company_id=company_id,
@@ -41,6 +53,7 @@ class SaleRepository:
             discount_amount=discount_amount,
             payment_method=payment_method,
             status=status,
+            client_sale_id=client_sale_id,
             created_by=created_by,
             updated_by=created_by,
         )

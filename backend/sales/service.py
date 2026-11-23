@@ -29,7 +29,49 @@ class SaleService:
     def __init__(self, db: Session):
         self.db = db
 
-    def process_sale(
+    def process_sale(self, *args, **kwargs) -> Sale:
+        return self.process_sale_idempotent(*args, **kwargs)[0]
+
+    def process_sale_idempotent(
+        self,
+        customer_id: int | None,
+        items: list[dict],
+        user_id: int,
+        *,
+        company_id: int,
+        client_sale_id: str | None = None,
+        **kwargs,
+    ) -> tuple[Sale, bool]:
+        """Process a sale; returns (sale, created).
+
+        If client_sale_id was already used in this company, the original sale is
+        returned with created=False and no stock is moved again.
+        """
+        if client_sale_id is not None:
+            existing = SaleRepository.find_by_client_sale_id(self.db, company_id, client_sale_id)
+            if existing:
+                return existing, False
+        try:
+            sale = self._process_new_sale(
+                customer_id,
+                items,
+                user_id,
+                company_id=company_id,
+                client_sale_id=client_sale_id,
+                **kwargs,
+            )
+            return sale, True
+        except Exception:
+            if client_sale_id is None:
+                raise
+            # A concurrent request with the same key may have won the race.
+            self.db.rollback()
+            existing = SaleRepository.find_by_client_sale_id(self.db, company_id, client_sale_id)
+            if existing:
+                return existing, False
+            raise
+
+    def _process_new_sale(
         self,
         customer_id: int | None,
         items: list[dict],
@@ -40,6 +82,7 @@ class SaleService:
         payment_method: str | None = None,
         discount_amount: Decimal | None = None,
         supervisor_authorization: str | None = None,
+        client_sale_id: str | None = None,
     ) -> Sale:
         if not items:
             raise ValidationError("A sale needs at least one item.")
@@ -125,6 +168,7 @@ class SaleService:
                 payment_method=payment_method,
                 status=SaleStatus.CONCLUIDA,
                 created_by=user_id,
+                client_sale_id=client_sale_id,
             )
 
             for validated_item in validated_items:

@@ -1527,6 +1527,54 @@
         }
       }
     },
+    "/stores/{store_id}/pdv-pin": {
+      "get": {
+        "tags": [
+          "Lojas"
+        ],
+        "summary": "Obter hash do PIN PDV para sync no caixa",
+        "description": "Retorna o pin_hash Argon2id do usuário autenticado (Supervisor+) para a loja.\n\nO PDV importa este PHC sem re-hash e usa offline para abrir turno / overrides.",
+        "operationId": "get_store_pdv_pin_stores__store_id__pdv_pin_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "store_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Store Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorePdvPinResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/stores/{store_id}": {
       "get": {
         "tags": [
@@ -4283,6 +4331,57 @@
           }
         }
       }
+    },
+    "/livez": {
+      "get": {
+        "summary": "Livez",
+        "description": "Liveness: process is up (no dependency checks).",
+        "operationId": "livez_livez_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "summary": "Readyz",
+        "description": "Readiness: database reachable.",
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "summary": "Healthz",
+        "description": "Compatibility alias for readiness (prefer /livez and /readyz).",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4383,7 +4482,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           }
         },
@@ -7937,11 +8036,12 @@
           "quantity": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,7}|(?=[\\d.]{1,11}0*$)\\d{0,7}\\.\\d{0,3}0*$)"
               }
             ],
             "title": "Quantity"
@@ -7949,11 +8049,12 @@
           "unit_cost": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)"
               }
             ],
             "title": "Unit Cost"
@@ -7961,11 +8062,12 @@
           "discount": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)"
               }
             ],
             "title": "Discount",
@@ -7974,11 +8076,12 @@
           "ipi_amount": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)"
               }
             ],
             "title": "Ipi Amount",
@@ -7987,11 +8090,12 @@
           "icms_st_amount": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)"
               }
             ],
             "title": "Icms St Amount",
@@ -8000,11 +8104,12 @@
           "total_cost": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)"
               }
             ],
             "title": "Total Cost"
@@ -8592,7 +8697,8 @@
           "cost_price": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -8604,7 +8710,8 @@
           "sale_price": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -8702,6 +8809,20 @@
               }
             ],
             "title": "Store Id"
+          },
+          "client_sale_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Sale Id",
+            "description": "Chave de idempotência do cliente (PDV); repetir devolve a venda original"
           },
           "discount_amount": {
             "anyOf": [
@@ -8816,6 +8937,17 @@
             "type": "integer",
             "title": "Store Id"
           },
+          "client_sale_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Sale Id"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/SaleItemResponse"
@@ -8906,7 +9038,8 @@
           "quantity": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "string",
@@ -9072,6 +9205,30 @@
           "branch_id"
         ],
         "title": "StoreCreate"
+      },
+      "StorePdvPinResponse": {
+        "properties": {
+          "pin_hash": {
+            "type": "string",
+            "title": "Pin Hash"
+          },
+          "store_id": {
+            "type": "integer",
+            "title": "Store Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pin_hash",
+          "store_id",
+          "user_id"
+        ],
+        "title": "StorePdvPinResponse",
+        "description": "Hash Argon2id (PHC) do PIN PDV do usuário autenticado (Supervisor+), para sync offline no PDV."
       },
       "StoreResponse": {
         "properties": {
@@ -10157,6 +10314,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",

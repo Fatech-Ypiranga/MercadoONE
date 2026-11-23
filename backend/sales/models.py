@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 
+from sqlalchemy import Index, text
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -30,6 +31,7 @@ class SaleResponse(SaleBase):
     id: int
     company_id: int
     store_id: int
+    client_sale_id: Optional[str] = None
 
 
 class SaleItemBase(SQLModel):
@@ -56,10 +58,20 @@ class SaleItem(SaleItemBase, table=True):
 
 class Sale(SaleBase, table=True):
     __tablename__ = "sales"
+    __table_args__ = (
+        Index(
+            "uq_sales_company_client_sale_id",
+            "company_id",
+            "client_sale_id",
+            unique=True,
+            postgresql_where=text("client_sale_id IS NOT NULL"),
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     company_id: int = Field(foreign_key="companies.id", index=True)
     store_id: int = Field(foreign_key="stores.id", index=True)
+    client_sale_id: Optional[str] = Field(default=None, max_length=64)
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")
     updated_by: Optional[int] = Field(default=None, foreign_key="users.id")
     items: list[SaleItem] = Relationship(back_populates="sale")

@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
@@ -25,6 +25,12 @@ class SaleCreateInput(BaseModel):
     customer_id: int | None = None
     payment_method: str | None = None
     store_id: int | None = None
+    client_sale_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=64,
+        description="Chave de idempotência do cliente (PDV); repetir devolve a venda original",
+    )
     discount_amount: Decimal | None = Field(default=None, ge=0)
     supervisor_authorization: str | None = Field(
         default=None,
@@ -88,12 +94,13 @@ def get_sale(
 )
 def process_sale(
     sale_in: SaleCreateInput,
+    response: Response,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("sales:write")),
 ):
     company_id = company_id_of(current_user)
     store_id = resolve_store_id(db, current_user, sale_in.store_id)
-    return SaleService(db).process_sale(
+    sale, created = SaleService(db).process_sale_idempotent(
         customer_id=sale_in.customer_id,
         items=[item.model_dump() for item in sale_in.items],
         user_id=current_user.id,
@@ -102,7 +109,11 @@ def process_sale(
         payment_method=sale_in.payment_method,
         discount_amount=sale_in.discount_amount,
         supervisor_authorization=sale_in.supervisor_authorization,
+        client_sale_id=sale_in.client_sale_id,
     )
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return sale
 
 
 @router.post(

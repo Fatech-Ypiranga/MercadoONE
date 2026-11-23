@@ -101,3 +101,44 @@ def test_concurrent_sales_of_last_unit_one_succeeds_one_fails(test_engine, clien
 
     balance = client.get(f"/stock/product/{product_id}/balance")
     assert Decimal(str(balance.json()["current_balance"])) == Decimal("0")
+
+
+def test_repeated_client_sale_id_returns_original_sale_without_new_movement(
+    client, stocked_product
+):
+    product_id = stocked_product["id"]
+    payload = {
+        "client_sale_id": "pdv-1-0001",
+        "items": [{"product_id": product_id, "quantity": 2}],
+    }
+
+    first = client.post("/sales/", json=payload)
+    second = client.post("/sales/", json=payload)
+
+    assert first.status_code == 201
+    assert second.status_code == 200
+    assert second.json()["id"] == first.json()["id"]
+    assert second.json()["client_sale_id"] == "pdv-1-0001"
+
+    balance = client.get(f"/stock/product/{product_id}/balance")
+    assert Decimal(str(balance.json()["current_balance"])) == Decimal("18")
+
+
+def test_distinct_client_sale_ids_create_distinct_sales(client, stocked_product):
+    product_id = stocked_product["id"]
+    ids = set()
+    for key in ("a-1", "a-2"):
+        r = client.post(
+            "/sales/",
+            json={"client_sale_id": key, "items": [{"product_id": product_id, "quantity": 1}]},
+        )
+        assert r.status_code == 201
+        ids.add(r.json()["id"])
+    assert len(ids) == 2
+
+
+def test_sales_without_client_sale_id_are_never_deduplicated(client, stocked_product):
+    body = {"items": [{"product_id": stocked_product["id"], "quantity": 1}]}
+    first = client.post("/sales/", json=body).json()["id"]
+    second = client.post("/sales/", json=body).json()["id"]
+    assert first != second
