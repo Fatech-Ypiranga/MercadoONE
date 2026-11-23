@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlmodel import Session
 
 from database.connection import get_db
@@ -21,9 +21,24 @@ class SaleItemInput(BaseModel):
     quantity: int = Field(gt=0)
 
 
+class SalePaymentInput(BaseModel):
+    method: str = Field(min_length=1, max_length=20)
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+
+
 class SaleCreateInput(BaseModel):
     customer_id: int | None = None
-    payment_method: str | None = None
+    payment_method: str | None = Field(
+        default=None,
+        max_length=20,
+        description="Legado: forma única de pagamento. Use `payments` para dividir a venda.",
+    )
+    payments: list[SalePaymentInput] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=10,
+        description="Pagamentos da venda; a soma deve ser igual ao total da venda",
+    )
     store_id: int | None = None
     client_sale_id: str | None = Field(
         default=None,
@@ -37,6 +52,12 @@ class SaleCreateInput(BaseModel):
         description="Token de autorização Supervisor+ (desconto/cancelamento no PDV)",
     )
     items: list[SaleItemInput]
+
+    @model_validator(mode="after")
+    def _single_payment_style(self):
+        if self.payments is not None and self.payment_method is not None:
+            raise ValueError("Send either payment_method or payments, not both.")
+        return self
 
 
 class SaleCancelInput(BaseModel):
@@ -110,6 +131,7 @@ def process_sale(
         discount_amount=sale_in.discount_amount,
         supervisor_authorization=sale_in.supervisor_authorization,
         client_sale_id=sale_in.client_sale_id,
+        payments=[p.model_dump() for p in sale_in.payments] if sale_in.payments else None,
     )
     if not created:
         response.status_code = status.HTTP_200_OK

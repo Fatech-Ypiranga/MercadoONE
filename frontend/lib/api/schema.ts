@@ -339,6 +339,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stores/{store_id}/pdv-pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obter hash do PIN PDV para sync no caixa
+         * @description Retorna o pin_hash Argon2id do usuário autenticado (Supervisor+) para a loja.
+         *
+         *     O PDV importa este PHC sem re-hash e usa offline para abrir turno / overrides.
+         */
+        get: operations["get_store_pdv_pin_stores__store_id__pdv_pin_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/stores/{store_id}": {
         parameters: {
             query?: never;
@@ -891,6 +913,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/livez": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Livez
+         * @description Liveness: process is up (no dependency checks).
+         */
+        get: operations["livez_livez_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/readyz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Readyz
+         * @description Readiness: database reachable.
+         */
+        get: operations["readyz_readyz_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/healthz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Healthz
+         * @description Compatibility alias for readiness (prefer /livez and /readyz).
+         */
+        get: operations["healthz_healthz_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -927,10 +1009,7 @@ export interface components {
         };
         /** Body_upload_purchase_xml_purchases_upload_xml_post */
         Body_upload_purchase_xml_purchases_upload_xml_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** BranchCreate */
@@ -2374,10 +2453,23 @@ export interface components {
         SaleCreateInput: {
             /** Customer Id */
             customer_id?: number | null;
-            /** Payment Method */
+            /**
+             * Payment Method
+             * @description Legado: forma única de pagamento. Use `payments` para dividir a venda.
+             */
             payment_method?: string | null;
+            /**
+             * Payments
+             * @description Pagamentos da venda; a soma deve ser igual ao total da venda
+             */
+            payments?: components["schemas"]["SalePaymentInput"][] | null;
             /** Store Id */
             store_id?: number | null;
+            /**
+             * Client Sale Id
+             * @description Chave de idempotência do cliente (PDV); repetir devolve a venda original
+             */
+            client_sale_id?: string | null;
             /** Discount Amount */
             discount_amount?: number | string | null;
             /**
@@ -2422,11 +2514,18 @@ export interface components {
             company_id: number;
             /** Store Id */
             store_id: number;
+            /** Client Sale Id */
+            client_sale_id?: string | null;
             /**
              * Items
              * @default []
              */
             items: components["schemas"]["SaleItemResponse"][];
+            /**
+             * Payments
+             * @default []
+             */
+            payments: components["schemas"]["SalePaymentResponse"][];
         };
         /** SaleItemInput */
         SaleItemInput: {
@@ -2447,6 +2546,22 @@ export interface components {
             unit_price: string;
             /** Id */
             id: number;
+        };
+        /** SalePaymentInput */
+        SalePaymentInput: {
+            /** Method */
+            method: string;
+            /** Amount */
+            amount: number | string;
+        };
+        /** SalePaymentResponse */
+        SalePaymentResponse: {
+            /** Id */
+            id: number;
+            /** Method */
+            method: string;
+            /** Amount */
+            amount: string;
         };
         /**
          * StateRegistrationIndicator
@@ -2524,6 +2639,18 @@ export interface components {
             is_active: boolean;
             /** Branch Id */
             branch_id: number;
+        };
+        /**
+         * StorePdvPinResponse
+         * @description Hash Argon2id (PHC) do PIN PDV do usuário autenticado (Supervisor+), para sync offline no PDV.
+         */
+        StorePdvPinResponse: {
+            /** Pin Hash */
+            pin_hash: string;
+            /** Store Id */
+            store_id: number;
+            /** User Id */
+            user_id: number;
         };
         /** StoreResponse */
         StoreResponse: {
@@ -2871,6 +2998,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -3768,6 +3899,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StoreResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_store_pdv_pin_stores__store_id__pdv_pin_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                store_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorePdvPinResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5292,6 +5454,66 @@ export interface operations {
         };
     };
     root__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    livez_livez_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    readyz_readyz_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    healthz_healthz_get: {
         parameters: {
             query?: never;
             header?: never;

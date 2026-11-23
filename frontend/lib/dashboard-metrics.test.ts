@@ -44,3 +44,25 @@ test("salesByPaymentMethod agrupa, rotula e ordena por receita", () => {
     ],
   );
 });
+
+test("salesByPaymentMethod soma por pagamento quando a venda é dividida", () => {
+  const slices = salesByPaymentMethod([
+    {
+      total_amount: "100",
+      status: "Concluida",
+      payment_method: "multiplo",
+      payments: [
+        { method: "dinheiro", amount: "30.00" },
+        { method: "pix", amount: "70.00" },
+      ],
+    },
+    { total_amount: "20", status: "Concluida", payment_method: "pix", payments: [] },
+  ]);
+  assert.deepEqual(
+    slices.map((s) => [s.label, s.revenue, s.count]),
+    [
+      ["PIX", 90, 2],
+      ["Dinheiro", 30, 1],
+    ],
+  );
+});

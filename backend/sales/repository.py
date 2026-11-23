@@ -4,7 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from sales.models import Sale, SaleItem
+from sales.models import Sale, SaleItem, SalePayment
 from shared.dates import inclusive_end_of_day
 
 
@@ -14,18 +14,16 @@ class SaleRepository:
         stmt = (
             select(Sale)
             .where(Sale.id == sale_id, Sale.company_id == company_id)
-            .options(selectinload(Sale.items))
+            .options(selectinload(Sale.items), selectinload(Sale.payments))
         )
         return db.exec(stmt).first()
 
     @staticmethod
-    def find_by_client_sale_id(
-        db: Session, company_id: int, client_sale_id: str
-    ) -> Sale | None:
+    def find_by_client_sale_id(db: Session, company_id: int, client_sale_id: str) -> Sale | None:
         stmt = (
             select(Sale)
             .where(Sale.company_id == company_id, Sale.client_sale_id == client_sale_id)
-            .options(selectinload(Sale.items))
+            .options(selectinload(Sale.items), selectinload(Sale.payments))
         )
         return db.exec(stmt).first()
 
@@ -72,6 +70,13 @@ class SaleRepository:
         db.add(sale_item)
         db.flush()
         return sale_item
+
+    @staticmethod
+    def add_payment(db: Session, sale_id: int, method: str, amount) -> SalePayment:
+        payment = SalePayment(sale_id=sale_id, method=method, amount=amount)
+        db.add(payment)
+        db.flush()
+        return payment
 
     @staticmethod
     def find_items_by_sale(db: Session, sale_id: int) -> list[SaleItem]:
@@ -124,7 +129,7 @@ class SaleRepository:
                 store_id=store_id,
             )
             .order_by(Sale.sale_date.desc())
-            .options(selectinload(Sale.items))
+            .options(selectinload(Sale.items), selectinload(Sale.payments))
         )
         stmt = stmt.offset(offset)
         if limit is not None:

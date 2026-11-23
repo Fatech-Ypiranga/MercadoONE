@@ -24,6 +24,8 @@ from users.models import User
 from users.repository import UserRepository
 from utils.enums import AuditAction
 
+MIXED_PAYMENT_METHOD = "multiplo"
+
 
 class SaleService:
     def __init__(self, db: Session):
@@ -83,6 +85,7 @@ class SaleService:
         discount_amount: Decimal | None = None,
         supervisor_authorization: str | None = None,
         client_sale_id: str | None = None,
+        payments: list[dict] | None = None,
     ) -> Sale:
         if not items:
             raise ValidationError("A sale needs at least one item.")
@@ -156,6 +159,11 @@ class SaleService:
                 raise ValidationError("Discount cannot exceed the sale total.")
 
             final_total = (total_sale_price - discount).quantize(Decimal("0.01"))
+            payment_rows = self._resolve_payments(payments, payment_method, final_total)
+            if payments is not None:
+                payment_method = (
+                    payment_rows[0][0] if len(payment_rows) == 1 else MIXED_PAYMENT_METHOD
+                )
 
             sale = SaleRepository.create(
                 self.db,
@@ -170,6 +178,9 @@ class SaleService:
                 created_by=user_id,
                 client_sale_id=client_sale_id,
             )
+
+            for method, amount in payment_rows:
+                SaleRepository.add_payment(self.db, sale.id, method, amount)
 
             for validated_item in validated_items:
                 SaleRepository.add_item(
@@ -215,6 +226,34 @@ class SaleService:
         except Exception as e:
             self.db.rollback()
             raise BusinessRuleException(f"Sale processing failed. Transaction cancelled: {e}")
+
+    @staticmethod
+    def _resolve_payments(
+        payments: list[dict] | None, payment_method: str | None, final_total: Decimal
+    ) -> list[tuple[str, Decimal]]:
+        """Normalise the payment split; the sum must equal the sale total exactly."""
+        if payments is None:
+            # Legacy single payment_method: the whole total is paid with it.
+            method = (payment_method or "").strip().lower()
+            if method and final_total > 0:
+                return [(method, final_total)]
+            return []
+
+        rows: list[tuple[str, Decimal]] = []
+        for payment in payments:
+            method = str(payment["method"]).strip().lower()
+            amount = Decimal(payment["amount"]).quantize(Decimal("0.01"))
+            if not method:
+                raise ValidationError("Each payment needs a method.")
+            if amount <= 0:
+                raise ValidationError("Each payment amount must be greater than zero.")
+            rows.append((method, amount))
+        paid = sum((amount for _, amount in rows), Decimal("0.00"))
+        if paid != final_total:
+            raise ValidationError(
+                f"Payments total {paid} does not match the sale total {final_total}."
+            )
+        return rows
 
     def cancel_sale(
         self,

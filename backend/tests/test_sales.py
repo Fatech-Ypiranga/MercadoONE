@@ -142,3 +142,61 @@ def test_sales_without_client_sale_id_are_never_deduplicated(client, stocked_pro
     first = client.post("/sales/", json=body).json()["id"]
     second = client.post("/sales/", json=body).json()["id"]
     assert first != second
+
+
+def test_sale_with_split_payments_stores_each_payment(client, stocked_product):
+    body = {
+        "items": [{"product_id": stocked_product["id"], "quantity": 2}],  # total 100.00
+        "payments": [
+            {"method": "Dinheiro", "amount": "30.00"},
+            {"method": "pix", "amount": "70.00"},
+        ],
+    }
+    response = client.post("/sales/", json=body)
+    assert response.status_code == 201
+    sale = response.json()
+    assert sale["payment_method"] == "multiplo"
+    assert [(p["method"], p["amount"]) for p in sale["payments"]] == [
+        ("dinheiro", "30.00"),
+        ("pix", "70.00"),
+    ]
+    fetched = client.get(f"/sales/{sale['id']}").json()
+    assert len(fetched["payments"]) == 2
+
+
+def test_split_payments_must_match_total(client, stocked_product):
+    for amounts in (["30.00", "60.00"], ["60.00", "50.00"]):
+        response = client.post(
+            "/sales/",
+            json={
+                "items": [{"product_id": stocked_product["id"], "quantity": 2}],
+                "payments": [{"method": "pix", "amount": a} for a in amounts],
+            },
+        )
+        assert response.status_code in (400, 422)
+    balance = client.get(f"/stock/product/{stocked_product['id']}/balance")
+    assert Decimal(str(balance.json()["current_balance"])) == Decimal("20")
+
+
+def test_payment_method_and_payments_together_are_rejected(client, stocked_product):
+    response = client.post(
+        "/sales/",
+        json={
+            "items": [{"product_id": stocked_product["id"], "quantity": 1}],
+            "payment_method": "pix",
+            "payments": [{"method": "pix", "amount": "50.00"}],
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_legacy_payment_method_creates_single_payment_for_full_total(client, stocked_product):
+    sale = client.post(
+        "/sales/",
+        json={
+            "items": [{"product_id": stocked_product["id"], "quantity": 1}],
+            "payment_method": "pix",
+        },
+    ).json()
+    assert sale["payment_method"] == "pix"
+    assert [(p["method"], p["amount"]) for p in sale["payments"]] == [("pix", "50.00")]

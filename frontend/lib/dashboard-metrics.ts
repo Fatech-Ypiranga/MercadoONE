@@ -119,21 +119,37 @@ const PAYMENT_LABEL: Record<string, string> = {
   fiado: "Fiado",
 };
 
-/** Receita por forma de pagamento, da maior para a menor; sem forma informada vira "Não informado". */
+/**
+ * Receita por forma de pagamento, da maior para a menor. Soma por pagamento (vendas
+ * com pagamento dividido contam em cada forma); vendas sem `payments` usam
+ * `payment_method` com o total; sem forma informada vira "Não informado".
+ */
 export function salesByPaymentMethod(
-  sales: Array<SaleLike & { payment_method?: string | null }>,
+  sales: Array<
+    SaleLike & {
+      payment_method?: string | null;
+      payments?: Array<{ method: string; amount: string | number }> | null;
+    }
+  >,
 ): PaymentSlice[] {
   const map = new Map<string, PaymentSlice>();
-  for (const sale of sales) {
-    if (sale.status === "Cancelada") continue;
-    const raw = (sale.payment_method ?? "").trim().toLowerCase();
+  const add = (rawMethod: string | null | undefined, amount: number) => {
+    const raw = (rawMethod ?? "").trim().toLowerCase();
     const method = raw || "nao_informado";
     const label =
       PAYMENT_LABEL[method] ?? (raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "Não informado");
     const slice = map.get(method) ?? { method, label, revenue: 0, count: 0 };
-    slice.revenue += Number(sale.total_amount) || 0;
+    slice.revenue += amount;
     slice.count += 1;
     map.set(method, slice);
+  };
+  for (const sale of sales) {
+    if (sale.status === "Cancelada") continue;
+    if (sale.payments && sale.payments.length > 0) {
+      for (const payment of sale.payments) add(payment.method, Number(payment.amount) || 0);
+    } else {
+      add(sale.payment_method, Number(sale.total_amount) || 0);
+    }
   }
   return [...map.values()].sort((a, b) => b.revenue - a.revenue);
 }

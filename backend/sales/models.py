@@ -34,6 +34,18 @@ class SaleResponse(SaleBase):
     client_sale_id: Optional[str] = None
 
 
+class SalePaymentBase(SQLModel):
+    sale_id: int = Field(foreign_key="sales.id", index=True)
+    method: str = Field(max_length=20)
+    amount: Decimal = Field(decimal_places=2, max_digits=12)
+
+
+class SalePaymentResponse(SQLModel):
+    id: int
+    method: str
+    amount: Decimal
+
+
 class SaleItemBase(SQLModel):
     sale_id: int = Field(foreign_key="sales.id", index=True)
     product_id: int = Field(foreign_key="products.id", index=True)
@@ -47,6 +59,13 @@ class SaleItemCreate(SaleItemBase):
 
 class SaleItemResponse(SaleItemBase):
     id: int
+
+
+class SalePayment(SalePaymentBase, table=True):
+    __tablename__ = "sale_payments"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    sale: Optional["Sale"] = Relationship(back_populates="payments")
 
 
 class SaleItem(SaleItemBase, table=True):
@@ -75,10 +94,14 @@ class Sale(SaleBase, table=True):
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")
     updated_by: Optional[int] = Field(default=None, foreign_key="users.id")
     items: list[SaleItem] = Relationship(back_populates="sale")
+    payments: list[SalePayment] = Relationship(
+        back_populates="sale", sa_relationship_kwargs={"order_by": "SalePayment.id"}
+    )
 
 
 class SaleDetailResponse(SaleResponse):
     items: list[SaleItemResponse] = []
+    payments: list[SalePaymentResponse] = []
 
 
 SaleDetailResponse.model_rebuild()

@@ -132,7 +132,17 @@ export default function SaleDetailPage() {
             <div>
               <dt className="text-xs text-muted-foreground uppercase">Pagamento</dt>
               <dd className="mt-1 text-sm">
-                {detail.data.payment_method ?? "—"}
+                {detail.data.payments && detail.data.payments.length > 0 ? (
+                  <ul>
+                    {detail.data.payments.map((payment) => (
+                      <li key={payment.id}>
+                        {payment.method}: {formatMoney(payment.amount)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  (detail.data.payment_method ?? "—")
+                )}
               </dd>
             </div>
             <div>

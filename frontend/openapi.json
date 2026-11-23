@@ -8791,13 +8791,32 @@
           "payment_method": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Payment Method"
+            "title": "Payment Method",
+            "description": "Legado: forma única de pagamento. Use `payments` para dividir a venda."
+          },
+          "payments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SalePaymentInput"
+                },
+                "type": "array",
+                "maxItems": 10,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payments",
+            "description": "Pagamentos da venda; a soma deve ser igual ao total da venda"
           },
           "store_id": {
             "anyOf": [
@@ -8955,6 +8974,14 @@
             "type": "array",
             "title": "Items",
             "default": []
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/SalePaymentResponse"
+            },
+            "type": "array",
+            "title": "Payments",
+            "default": []
           }
         },
         "type": "object",
@@ -9019,6 +9046,59 @@
           "id"
         ],
         "title": "SaleItemResponse"
+      },
+      "SalePaymentInput": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Method"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)"
+              }
+            ],
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "amount"
+        ],
+        "title": "SalePaymentInput"
+      },
+      "SalePaymentResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "method",
+          "amount"
+        ],
+        "title": "SalePaymentResponse"
       },
       "StateRegistrationIndicator": {
         "type": "string",
